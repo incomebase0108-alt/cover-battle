@@ -16,6 +16,7 @@ class Game {
     this.dynamites = [];
     this.chests = [];
     this.capturePoints = [];
+    this.beasts = [];
     this.map = null;
     this.blueFortAlert = 0; // ms remaining on the "fort under attack" warning
     this._prevBlueFort = null;
@@ -40,6 +41,7 @@ class Game {
     this.dynamites = [];
     this.chests = [];
     this.capturePoints = [];
+    this.beasts = [];
     this.blueFortAlert = 0;
     this._prevBlueFort = null;
     this.rushMode = false;
@@ -119,6 +121,32 @@ class Game {
         this.chests.push(new Chest(p.x, p.y));
       }
     }
+    // Wild beasts roaming the mid-field (neutral, hostile to everyone).
+    this.beasts = [];
+    if (typeof Beast !== "undefined") {
+      const spots = [
+        { x: W * 0.5, y: H * 0.5, t: "bear" },
+        { x: W * 0.35, y: H * 0.4, t: "tiger" },
+        { x: W * 0.65, y: H * 0.6, t: "tiger" },
+      ];
+      for (const s of spots) {
+        const p = this.map.resolveCollision(s.x, s.y, 22);
+        this.beasts.push(new Beast(p.x, p.y, s.t));
+      }
+    }
+  }
+
+  _updateBeasts(dt) {
+    for (const b of this.beasts) {
+      const wasDead = b.dead;
+      b.update(dt, this);
+      if (b.dead && !wasDead) {
+        // Reward whoever felled it with a guaranteed item drop.
+        const type = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
+        this.items.push(new Item(b.x, b.y, type));
+      }
+    }
+    this.beasts = this.beasts.filter((b) => !b.dead);
   }
 
   // True if (x,y) is inside a control point owned by `team` (heals them).
@@ -214,6 +242,7 @@ class Game {
     this._handlePickups();
     this._handleChests(dt);
     this._updateCapture(dt);
+    this._updateBeasts(dt);
 
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.bombs = this.bombs.filter((b) => !b.dead);
@@ -377,6 +406,7 @@ class Game {
       if (!u.alive) this._drawWreck(ctx, u);
     }
     for (const c of this.chests) c.draw(ctx);
+    for (const beast of this.beasts) beast.draw(ctx);
     for (const it of this.items) it.draw(ctx);
     for (const b of this.bullets) b.draw(ctx);
     for (const u of this.units) {

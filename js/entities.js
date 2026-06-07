@@ -64,6 +64,16 @@ class Bullet {
       }
     }
 
+    // Anyone's bullets can wound the wild beasts.
+    if (game.beasts) {
+      for (const beast of game.beasts) {
+        if (!beast.dead && V.dist(this.x, this.y, beast.x, beast.y) <= beast.radius + this.radius) {
+          beast.takeDamage(this.damage);
+          if (!this.pierce) { this.dead = true; return; }
+        }
+      }
+    }
+
     // Hit enemy units. Normal rounds stop on the first hit; piercing rounds
     // pass through, damaging each unit once.
     for (const u of game.units) {

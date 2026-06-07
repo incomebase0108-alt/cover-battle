@@ -131,6 +131,19 @@ class AIController {
     return best;
   }
 
+  // Nearest living wild beast within `range`, or null.
+  nearestBeast(self, game, range) {
+    if (!game.beasts) return null;
+    let best = null;
+    let bd = range;
+    for (const b of game.beasts) {
+      if (b.dead) continue;
+      const d = V.dist(self.x, self.y, b.x, b.y);
+      if (d < bd) { bd = d; best = b; }
+    }
+    return best;
+  }
+
   // Nearest living enemy within `range` of a point (for fort defence).
   nearestEnemyNear(self, game, x, y, range) {
     let best = null;
@@ -355,6 +368,18 @@ class AIController {
     // High stages: concentrate fire on the squad's shared focus target.
     const focus = this.teamFocus(self, game);
     if (focus) target = focus;
+
+    // Self-defence: a nearby wild beast is an immediate threat — shoot it and
+    // back off if it's right on top of us.
+    const beast = this.nearestBeast(self, game, 200);
+    if (beast && !this.shouldRetreat(self)) {
+      this.aimAt(self, beast.x, beast.y);
+      if (V.dist(self.x, self.y, beast.x, beast.y) < 90) {
+        this.moveTo(self, self.x + (self.x - beast.x), self.y + (self.y - beast.y), game);
+      }
+      if (!self.reloading && self.ammo > 0 && Math.random() < 0.6) self.tryShoot(game);
+      return;
+    }
 
     let state = this.desiredState(self, game);
     // Anti-stall: when the match has gone quiet too long, everyone charges the
