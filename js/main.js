@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v16 攻撃スティック(移/攻)＋ズームアウト＋山岳海兵";
+  const BUILD = "v17 攻撃スティック最優先＋LANワンクリック起動";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

@@ -672,26 +672,31 @@ class Unit {
     let autoFire = false;
     if (Input.isTouch) {
       const moving = (dx !== 0 || dy !== 0);
-      if (this.lockMode) {
+      const aiming = Input.aimStick && Input.aimStick.active;
+      if (aiming && this.lockMode) {
+        // 攻撃スティックを押している＋ロックオン中：対象へ自動照準（エイム補助）。
+        // 対象がいなければスティックの向きへ撃つ。
         if (!this.lockTarget || !this.lockTarget.alive ||
             !game.unitVisibleToPlayer(this.lockTarget)) {
           this.lockTarget = game.nearestVisibleEnemy(this);
         }
-        if (this.lockTarget) {
-          this.aim = Math.atan2(this.lockTarget.y - this.y, this.lockTarget.x - this.x);
-        } else if (Input.aimStick && Input.aimStick.active) {
-          this.aim = Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
-        } else if (moving) {
-          this.aim = Math.atan2(dy, dx);
-        }
-      } else if (Input.aimStick && Input.aimStick.active) {
+        this.aim = this.lockTarget
+          ? Math.atan2(this.lockTarget.y - this.y, this.lockTarget.x - this.x)
+          : Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
+      } else if (aiming) {
+        // 攻撃スティックを倒した方向へ照準（最優先・手動）。
         this.aim = Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
+      } else if (this.lockMode) {
+        // 攻撃中でなくても、ロックオン中は照準だけ対象へ向けておく（撃たない）。
+        if (!this.lockTarget || !this.lockTarget.alive ||
+            !game.unitVisibleToPlayer(this.lockTarget)) {
+          this.lockTarget = game.nearestVisibleEnemy(this);
+        }
+        if (this.lockTarget) this.aim = Math.atan2(this.lockTarget.y - this.y, this.lockTarget.x - this.x);
       } else if (moving) {
         this.aim = Math.atan2(dy, dx); // 移動方向を向くだけ（射撃はしない）
       }
-      // 射撃するのは「攻撃スティックを倒している間」だけ（移動では撃たない）。
-      // ロックオン中は対象へ自動射撃（明示的に切り替えた時だけの挙動）。
-      autoFire = (this.lockMode && !!this.lockTarget);
+      // 撃つのは「攻撃スティックを倒している間」だけ。自動射撃はしない（弾の節約）。
     } else if (this.lockMode) {
       // Keep a valid target, then aim straight at it.
       if (!this.lockTarget || !this.lockTarget.alive ||
