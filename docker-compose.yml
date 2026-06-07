@@ -1,0 +1,10 @@
+# NAS で常時起動させるための Compose 設定。
+#   docker compose up -d --build   で起動（NAS再起動後も自動で立ち上がる）。
+# 同じ Wi-Fi の端末から  http://<NASのIP>:8080/netclient.html  で参加。
+services:
+  cover-battle:
+    build: .
+    container_name: cover-battle
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

@@ -1,0 +1,4 @@
+node_modules
+.git
+_srv_out.txt
+_srv_err.txt
