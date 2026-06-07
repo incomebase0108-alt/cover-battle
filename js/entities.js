@@ -460,29 +460,61 @@ class Unit {
     if (c.weapon) { this.baseWeaponKey = c.weapon; this.setWeapon(c.weapon); }
   }
 
-  // Fire the class active ability (smoke / turret / dash), respecting cooldown.
+  // 同時に有効な「設置物 / 捕獲した動物」の数（個数制アビリティ用）。
+  abilityActiveCount(game) {
+    const c = (typeof getClass === "function") ? getClass(this.cls) : null;
+    if (!c) return 0;
+    const myName = this.name || ""; // Turret は ownerName を "" に正規化するため合わせる
+    if (c.ability === "turret")
+      return (game.turrets || []).filter((tt) => !tt.dead && (tt.ownerName || "") === myName).length;
+    if (c.ability === "capture")
+      return (game.beasts || []).filter((b) => !b.dead && (b.tamedBy || "") === myName).length;
+    return 0;
+  }
+
+  // 個数制アビリティの「あと何個 設置/捕獲できるか」。個数制でなければ null。
+  abilityRemaining(game) {
+    const c = (typeof getClass === "function") ? getClass(this.cls) : null;
+    if (!c || !c.abilityMax) return null;
+    return Math.max(0, c.abilityMax - this.abilityActiveCount(game));
+  }
+
+  // Fire the class active ability. 個数制(abilityMax)は「最大N個まで」で制限し、
+  // それ以外(ダッシュ等)は従来どおり時間クールダウンで制限する。
   useAbility(game) {
-    if (this.abilityCd > 0) return;
     const c = (typeof getClass === "function") ? getClass(this.cls) : null;
     if (!c || !c.ability) return;
+
+    // --- 個数制：工兵の自動砲台 / 動物使いの捕獲（最大 abilityMax 個まで）---
+    if (c.abilityMax) {
+      if (this.abilityActiveCount(game) >= c.abilityMax) return; // 上限に達している
+      if (c.ability === "turret" && typeof Turret !== "undefined") {
+        game.turrets.push(new Turret(this.x, this.y, this.team, this.name));
+      } else if (c.ability === "capture") {
+        // 範囲内で最も近い野生動物を捕獲して仲間にする。
+        let best = null;
+        let bd = ABILITY.captureRange;
+        for (const b of (game.beasts || [])) {
+          if (b.dead || b.team) continue; // 捕獲済み / 死亡は対象外
+          const d = V.dist(this.x, this.y, b.x, b.y);
+          if (d < bd) { bd = d; best = b; }
+        }
+        if (!best) return; // 捕獲対象なし -> 何もしない
+        best.team = this.team;
+        best.tamedBy = this.name;
+      } else {
+        return;
+      }
+      if (game.sound && game.sound.reload) game.sound.reload();
+      return;
+    }
+
+    // --- 時間クールダウン制：突撃兵のダッシュ / 煙幕 ---
+    if (this.abilityCd > 0) return;
     if (c.ability === "smoke" && typeof Smoke !== "undefined") {
       game.smokes.push(new Smoke(this.x, this.y));
-    } else if (c.ability === "turret" && typeof Turret !== "undefined") {
-      game.turrets.push(new Turret(this.x, this.y, this.team, this.name));
     } else if (c.ability === "dash") {
       this.dashMs = ABILITY.dashMs;
-    } else if (c.ability === "capture") {
-      // Tame the nearest still-wild beast within range — it joins your side.
-      let best = null;
-      let bd = ABILITY.captureRange;
-      for (const b of (game.beasts || [])) {
-        if (b.dead || b.team) continue; // already tamed / dead
-        const d = V.dist(this.x, this.y, b.x, b.y);
-        if (d < bd) { bd = d; best = b; }
-      }
-      if (!best) return; // nothing to capture -> don't spend the cooldown
-      best.team = this.team;
-      best.tamedBy = this.name;
     } else {
       return; // unknown / no entity available
     }
@@ -910,11 +942,22 @@ class Unit {
       ctx.beginPath();
       ctx.arc(this.x, this.y, r + 3, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = cls.accent;
-      ctx.font = "bold 10px system-ui, sans-serif";
+      // 頭上に「〇の中にクラス字」バッジを出して、どのクラスか一目で分かるように。
+      const bx = this.x;
+      const by = this.y - this.radius - 30;
+      const br = this.isPlayer ? 11 : 9; // 自分は少し大きく
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(18,20,26,0.88)"; // 暗い下地で字を読みやすく
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = cls.accent;          // クラス色の輪
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `bold ${br + 2}px system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(cls.badge, this.x, this.y - this.radius - 0.5);
+      ctx.fillText(cls.badge, bx, by + 0.5);
     }
 
     // Player ring marker (screen-space, not rotated).

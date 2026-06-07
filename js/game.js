@@ -516,6 +516,7 @@ class Game {
         weaponKey: p.weaponKey,
         cls: p.cls,
         healing: !!p.healing,
+        abilityRemaining: p.abilityRemaining ? p.abilityRemaining(this) : null,
       } : null,
     });
   }

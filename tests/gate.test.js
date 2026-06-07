@@ -65,4 +65,56 @@ s.test("fort walls block the enemy but allies pass their own fort", (t) => {
   t.equal(enemy.x === cx && enemy.y === cy, false, "enemy is blocked by the wall");
 });
 
+s.test("自軍の爆発は自分の砦を傷つけない(誤爆防止)", (t) => {
+  const { sb, game } = newGame(0);
+  const blue = game.map.baseOf("blue");
+  const before = blue.hp;
+  const owner = { team: "blue", activeBombs: 1, activeDynamite: 1 };
+  const bomb = new sb.Bomb(blue.x, blue.y, owner);
+  if (typeof bomb.explode === "function") bomb.explode(game);
+  else bomb.detonate(game);
+  t.equal(blue.hp, before, "自軍の爆弾は自分の砦を壊さない");
+});
+
+s.test("敵砦への攻撃は自軍砦を巻き込まない", (t) => {
+  const { sb, game } = newGame(0);
+  const blue = game.map.baseOf("blue");
+  const red = game.map.baseOf("red");
+  const blueBefore = blue.hp;
+  const redBefore = red.hp;
+  const owner = { team: "blue", activeBombs: 1, activeDynamite: 1 };
+  const bomb = new sb.Bomb(red.x, red.y, owner);
+  if (typeof bomb.explode === "function") bomb.explode(game);
+  else bomb.detonate(game);
+  t.lessThan(red.hp, redBefore, "敵砦は減る");
+  t.equal(blue.hp, blueBefore, "自軍砦は無傷");
+});
+
+s.test("敵弾は砦の壁で止まる(壁越しに砦を撃てない)", (t) => {
+  const { sb, game } = newGame(0);
+  // 門ではない、チーム所属の壁を1枚選ぶ。
+  const w = game.map.walls.find((w) => w.team);
+  const enemyTeam = w.team === "blue" ? "red" : "blue";
+  const cx = w.x + w.w / 2;
+  const cy = w.y + w.h / 2;
+  const fort = game.map.baseOf(w.team);
+  const fortBefore = fort.hp;
+  const bullet = new sb.Bullet(cx, cy, 0, 0, enemyTeam, { damage: 16, speed: 0, life: 1000 });
+  game.bullets = [bullet];
+  bullet.update(16, game);
+  t.equal(bullet.dead, true, "敵弾は壁で消える");
+  t.equal(fort.hp, fortBefore, "壁が弾を止めるので砦は無傷");
+});
+
+s.test("自軍の弾は自分の砦の壁を通り抜ける(砦から撃ち出せる)", (t) => {
+  const { sb, game } = newGame(0);
+  const w = game.map.walls.find((w) => w.team);
+  const cx = w.x + w.w / 2;
+  const cy = w.y + w.h / 2;
+  const friendly = new sb.Bullet(cx, cy, 0, 0, w.team, { damage: 16, speed: 0, life: 1000 });
+  game.bullets = [friendly];
+  friendly.update(16, game);
+  t.equal(friendly.dead, false, "自軍の弾は自分の壁では消えない");
+});
+
 module.exports = s;

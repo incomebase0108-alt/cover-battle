@@ -117,7 +117,7 @@ class GameMap {
 
   // A wall the point is inside (bullets stop on walls).
   wallAt(x, y) {
-    for (const w of this.walls) if (this._pointInRect(x, y, 0)) {
+    for (const w of this.walls) {
       if (x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h) return w;
     }
     return null;
@@ -533,6 +533,13 @@ class GameMap {
     ctx.fillRect(g.x - 6, g.y, 4, g.h);
     ctx.fillStyle = pct > 0.5 ? col : pct > 0.25 ? "#ffb347" : "#ff5a5a";
     ctx.fillRect(g.x - 6, g.y + g.h * (1 - pct), 4, g.h * pct);
+    // 「城門」ラベル：砦本体のHPゲージと混同しないよう、門であることを明示。
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.font = "bold 10px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("城門", g.x + g.w / 2, g.y - 8);
+    ctx.textAlign = "left";
   }
 
   _drawRock(ctx, rock) {

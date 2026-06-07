@@ -49,14 +49,28 @@ s.test("assault dash makes the unit move faster briefly", (t) => {
   t.greaterThan(dashed, base + 0.5, "dash step is longer than a normal step");
 });
 
-s.test("ability respects its cooldown", (t) => {
+s.test("個数制アビリティは上限まで設置できる(工兵=砲台 最大2)", (t) => {
   const { sb, game } = newGame(0);
+  t.equal(sb.getClass("engineer").abilityMax, 2, "工兵の設置上限は2");
   const eng = new sb.Unit(500, 500, "blue");
   eng.applyClass("engineer");
   game.units = [eng];
   eng.useAbility(game);
-  eng.useAbility(game); // still on cooldown
-  t.equal(game.turrets.length, 1, "second use blocked by cooldown");
+  eng.useAbility(game);
+  t.equal(game.turrets.length, 2, "2基まで設置できる");
+  t.equal(eng.abilityRemaining(game), 0, "残り0");
+  eng.useAbility(game); // 上限超過
+  t.equal(game.turrets.length, 2, "3基目は上限で設置されない");
+});
+
+s.test("突撃兵のダッシュは時間クールダウンで制限される", (t) => {
+  const { sb, game } = newGame(0);
+  const a = new sb.Unit(1500, 200, "blue");
+  a.applyClass("assault");
+  game.units = [a];
+  a.useAbility(game);
+  t.ok(a.abilityCd > 0, "ダッシュ後はクールダウン中");
+  t.equal(a.abilityRemaining(game), null, "個数制ではないので残数はnull");
 });
 
 module.exports = s;

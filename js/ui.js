@@ -8,6 +8,8 @@ const UI = {
     this.el.blueCount = document.getElementById("blueCount");
     this.el.redCount = document.getElementById("redCount");
     this.el.ammo = document.getElementById("ammo");
+    this.el.abilitySmall = document.getElementById("abilitySmall");
+    this.el.abilityBtn = document.getElementById("btnAbility");
     this.el.weaponName = document.getElementById("weaponName");
     this.el.lockState = document.getElementById("lockState");
     this.el.blueFortBar = document.getElementById("blueFortBar");
@@ -72,6 +74,12 @@ const UI = {
         if (p.ammo <= 3) this.el.ammo.classList.add("low");
         else this.el.ammo.classList.remove("low");
       }
+    }
+    // 個数制アビリティ（工兵=砲台/動物使い=動物）の残り設置・捕獲数をボタンに表示。
+    if (this.el.abilitySmall && p) {
+      const rem = p.abilityRemaining;
+      this.el.abilitySmall.textContent = rem == null ? "特殊" : `特殊 残${rem}`;
+      if (this.el.abilityBtn) this.el.abilityBtn.classList.toggle("depleted", rem === 0);
     }
     if (this.el.weaponName && p && p.weapon) {
       this.el.weaponName.textContent = p.weapon;
