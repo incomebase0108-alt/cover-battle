@@ -80,15 +80,18 @@
       if (m.diff) Net.difficulty = m.diff;
       renderLobby(m.roster);
       renderDifficulty();
-      // 試合中はロビーを隠す。待機中は表示する。
-      document.getElementById("lobby").classList.toggle("hidden", Net.started);
+      // ロビーを隠すのは「試合中 かつ 自分が参加済み」のときだけ。試合中でも
+      // 未参加（再入場でスロットを失った／後から来た）なら出したままにして、空き
+      // スロットを選んで途中参加できるようにする（戻る→再入場の死に画面を防ぐ）。
+      document.getElementById("lobby").classList.toggle("hidden", Net.started && Net.joined);
     } else if (m.type === "you") {
       Net.myIndex = m.i; Net.myTeam = m.team; Net.joined = true;
       // スロットを選んでも、試合が始まるまではロビーで待機（途中参加防止）。
       if (Net.started) document.getElementById("lobby").classList.add("hidden");
     } else if (m.type === "start") {
       Net.started = true;
-      document.getElementById("lobby").classList.add("hidden");
+      // 参加済みの人だけロビーを閉じる。未参加の人はロビーのまま（途中参加可）。
+      if (Net.joined) document.getElementById("lobby").classList.add("hidden");
     } else if (m.type === "snap") {
       Net.snap = m.s;
     } else if (m.type === "end") {
@@ -138,7 +141,8 @@
       btn.classList.toggle("hidden", !canStart);
     }
     if (note) {
-      if (Net.started) note.textContent = "";
+      if (Net.started && !joined) note.textContent = "試合中です。スロット（キャラ）を選ぶと途中から参加できます。";
+      else if (Net.started) note.textContent = "";
       else if (!joined) note.textContent = "上でスロット（キャラ）を選んでください。";
       else if (isHost) note.textContent = "全員そろったら「ゲーム開始」を押してください。";
       else note.textContent = "ホストの開始を待っています…";

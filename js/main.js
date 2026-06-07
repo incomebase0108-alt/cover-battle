@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v26 ロビーのクラス名重複＆スロット名残り(Player)を修正";
+  const BUILD = "v27 戻る→再入場の死に画面を修正（試合中も未参加ならロビー表示で途中参加可）";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
