@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v11 壁貫通バグ修正＋頭上バッジ＋砲台/動物は最大2";
+  const BUILD = "v12 クラスバッジを足元に移動";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

@@ -942,9 +942,10 @@ class Unit {
       ctx.beginPath();
       ctx.arc(this.x, this.y, r + 3, 0, Math.PI * 2);
       ctx.stroke();
-      // 頭上に「〇の中にクラス字」バッジを出して、どのクラスか一目で分かるように。
+      // キャラの「足元」に「〇の中にクラス字」バッジを出す。頭上はHPバー等と
+      // 重なって読めないため、下に配置してどのクラスか一目で分かるようにする。
       const bx = this.x;
-      const by = this.y - this.radius - 30;
+      const by = this.y + this.radius + 13;
       const br = this.isPlayer ? 11 : 9; // 自分は少し大きく
       ctx.beginPath();
       ctx.arc(bx, by, br, 0, Math.PI * 2);
