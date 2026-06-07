@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v36 DQ風スプライト16体（具足・3/4立ち姿）。描画を上向き固定＋左右反転に変更";
+  const BUILD = "v37 砦を城に（段々の石垣＋天守）＋マップ拡大(4800x3000)。天守スプライト fort_{team}.png 対応";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

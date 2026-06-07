@@ -136,6 +136,49 @@ class GameMap {
     return this.bases.find((b) => b.team === team);
   }
 
+  // ベクターの多層天守（fort スプライトが無いときのフォールバック）。白漆喰の壁＋
+  // 黒瓦の屋根を段々に積み、最上層に金の鯱とチームの旗を立てる。返り値＝頂上のY。
+  _drawKeep(ctx, b) {
+    const cr = b.coreR;
+    const cx = b.x;
+    const baseY = b.y + cr * 0.6;
+    const defs = [
+      { w: cr * 2.6, h: cr * 1.3 },
+      { w: cr * 1.8, h: cr * 1.05 },
+      { w: cr * 1.15, h: cr * 0.85 },
+    ];
+    let y = baseY;
+    for (const td of defs) {
+      const wallTop = y - td.h;
+      ctx.fillStyle = "#eae6dc"; // 白漆喰の壁
+      ctx.fillRect(cx - td.w / 2, wallTop, td.w, td.h);
+      ctx.strokeStyle = "rgba(40,40,46,0.5)"; ctx.lineWidth = 1.5;
+      ctx.strokeRect(cx - td.w / 2, wallTop, td.w, td.h);
+      ctx.fillStyle = "#2a2d33"; // 窓
+      ctx.fillRect(cx - td.w * 0.2, wallTop + td.h * 0.3, td.w * 0.13, td.h * 0.4);
+      ctx.fillRect(cx + td.w * 0.07, wallTop + td.h * 0.3, td.w * 0.13, td.h * 0.4);
+      // 黒瓦の屋根（反りのある台形）
+      ctx.fillStyle = "#3a3f47";
+      ctx.beginPath();
+      ctx.moveTo(cx - td.w / 2 - td.w * 0.2, wallTop);
+      ctx.lineTo(cx + td.w / 2 + td.w * 0.2, wallTop);
+      ctx.lineTo(cx + td.w * 0.28, wallTop - td.h * 0.55);
+      ctx.lineTo(cx - td.w * 0.28, wallTop - td.h * 0.55);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(20,22,26,0.6)"; ctx.stroke();
+      y = wallTop - td.h * 0.55;
+    }
+    ctx.fillStyle = "#e8c84a"; // 金の鯱
+    ctx.beginPath(); ctx.arc(cx, y - 2, 3.2, 0, Math.PI * 2); ctx.fill();
+    // チームの旗
+    const flag = b.team === "blue" ? "#2f7bff" : "#ff4d4d";
+    ctx.strokeStyle = flag; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx + cr * 1.0, baseY); ctx.lineTo(cx + cr * 1.0, y - 4); ctx.stroke();
+    ctx.fillStyle = flag;
+    ctx.fillRect(cx + cr * 1.0, y - 4, cr * 0.6, cr * 0.45);
+    return y - 6;
+  }
+
   // The fort core hit by a point, if any (for bullet/bomb fort damage).
   baseCoreAt(x, y) {
     for (const b of this.bases) {
@@ -357,66 +400,59 @@ class GameMap {
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
 
-      // Rocky hill/mound the fort sits on ("砦は山の上"). Purely visual + passable
-      // so units can still reach the fort to attack it.
-      const mr = b.coreR * 2.3;
-      const mg = ctx.createRadialGradient(b.x - mr * 0.3, b.y - mr * 0.35, mr * 0.2, b.x, b.y, mr);
-      mg.addColorStop(0, "#8f8c86");
-      mg.addColorStop(1, "rgba(60,56,50,0.85)");
-      ctx.fillStyle = mg;
-      ctx.beginPath(); ctx.arc(b.x, b.y, mr, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "rgba(245,248,255,0.5)"; // faint snow ring around the peak
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.coreR * 1.25, 0, Math.PI * 2); ctx.fill();
+      // 城の石垣（段々の石積み）。外周から内へ石色のリングを重ね、丸亀城風の総石垣に。
+      // 見た目だけで通行可（兵は城に取りつける）。
+      const stoneR = b.coreR * 6;
+      const tiers = [
+        { r: stoneR,        c: "#7f766a" },
+        { r: stoneR * 0.74, c: "#8c8373" },
+        { r: stoneR * 0.5,  c: "#9a907c" },
+      ];
+      for (const ti of tiers) {
+        ctx.fillStyle = ti.c;
+        ctx.beginPath(); ctx.arc(b.x, b.y, ti.r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(40,36,30,0.55)"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(b.x, b.y, ti.r, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(60,54,46,0.3)"; ctx.lineWidth = 1; // 石目（簡易）
+      for (const ti of tiers) {
+        ctx.beginPath(); ctx.arc(b.x, b.y, ti.r * 0.86, 0, Math.PI * 2); ctx.stroke();
+      }
 
-      // Fort core structure (the destructible target).
+      // 天守（破壊対象のコア）。スプライト fort_{team}.png があれば大きく聳えさせ、
+      // 無ければベクターの多層天守を描く。
       if (b.hp > 0) {
         const cr = b.coreR;
         const fimg = typeof Assets !== "undefined" && Assets.ready("fort_" + b.team)
           ? Assets.get("fort_" + b.team) : null;
+        let keepTopY;
         if (fimg) {
-          const s = cr * 4.8;
-          ctx.drawImage(fimg, b.x - s / 2, b.y - s / 2, s, s);
+          const s = cr * 9; // 天守は石垣の上に大きく聳える
+          keepTopY = b.y - s * 0.62;
+          ctx.drawImage(fimg, b.x - s / 2, b.y - s * 0.62, s, s);
         } else {
-          const cg = ctx.createRadialGradient(b.x - cr * 0.3, b.y - cr * 0.3, cr * 0.2, b.x, b.y, cr);
-          cg.addColorStop(0, b.team === "blue" ? "#3a6bd6" : "#d64a4a");
-          cg.addColorStop(1, b.team === "blue" ? "#1d2f6b" : "#6b1d1d");
-          ctx.fillStyle = cg;
-          ctx.fillRect(b.x - cr, b.y - cr, cr * 2, cr * 2);
-          ctx.strokeStyle = "rgba(0,0,0,0.5)";
-          ctx.lineWidth = 3;
-          ctx.strokeRect(b.x - cr, b.y - cr, cr * 2, cr * 2);
-          // Battlements (top edge notches).
-          ctx.fillStyle = b.team === "blue" ? "#2f7bff" : "#ff4d4d";
-          for (let i = -1; i <= 1; i++) {
-            ctx.fillRect(b.x + i * cr * 0.66 - cr * 0.18, b.y - cr - 6, cr * 0.36, 8);
-          }
+          keepTopY = this._drawKeep(ctx, b);
         }
-        // Durability gauge above the fort.
-        const gw = cr * 2.4;
+        // 耐久ゲージ（天守の上に）。
+        const gw = cr * 3.0;
         const gx = b.x - gw / 2;
-        const gy = b.y - cr - 20;
-        ctx.fillStyle = "rgba(0,0,0,0.55)";
-        ctx.fillRect(gx, gy, gw, 7);
+        const gy = keepTopY - 18;
+        ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(gx, gy, gw, 7);
         const pct = b.hp / b.maxHp;
         ctx.fillStyle = pct > 0.5 ? `rgb(${col})` : pct > 0.25 ? "#ffb347" : "#ff5a5a";
         ctx.fillRect(gx, gy, gw * pct, 7);
-        ctx.strokeStyle = "rgba(0,0,0,0.6)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(gx, gy, gw, 7);
-        // Label.
-        ctx.fillStyle = `rgba(${col},0.95)`;
-        ctx.font = "bold 12px system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(b.team === "blue" ? "青の砦" : "赤の砦", b.x, gy - 8);
+        ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 1; ctx.strokeRect(gx, gy, gw, 7);
+        ctx.fillStyle = `rgba(${col},0.95)`; ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(b.team === "blue" ? "青の城" : "赤の城", b.x, gy - 9);
         ctx.textAlign = "left";
       } else {
-        // Rubble when destroyed.
-        ctx.fillStyle = "rgba(40,35,30,0.7)";
-        for (let i = 0; i < 6; i++) {
-          const a = (i / 6) * Math.PI * 2;
+        // 落城：瓦礫。
+        ctx.fillStyle = "rgba(40,35,30,0.72)";
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
           ctx.beginPath();
-          ctx.arc(b.x + Math.cos(a) * b.coreR * 0.6, b.y + Math.sin(a) * b.coreR * 0.6, 7, 0, Math.PI * 2);
+          ctx.arc(b.x + Math.cos(a) * b.coreR * 1.4, b.y + Math.sin(a) * b.coreR * 1.4, 10, 0, Math.PI * 2);
           ctx.fill();
         }
       }
