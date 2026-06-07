@@ -32,11 +32,29 @@
   const Net = {
     ws: null, stage: 0, map: null, snap: null,
     myIndex: -1, myTeam: 0, joined: false,
+    myId: null, host: null, started: false,
     cam: { x: 0, y: 0 },
+  };
+
+  // クラスの「得意なこと」一言（HUD表示用。ui.js はネット版では読まないので独自に持つ）。
+  const CLASS_TRAIT = {
+    assault: "接近戦・ダッシュ",
+    sniper: "遠距離狙撃",
+    heavy: "頑丈・近距離",
+    climber: "段差○・水上が速い",
+    engineer: "自動砲台・爆弾多",
+    tamer: "動物を捕獲",
   };
 
   const statusEl = document.getElementById("netStatus");
   function setStatus(t) { if (statusEl) statusEl.textContent = t; }
+
+  // 開始ボタン（ホストのみ表示）→ サーバーに開始を要求。
+  const _smb = document.getElementById("startMatchBtn");
+  if (_smb) _smb.addEventListener("click", () => {
+    if (Net.ws && Net.ws.readyState === 1) Net.ws.send(JSON.stringify({ type: "start" }));
+    Sound.start();
+  });
 
   function connect() {
     const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -49,19 +67,30 @@
   }
 
   function handle(m) {
-    if (m.type === "static") {
+    if (m.type === "hello") {
+      Net.myId = m.id;
+    } else if (m.type === "static") {
       Net.stage = m.stage;
       Net.map = new GameMap(STAGES[m.stage]);
       bannerT = 0; banner = ""; // 新しい試合が始まったら勝敗表示を消す
     } else if (m.type === "lobby") {
+      Net.host = m.host; Net.started = !!m.started;
       renderLobby(m.roster);
+      // 試合中はロビーを隠す。待機中は表示する。
+      document.getElementById("lobby").classList.toggle("hidden", Net.started);
     } else if (m.type === "you") {
       Net.myIndex = m.i; Net.myTeam = m.team; Net.joined = true;
+      // スロットを選んでも、試合が始まるまではロビーで待機（途中参加防止）。
+      if (Net.started) document.getElementById("lobby").classList.add("hidden");
+    } else if (m.type === "start") {
+      Net.started = true;
       document.getElementById("lobby").classList.add("hidden");
     } else if (m.type === "snap") {
       Net.snap = m.s;
     } else if (m.type === "end") {
+      Net.started = false;
       flashBanner(m.win ? "青チーム勝利！" : "赤チーム勝利！");
+      document.getElementById("lobby").classList.remove("hidden"); // 待機ロビーに戻る
     } else if (m.type === "slotTaken") {
       setStatus("そのスロットは使用中です。別を選んでください。");
     }
@@ -88,6 +117,25 @@
         });
         col.appendChild(btn);
       });
+    }
+    updateStartUI();
+  }
+
+  // ホストには「ゲーム開始」ボタン、それ以外には待機メッセージを出す。
+  function updateStartUI() {
+    const btn = document.getElementById("startMatchBtn");
+    const note = document.getElementById("startNote");
+    const isHost = Net.myId != null && Net.myId === Net.host;
+    const joined = Net.joined;
+    if (btn) {
+      const canStart = isHost && joined && !Net.started;
+      btn.classList.toggle("hidden", !canStart);
+    }
+    if (note) {
+      if (Net.started) note.textContent = "";
+      else if (!joined) note.textContent = "上でスロット（キャラ）を選んでください。";
+      else if (isHost) note.textContent = "全員そろったら「ゲーム開始」を押してください。";
+      else note.textContent = "ホストの開始を待っています…";
     }
   }
 
@@ -161,8 +209,14 @@
       }
       ctx.fillStyle = "#cfe3ff"; ctx.font = "bold 13px system-ui, sans-serif";
       ctx.fillText(wlabel, pad, pad + 74);
+      // クラスの得意なこと（操作中に何が得意か分かるように）。
+      const cls = (typeof getClass === "function") ? getClass(me.cl) : null;
+      if (cls) {
+        ctx.fillStyle = "#b9f27c"; ctx.font = "bold 12px system-ui, sans-serif";
+        ctx.fillText(cls.badge + " " + cls.label + "：" + CLASS_TRAIT[me.cl], pad, pad + 94);
+      }
       // HPバー。
-      const hw = 120, hh = 7, hy = pad + 94;
+      const hw = 120, hh = 7, hy = pad + 114;
       ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(pad, hy, hw, hh);
       const frac = me.mh ? Math.max(0, me.h / me.mh) : 0;
       ctx.fillStyle = frac > 0.4 ? "#62e08a" : "#ff5a5a";

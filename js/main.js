@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v21 ゲーム開始無反応(ui.js構文崩れ)を修正";
+  const BUILD = "v22 LAN待機ロビー＋ホスト開始ボタン";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

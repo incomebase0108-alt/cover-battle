@@ -37,13 +37,16 @@ const server = http.createServer((req, res) => {
 const sb = loadGame();
 let game;
 let stage = 0;
+let started = false; // 試合が開始済みか（待機ロビー中は false）
+let hostId = null;   // 最初に接続した人がホスト（開始ボタンを押せる）
 
 function newMatch(idx) {
   stage = ((idx % sb.STAGES.length) + sb.STAGES.length) % sb.STAGES.length;
   game = new sb.Game(makeCanvas(), {
     onEnd: (win) => {
+      started = false; // 試合終了 → 待機ロビーに戻る（ホストが次を開始する）
       broadcast({ type: "end", win });
-      setTimeout(() => { newMatch(stage + 1); broadcastStatic(); }, 5000);
+      setTimeout(() => { newMatch(stage + 1); broadcastStatic(); broadcastLobby(); }, 5000);
     },
   });
   game.serverMode = true;
@@ -65,13 +68,15 @@ let nextId = 1;
 function send(ws, obj) { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
 function broadcast(obj) { const s = JSON.stringify(obj); for (const ws of clients.keys()) if (ws.readyState === WebSocket.OPEN) ws.send(s); }
 function broadcastStatic() { broadcast({ type: "static", ...game.serializeStatic() }); broadcastLobby(); }
-function broadcastLobby() { broadcast({ type: "lobby", roster: game.rosterState() }); }
+function broadcastLobby() { broadcast({ type: "lobby", roster: game.rosterState(), started, host: hostId }); }
 
 wss.on("connection", (ws) => {
   const c = { id: nextId++, name: "", team: null, slot: null, unitIndex: -1 };
   clients.set(ws, c);
+  if (hostId === null) hostId = c.id; // 最初の接続者をホストに
+  send(ws, { type: "hello", id: c.id });
   send(ws, { type: "static", ...game.serializeStatic() });
-  send(ws, { type: "lobby", roster: game.rosterState() });
+  send(ws, { type: "lobby", roster: game.rosterState(), started, host: hostId });
 
   ws.on("message", (raw) => {
     let m;
@@ -88,6 +93,19 @@ wss.on("connection", (ws) => {
         broadcastLobby();
       } else {
         send(ws, { type: "slotTaken" });
+      }
+    } else if (m.type === "start") {
+      // ホストだけが「新しい試合を最初から」開始できる。
+      if (c.id === hostId && !started) {
+        newMatch(0);
+        started = true;
+        broadcast({ type: "static", ...game.serializeStatic() });
+        // 各プレイヤーに新試合での操作ユニット番号を通知し直す。
+        for (const [cws, cc] of clients) {
+          if (cc.unitIndex >= 0) send(cws, { type: "you", i: cc.unitIndex, team: cc.team });
+        }
+        broadcast({ type: "start" });
+        broadcastLobby();
       }
     } else if (m.type === "input" && c.unitIndex >= 0) {
       const u = game.units[c.unitIndex];
@@ -107,6 +125,11 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     if (c.unitIndex >= 0 && game.units[c.unitIndex]) game.releaseControl(game.units[c.unitIndex]);
     clients.delete(ws);
+    // ホストが抜けたら、残っている誰かを新ホストにする。
+    if (c.id === hostId) {
+      const next = clients.values().next().value;
+      hostId = next ? next.id : null;
+    }
     broadcastLobby();
   });
 });
@@ -120,6 +143,7 @@ const STEP = 16;       // physics step ≈60Hz（matches single-player）
 const SNAP_EVERY = 33; // broadcast ≈30Hz
 let sinceSnap = 0;
 setInterval(() => {
+  if (!started || game.over) return; // 待機ロビー中・試合終了後は進めない（途中参加にならない）
   game._update(STEP);
   sinceSnap += STEP;
   if (sinceSnap >= SNAP_EVERY) {

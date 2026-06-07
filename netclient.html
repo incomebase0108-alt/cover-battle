@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cover Battle — LAN対戦</title>
-  <link rel="stylesheet" href="css/style.css?v=21" />
+  <link rel="stylesheet" href="css/style.css?v=22" />
 </head>
 <body>
   <div id="app">
@@ -39,21 +39,23 @@
           <div class="lobby-col"><h3 class="blue">青チーム</h3><div id="blueSlots" class="slot-list"></div></div>
           <div class="lobby-col"><h3 class="red">赤チーム</h3><div id="redSlots" class="slot-list"></div></div>
         </div>
-        <p class="subtitle" style="font-size:12px;">操作：移動 WASD/スティック ・ 照準 マウス（スマホは自動） ・ 射撃 クリック/撃 ・ 爆弾E/💣 ・ 武器 1-4/F/🔫</p>
+        <p id="startNote" class="subtitle">上でスロット（キャラ）を選んでください。</p>
+        <button id="startMatchBtn" class="btn hidden">ゲーム開始</button>
+        <p class="subtitle" style="font-size:12px;">操作：左「移」で移動 ・ 右「攻」を倒した方向に照準＋射撃 ・ 爆弾💣 ・ 特殊🎯 ・ 武器🔫</p>
       </div>
     </div>
   </div>
 
-  <script src="js/vector.js?v=21"></script>
-  <script src="js/config.js?v=21"></script>
-  <script src="js/classes.js?v=21"></script>
-  <script src="js/assets.js?v=21"></script>
-  <script src="js/audio.js?v=21"></script>
-  <script src="js/weapons.js?v=21"></script>
-  <script src="js/input.js?v=21"></script>
-  <script src="js/map.js?v=21"></script>
-  <script src="js/net/render.js?v=21"></script>
-  <script src="js/net/client.js?v=21"></script>
-  <script src="js/help.js?v=21"></script>
+  <script src="js/vector.js?v=22"></script>
+  <script src="js/config.js?v=22"></script>
+  <script src="js/classes.js?v=22"></script>
+  <script src="js/assets.js?v=22"></script>
+  <script src="js/audio.js?v=22"></script>
+  <script src="js/weapons.js?v=22"></script>
+  <script src="js/input.js?v=22"></script>
+  <script src="js/map.js?v=22"></script>
+  <script src="js/net/render.js?v=22"></script>
+  <script src="js/net/client.js?v=22"></script>
+  <script src="js/help.js?v=22"></script>
 </body>
 </html>
