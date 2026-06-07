@@ -56,9 +56,13 @@
       if (!col) continue;
       col.innerHTML = "";
       roster[team].forEach((slot, i) => {
+        const c = (typeof CLASSES !== "undefined") ? CLASSES[i % CLASSES.length] : null;
+        const cl = c ? `${c.badge}${c.label}` : "";
         const btn = document.createElement("button");
         btn.className = "slot-btn " + team + (slot.human ? " taken" : "");
-        btn.innerHTML = `<b>${slot.name}</b><span>${slot.human ? "人間" : "AI"}</span>`;
+        if (c) btn.style.borderLeftColor = c.accent;
+        btn.innerHTML = `<b>${slot.name} <small style="color:${c ? c.accent : "#aaa"}">${cl}</small></b>`
+          + `<span>${slot.human ? "人間" : "AI"}${c && c.canClimb ? " ・段差OK" : ""}</span>`;
         btn.addEventListener("click", () => {
           const name = (document.getElementById("nameInput").value || "Player").trim();
           Net.ws.send(JSON.stringify({ type: "pick", team, slot: i, name }));

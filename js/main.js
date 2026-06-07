@@ -59,14 +59,19 @@
     Sound.start();
     UI.showStart(false);
     const grid = document.getElementById("charGrid");
-    const loadout = ["rifle", "sniper", "shotgun", "smg"];
     grid.innerHTML = "";
-    for (let i = 0; i < (CONFIG.teamSize || 6); i++) {
-      const key = loadout[i % loadout.length];
-      const label = (typeof WEAPONS !== "undefined" && WEAPONS[key]) ? WEAPONS[key].label : key;
+    const n = CONFIG.teamSize || 6;
+    for (let i = 0; i < n; i++) {
+      const c = (typeof CLASSES !== "undefined") ? CLASSES[i % CLASSES.length] : null;
+      const wl = c && WEAPONS[c.weapon] ? WEAPONS[c.weapon].label : "";
+      const stats = c
+        ? `速度${Math.round((c.speedMul || 1) * 100)}% / HP${Math.round((c.hpMul || 1) * 100)}% / ${wl}${c.canClimb ? " / 段差OK" : ""}`
+        : "";
       const btn = document.createElement("button");
       btn.className = "char-card";
-      btn.innerHTML = `<b>青${i + 1}</b><span>${label}</span>`;
+      btn.style.borderColor = c ? c.accent : "";
+      btn.innerHTML = `<b style="color:${c ? c.accent : "#9cc2ff"}">${c ? c.badge + " " + c.label : "青" + (i + 1)}</b>`
+        + `<span class="cdesc">${c ? c.desc : ""}</span><span class="cstat">${stats}</span>`;
       btn.addEventListener("click", () => {
         playerIndex = i;
         document.getElementById("charSelect").classList.add("hidden");

@@ -137,7 +137,7 @@ class Item {
 
   applyTo(unit) {
     const d = this.def;
-    if (d.heal) unit.hp = Math.min(CONFIG.unit.maxHp, unit.hp + d.heal);
+    if (d.heal) unit.hp = Math.min(unit.maxHp, unit.hp + d.heal);
     if (d.speedMul) unit.speedMul = Math.min(2.2, unit.speedMul * d.speedMul);
     if (d.bulletSpeedMul) unit.bulletSpeedMul = Math.min(2.5, unit.bulletSpeedMul * d.bulletSpeedMul);
     if (d.rangeMul) unit.rangeMul = Math.min(2.5, unit.rangeMul * d.rangeMul);
@@ -345,8 +345,13 @@ class Unit {
     this.team = team;
     this.isPlayer = isPlayer;
     this.radius = CONFIG.unit.radius;
-    this.hp = CONFIG.unit.maxHp;
+    this.maxHp = CONFIG.unit.maxHp;
+    this.hp = this.maxHp;
     this.alive = true;
+    // Class / rank (see classes.js): affects look, stats and abilities.
+    this.cls = "assault";
+    this.classSpeedMul = 1;
+    this.canClimb = false;
     this.aim = team === "blue" ? 0 : Math.PI; // facing angle
     this.cooldown = 0;
     // Equipped weapon (see weapons.js). AI + player default to "rifle", which
@@ -382,6 +387,20 @@ class Unit {
     // Walk-cycle animation state (purely cosmetic, see move()/draw()).
     this.walkPhase = 0;    // advancing sine phase that drives bounce + steps
     this.movingTimer = 0;  // ms since last real movement; >0 means "walking"
+  }
+
+  // Apply a character class (see classes.js): stats, weapon, ability, look.
+  applyClass(key) {
+    const c = (typeof getClass === "function") ? getClass(key) : null;
+    if (!c) return;
+    this.cls = c.key;
+    this.classSpeedMul = c.speedMul || 1;
+    this.canClimb = !!c.canClimb;
+    this.radius = CONFIG.unit.radius * (c.sizeMul || 1);
+    this.maxHp = Math.round(CONFIG.unit.maxHp * (c.hpMul || 1));
+    this.hp = this.maxHp;
+    if (c.maxBombs) this.maxBombs = c.maxBombs;
+    if (c.weapon) { this.baseWeaponKey = c.weapon; this.setWeapon(c.weapon); }
   }
 
   // Current weapon definition (always returns a valid object).
@@ -437,11 +456,11 @@ class Unit {
 
   // dirX/dirY are a (roughly) unit vector of intended movement.
   move(dirX, dirY, game) {
-    let speed = CONFIG.unit.speed * this.speedMul;
+    let speed = CONFIG.unit.speed * this.speedMul * this.classSpeedMul;
     if (game.map.inRiver(this.x, this.y)) speed *= CONFIG.riverSpeedMul; // wading is slow
     if (game.map.inSand && game.map.inSand(this.x, this.y)) speed *= CONFIG.sandSpeedMul; // trudging through sand
     const tryAt = (dx, dy) =>
-      game.map.resolveCollision(this.x + dx * speed, this.y + dy * speed, this.radius);
+      game.map.resolveCollision(this.x + dx * speed, this.y + dy * speed, this.radius, this.canClimb);
 
     let next = tryAt(dirX, dirY);
     let moved = V.dist(this.x, this.y, next.x, next.y);
@@ -473,7 +492,7 @@ class Unit {
   // a full-HP unit leaves a health pack for someone who needs it.)
   wantsItem(item) {
     const d = item.def;
-    if (d.heal) return this.hp < CONFIG.unit.maxHp - 1;
+    if (d.heal) return this.hp < this.maxHp - 1;
     if (d.speedMul) return this.speedMul < 2.0;
     if (d.bulletSpeedMul) return this.bulletSpeedMul < 2.2;
     if (d.rangeMul) return this.rangeMul < 2.2;
@@ -574,9 +593,9 @@ class Unit {
     // or a control point your team has captured.
     const onOasis = game.map.inOasis && game.map.inOasis(this.x, this.y);
     const onOwnPoint = game.capturedPointFor && game.capturedPointFor(this.x, this.y, this.team);
-    if (this.hp < CONFIG.unit.maxHp &&
+    if (this.hp < this.maxHp &&
         (game.map.inBase(this.x, this.y, this.team) || onOasis || onOwnPoint)) {
-      this.hp = Math.min(CONFIG.unit.maxHp, this.hp + CONFIG.base.regenPerSec * dt / 1000);
+      this.hp = Math.min(this.maxHp, this.hp + CONFIG.base.regenPerSec * dt / 1000);
     }
 
     if (this.controller === "net") {
@@ -766,16 +785,32 @@ class Unit {
     ctx.restore(); // end body group (undo walk bob)
     ctx.restore(); // end rotated frame
 
+    // Class accent ring + rank badge (screen-space, not rotated).
+    const cls = (typeof getClass === "function") ? getClass(this.cls) : null;
+    if (cls) {
+      ctx.strokeStyle = cls.accent;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, r + 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = cls.accent;
+      ctx.font = "bold 10px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(cls.badge, this.x, this.y - this.radius - 0.5);
+    }
+
     // Player ring marker (screen-space, not rotated).
     if (this.isPlayer) {
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, r + 6, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, r + 7, 0, Math.PI * 2);
       ctx.stroke();
     }
 
     ctx.globalAlpha = 1;
+    ctx.textAlign = "left";
 
     // HP bar
     const w = 30;
@@ -785,6 +820,6 @@ class Unit {
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fillRect(hx, hy, w, h);
     ctx.fillStyle = this.team === "blue" ? "#7fb0ff" : "#ff8a8a";
-    ctx.fillRect(hx, hy, w * (this.hp / CONFIG.unit.maxHp), h);
+    ctx.fillRect(hx, hy, w * (this.hp / this.maxHp), h);
   }
 }

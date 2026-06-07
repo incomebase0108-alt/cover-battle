@@ -60,10 +60,14 @@ class Game {
     // Blue team: the chosen slot is the human player (single-player only); the
     // rest are AI allies. On the LAN server nobody is a local player — humans
     // attach to slots over the network.
+    const classes = (typeof CLASSES !== "undefined") ? CLASSES : null;
+    const classKey = (i) => classes ? classes[i % classes.length].key : null;
+
     blueSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "blue", !this.serverMode && i === pIdx);
       u.name = "青" + (i + 1);
-      u.setWeapon(loadout[i % loadout.length]); // slot also picks your weapon
+      if (classKey(i)) u.applyClass(classKey(i)); // class sets stats + weapon + look
+      else u.setWeapon(loadout[i % loadout.length]);
       if (!u.isPlayer) {
         u.ai = new AIController();
         u.skill = 0.7;
@@ -75,9 +79,10 @@ class Game {
     redSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "red");
       u.name = "赤" + (i + 1);
+      if (classKey(i)) u.applyClass(classKey(i));
+      else u.setWeapon(loadout[(i + 1) % loadout.length]);
       u.ai = new AIController();
       u.skill = stage.enemySkill;
-      u.setWeapon(loadout[(i + 1) % loadout.length]);
       this.units.push(u);
     });
 
@@ -151,6 +156,7 @@ class Game {
         i, x: Math.round(u.x), y: Math.round(u.y), a: +u.aim.toFixed(2),
         t: u.team === "blue" ? 0 : 1, h: Math.round(u.hp), al: u.alive ? 1 : 0,
         n: u.name, w: u.weaponKey, mv: u.movingTimer > 0 ? 1 : 0,
+        cl: u.cls, mh: u.maxHp,
       })),
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),

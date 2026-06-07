@@ -34,6 +34,11 @@ class GameMap {
     }));
     // Oases: neutral healing circles (passable; effect handled via inOasis).
     this.oases = (stage.oases || []).map((o) => ({ x: o.x * sx, y: o.y * sy, r: o.r * sx }));
+    // Ledges (段差): raised ground that blocks normal units (they must go
+    // around) but climber-class units can scale for a shortcut.
+    this.ledges = (stage.ledges || []).map((l) => ({
+      x: l.x * sx, y: l.y * sy, w: l.w * sx, h: l.h * sy,
+    }));
 
     this.blueSpawns = stage.blueSpawns.map(sp);
     this.redSpawns = stage.redSpawns.map(sp);
@@ -86,8 +91,16 @@ class GameMap {
     return false;
   }
 
-  // Push a unit-sized circle out of any solid obstacle it overlaps.
-  resolveCollision(x, y, radius) {
+  inLedge(x, y) {
+    for (const l of this.ledges) {
+      if (x >= l.x && x <= l.x + l.w && y >= l.y && y <= l.y + l.h) return true;
+    }
+    return false;
+  }
+
+  // Push a unit-sized circle out of any solid obstacle it overlaps. Non-climbers
+  // are also blocked by ledges (climbers pass through them for a shortcut).
+  resolveCollision(x, y, radius, canClimb) {
     let nx = x;
     let ny = y;
     for (const o of this.solids()) {
@@ -109,6 +122,24 @@ class GameMap {
       if (d < min && d > 0) {
         nx += ((nx - b.x) / d) * (min - d);
         ny += ((ny - b.y) / d) * (min - d);
+      }
+    }
+    // Ledges block everyone but climber-class units.
+    if (!canClimb) {
+      for (const l of this.ledges) {
+        const minX = l.x - radius;
+        const maxX = l.x + l.w + radius;
+        const minY = l.y - radius;
+        const maxY = l.y + l.h + radius;
+        if (nx > minX && nx < maxX && ny > minY && ny < maxY) {
+          const dl = nx - minX;
+          const dr = maxX - nx;
+          const dtp = ny - minY;
+          const dbt = maxY - ny;
+          const m = Math.min(dl, dr, dtp, dbt);
+          if (m === dl) nx = minX; else if (m === dr) nx = maxX;
+          else if (m === dtp) ny = minY; else ny = maxY;
+        }
       }
     }
     // Keep inside the world bounds.
@@ -340,6 +371,22 @@ class GameMap {
       ctx.textBaseline = "middle";
       ctx.fillText("オアシス", o.x, o.y + o.r + 8);
       ctx.textAlign = "left";
+    }
+
+    // Ledges (段差): raised stone platforms — a shortcut only climbers can take.
+    for (const l of this.ledges) {
+      ctx.fillStyle = "rgba(0,0,0,0.28)"; // base shadow
+      ctx.fillRect(l.x + 4, l.y + 6, l.w, l.h);
+      const g = ctx.createLinearGradient(l.x, l.y, l.x, l.y + l.h);
+      g.addColorStop(0, "#8a8378");
+      g.addColorStop(1, "#5b554c");
+      ctx.fillStyle = g;
+      ctx.fillRect(l.x, l.y, l.w, l.h);
+      ctx.fillStyle = "rgba(245,245,235,0.35)"; // lit top edge
+      ctx.fillRect(l.x, l.y, l.w, 5);
+      ctx.strokeStyle = "rgba(0,0,0,0.45)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(l.x, l.y, l.w, l.h);
     }
 
     // Forests (drawn under units so units appear "inside" them).

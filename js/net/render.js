@@ -42,7 +42,8 @@ const NetRender = {
 
   _unit(ctx, u, isMe) {
     const team = u.t === 0 ? "blue" : "red";
-    const r = CONFIG.unit.radius;
+    const cls = (typeof getClass === "function" && u.cl) ? getClass(u.cl) : null;
+    const r = CONFIG.unit.radius * (cls ? (cls.sizeMul || 1) : 1);
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath(); ctx.ellipse(u.x, u.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
     ctx.save();
@@ -59,15 +60,24 @@ const NetRender = {
       ctx.fillRect(r * 0.2, -r * 0.12, r * 1.2, r * 0.24);
     }
     ctx.restore();
+    // Class accent ring + rank badge.
+    if (cls) {
+      ctx.strokeStyle = cls.accent; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(u.x, u.y, r + 3, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = cls.accent; ctx.font = "bold 10px system-ui, sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(cls.badge, u.x, u.y - r - 0.5);
+    }
     if (isMe) {
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(u.x, u.y, r + 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(u.x, u.y, r + 7, 0, Math.PI * 2); ctx.stroke();
     }
     // HP bar + name.
     const w = 30;
+    const mh = u.mh || CONFIG.unit.maxHp;
     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(u.x - w / 2, u.y - r - 12, w, 4);
     ctx.fillStyle = team === "blue" ? "#7fb0ff" : "#ff8a8a";
-    ctx.fillRect(u.x - w / 2, u.y - r - 12, w * (u.h / CONFIG.unit.maxHp), 4);
+    ctx.fillRect(u.x - w / 2, u.y - r - 12, w * (u.h / mh), 4);
     ctx.fillStyle = team === "blue" ? "#9cc2ff" : "#ff9c9c";
     ctx.font = "bold 12px system-ui, sans-serif";
     ctx.textAlign = "center";

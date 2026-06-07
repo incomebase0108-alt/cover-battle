@@ -21,6 +21,7 @@ const JS_DIR = path.resolve(__dirname, "..", "js");
 const LOAD_ORDER = [
   "vector.js",
   "config.js",
+  "classes.js",
   "weapons.js",
   "chest.js",
   "beast.js",
@@ -94,6 +95,8 @@ function loadGame() {
     "WEAPONS",
     "WEAPON_ORDER",
     "CHEST_LOOT",
+    "CLASSES",
+    "getClass",
     "getWeapon",
     "Input",
     "GameMap",

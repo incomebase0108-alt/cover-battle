@@ -269,7 +269,8 @@ body.touch .touch-controls {
   transition: transform 0.08s ease, background 0.2s ease;
 }
 .char-card:hover { transform: translateY(-2px); background: rgba(47,123,255,0.3); }
-.char-card b { font-size: 18px; color: #9cc2ff; }
-.char-card span { font-size: 13px; color: #cdd6e2; }
+.char-card b { font-size: 16px; }
+.char-card .cdesc { font-size: 12px; color: #cdd6e2; }
+.char-card .cstat { font-size: 11px; color: #8fa0b4; }
 
 .hidden { display: none !important; }
