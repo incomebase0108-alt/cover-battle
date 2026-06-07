@@ -3,6 +3,11 @@ const CONFIG = {
   width: 960,
   height: 600,
 
+  // The engine already supports any number of units per team (it just reads
+  // the spawn arrays below). This is the planned cap for future multiplayer
+  // where up to 8 humans can join — see the roadmap in README.
+  maxPlayersPerTeam: 8,
+
   unit: {
     radius: 14,
     maxHp: 100,

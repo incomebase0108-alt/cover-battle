@@ -5,6 +5,7 @@ class Game {
     this.ctx = canvas.getContext("2d");
     this.callbacks = callbacks || {};
     this.stageIndex = 0;
+    this.playerTeam = "blue"; // the human side; the enemy can't see this side in forests
     this.running = false;
     this.units = [];
     this.bullets = [];
@@ -57,6 +58,21 @@ class Game {
 
   aliveCount(team) {
     return this.units.filter((u) => u.team === team && u.alive).length;
+  }
+
+  // Forest stealth: the player always sees allies and themself. An enemy
+  // hidden in a forest is invisible until a friendly unit gets close enough
+  // to spot them (matching the AI's own detection rule).
+  unitVisibleToPlayer(u) {
+    if (u.team === this.playerTeam || u.isPlayer) return true;
+    if (!this.map.inForest(u.x, u.y)) return true;
+    for (const a of this.units) {
+      if (a.alive && a.team === this.playerTeam &&
+          V.dist(a.x, a.y, u.x, u.y) <= CONFIG.forestDetectRange) {
+        return true;
+      }
+    }
+    return false;
   }
 
   _loop(now) {
@@ -147,7 +163,9 @@ class Game {
     }
     for (const it of this.items) it.draw(ctx);
     for (const b of this.bullets) b.draw(ctx);
-    for (const u of this.units) u.draw(ctx, this);
+    for (const u of this.units) {
+      if (this.unitVisibleToPlayer(u)) u.draw(ctx, this);
+    }
     this.map.drawRocks(ctx);
     // Bombs/explosions on top so the blast reads clearly over everything.
     for (const b of this.bombs) b.draw(ctx);
