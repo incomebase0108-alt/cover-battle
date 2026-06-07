@@ -6,6 +6,7 @@ class Game {
     this.callbacks = callbacks || {};
     this.stageIndex = 0;
     this.playerTeam = "blue"; // the human side; the enemy can't see this side in forests
+    this.playerIndex = 0;     // which blue slot the human controls (character select)
     this.cam = { x: 0, y: 0 }; // top-left of the visible viewport in world space
     this.running = false;
     this.units = [];
@@ -13,6 +14,8 @@ class Game {
     this.items = [];
     this.bombs = [];
     this.dynamites = [];
+    this.chests = [];
+    this.capturePoints = [];
     this.map = null;
     this.blueFortAlert = 0; // ms remaining on the "fort under attack" warning
     this._prevBlueFort = null;
@@ -35,6 +38,8 @@ class Game {
     this.items = [];
     this.bombs = [];
     this.dynamites = [];
+    this.chests = [];
+    this.capturePoints = [];
     this.blueFortAlert = 0;
     this._prevBlueFort = null;
     this.rushMode = false;
@@ -47,14 +52,16 @@ class Game {
     const loadout = ["rifle", "sniper", "shotgun", "smg"];
     const blueSpawns = this._teamSpawns(this.map.blueSpawns);
     const redSpawns = this._teamSpawns(this.map.redSpawns);
+    const pIdx = V.clamp(this.playerIndex, 0, blueSpawns.length - 1);
 
-    // Blue team: first unit is the player, rest are AI allies.
+    // Blue team: the chosen slot is the human player; the rest are AI allies.
     blueSpawns.forEach((s, i) => {
-      const u = new Unit(s.x, s.y, "blue", i === 0);
+      const u = new Unit(s.x, s.y, "blue", i === pIdx);
+      u.name = "青" + (i + 1);
+      u.setWeapon(loadout[i % loadout.length]); // slot also picks your weapon
       if (!u.isPlayer) {
         u.ai = new AIController();
         u.skill = 0.7;
-        u.setWeapon(loadout[i % loadout.length]);
       }
       this.units.push(u);
     });
@@ -62,11 +69,14 @@ class Game {
     // Red team: all AI, skill scales with the stage.
     redSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "red");
+      u.name = "赤" + (i + 1);
       u.ai = new AIController();
       u.skill = stage.enemySkill;
       u.setWeapon(loadout[(i + 1) % loadout.length]);
       this.units.push(u);
     });
+
+    this._spawnObjectives();
 
     this._updateCamera(); // centre on the player before the first frame
     this._syncHud();
@@ -92,6 +102,65 @@ class Game {
       i++;
     }
     return pts.slice(0, n);
+  }
+
+  // Mid-field objectives: one neutral control point + treasure chests at
+  // contested spots.
+  _spawnObjectives() {
+    const W = CONFIG.world.width;
+    const H = CONFIG.world.height;
+    this.capturePoints = [
+      { x: W / 2, y: H / 2, r: CONFIG.capture.radius, owner: null, progress: 0, capBy: null },
+    ];
+    this.chests = [];
+    if (typeof Chest !== "undefined") {
+      for (const s of [{ x: W / 2, y: H * 0.26 }, { x: W / 2, y: H * 0.74 }]) {
+        const p = this.map.resolveCollision(s.x, s.y, 16);
+        this.chests.push(new Chest(p.x, p.y));
+      }
+    }
+  }
+
+  // True if (x,y) is inside a control point owned by `team` (heals them).
+  capturedPointFor(x, y, team) {
+    for (const cp of this.capturePoints) {
+      if (cp.owner === team && V.dist(x, y, cp.x, cp.y) <= cp.r) return true;
+    }
+    return false;
+  }
+
+  _updateCapture(dt) {
+    for (const cp of this.capturePoints) {
+      let b = 0;
+      let r = 0;
+      for (const u of this.units) {
+        if (!u.alive) continue;
+        if (V.dist(u.x, u.y, cp.x, cp.y) <= cp.r) { u.team === "blue" ? b++ : r++; }
+      }
+      const dom = b > r ? "blue" : r > b ? "red" : null;
+      if (dom && dom !== cp.owner) {
+        cp.capBy = dom;
+        cp.progress += dt;
+        if (cp.progress >= CONFIG.capture.captureTime) { cp.owner = dom; cp.progress = 0; cp.capBy = null; }
+      } else {
+        cp.capBy = null;
+        cp.progress = Math.max(0, cp.progress - dt * 0.5);
+      }
+    }
+  }
+
+  // Pick up any chest a unit is standing on.
+  _handleChests(dt) {
+    for (const c of this.chests) {
+      if (c.dead) continue;
+      c.update(dt, this);
+      if (c.opened) continue;
+      for (const u of this.units) {
+        if (!u.alive) continue;
+        if (V.dist(c.x, c.y, u.x, u.y) <= (c.radius || 16) + u.radius) { c.open(u, this); break; }
+      }
+    }
+    this.chests = this.chests.filter((c) => !c.dead);
   }
 
   start() {
@@ -143,6 +212,8 @@ class Game {
     for (const it of this.items) it.update(dt);
 
     this._handlePickups();
+    this._handleChests(dt);
+    this._updateCapture(dt);
 
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.bombs = this.bombs.filter((b) => !b.dead);
@@ -299,11 +370,13 @@ class Game {
     ctx.save();
     ctx.translate(-Math.round(this.cam.x), -Math.round(this.cam.y));
     this.map.draw(ctx);
+    this._drawCapturePoints(ctx);
 
     // Dead units first (faint markers), then bullets, then live units, then rocks on top.
     for (const u of this.units) {
       if (!u.alive) this._drawWreck(ctx, u);
     }
+    for (const c of this.chests) c.draw(ctx);
     for (const it of this.items) it.draw(ctx);
     for (const b of this.bullets) b.draw(ctx);
     for (const u of this.units) {
@@ -319,7 +392,46 @@ class Game {
     for (const b of this.bombs) b.draw(ctx);
     for (const d of this.dynamites) d.draw(ctx);
     this._drawLockOn(ctx);
+    if (typeof Overlay !== "undefined") Overlay.drawNames(ctx, this);
     ctx.restore();
+    // Screen-space overlays (outside the camera transform).
+    if (typeof Overlay !== "undefined") Overlay.drawMinimap(ctx, this);
+  }
+
+  // Neutral / captured control point: a ring + capture progress arc + label.
+  _drawCapturePoints(ctx) {
+    for (const cp of this.capturePoints) {
+      const col = cp.owner === "blue" ? "47,123,255" : cp.owner === "red" ? "255,77,77" : "210,200,150";
+      const g = ctx.createRadialGradient(cp.x, cp.y, cp.r * 0.2, cp.x, cp.y, cp.r);
+      g.addColorStop(0, `rgba(${col},0.22)`);
+      g.addColorStop(1, `rgba(${col},0.03)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cp.x, cp.y, cp.r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `rgba(${col},0.7)`;
+      ctx.setLineDash([6, 6]);
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cp.x, cp.y, cp.r, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      // Capture progress arc while someone is taking it.
+      if (cp.capBy && cp.progress > 0) {
+        const frac = cp.progress / CONFIG.capture.captureTime;
+        const cc = cp.capBy === "blue" ? "#4f9bff" : "#ff5a5a";
+        ctx.strokeStyle = cc;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(cp.x, cp.y, cp.r - 6, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+        ctx.stroke();
+      }
+      // Flag pole.
+      ctx.fillStyle = `rgba(${col},0.95)`;
+      ctx.fillRect(cp.x - 2, cp.y - 26, 4, 26);
+      ctx.fillRect(cp.x + 2, cp.y - 26, 18, 12);
+      ctx.fillStyle = "#10141c";
+      ctx.font = "bold 12px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(cp.owner ? "確保" : "拠点", cp.x, cp.y + 4);
+      ctx.textAlign = "left";
+    }
   }
 
   // Reticle over the player's locked-on target.

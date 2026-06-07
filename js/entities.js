@@ -11,6 +11,9 @@ class Bullet {
     this.speed = opts.speed;
     this.life = opts.life;
     this.radius = CONFIG.bullet.radius;
+    this.pierce = !!opts.pierce;       // pass through units (piercing rifle)
+    this.breakRock = !!opts.breakRock; // extra rock damage (flamethrower / rockbuster)
+    this._hit = this.pierce ? [] : null; // units already hit, so pierce hits each once
     this.dead = false;
   }
 
@@ -44,11 +47,11 @@ class Bullet {
       return;
     }
 
-    // Rocks stop bullets and take damage (and may drop an item when broken).
+    // Rocks stop bullets and take damage (rock-busting rounds hit far harder).
     for (const rock of game.map.rocks) {
       if (V.dist(this.x, this.y, rock.x, rock.y) <= rock.r + this.radius) {
         this.dead = true;
-        rock.hp -= CONFIG.bullet.rockDamage;
+        rock.hp -= this.breakRock ? CONFIG.bullet.rockDamage * 6 : CONFIG.bullet.rockDamage;
         if (rock.hp <= 0) game.shatterRock(rock);
         return;
       }
@@ -61,13 +64,18 @@ class Bullet {
       }
     }
 
-    // Hit the first enemy unit it touches.
+    // Hit enemy units. Normal rounds stop on the first hit; piercing rounds
+    // pass through, damaging each unit once.
     for (const u of game.units) {
       if (!u.alive || u.team === this.team) continue;
       if (V.dist(this.x, this.y, u.x, u.y) <= u.radius + this.radius) {
-        u.takeDamage(this.damage);
-        this.dead = true;
-        return;
+        if (this.pierce) {
+          if (this._hit.indexOf(u) === -1) { u.takeDamage(this.damage); this._hit.push(u); }
+        } else {
+          u.takeDamage(this.damage);
+          this.dead = true;
+          return;
+        }
       }
     }
   }
@@ -331,6 +339,10 @@ class Unit {
     this.activeBombs = 0;
     this.activeDynamite = 0; // at most 1 live dynamite per unit
 
+    this.special = false;     // holding a temporary chest weapon?
+    this.specialTimer = 0;    // ms until it reverts to the rifle
+    this.baseWeaponKey = "rifle"; // weapon to return to after a special expires
+
     // Lock-on aiming (player only).
     this.lockMode = false;
     this.lockTarget = null;
@@ -368,7 +380,18 @@ class Unit {
     const base = i < 0 ? 0 : i;
     const n = WEAPON_ORDER.length;
     const next = WEAPON_ORDER[((base + dir) % n + n) % n];
+    this.special = false; // manually switching drops the temporary chest weapon
+    this.baseWeaponKey = next;
     this.setWeapon(next);
+  }
+
+  // Grant a temporary special weapon from a chest. Reverts after a timer.
+  grantSpecial(key, durationMs) {
+    if (!WEAPONS[key]) return;
+    if (!this.special) this.baseWeaponKey = this.weaponKey; // remember normal gun
+    this.setWeapon(key);
+    this.special = true;
+    this.specialTimer = durationMs || 14000;
   }
 
   takeDamage(amount) {
@@ -384,6 +407,7 @@ class Unit {
   move(dirX, dirY, game) {
     let speed = CONFIG.unit.speed * this.speedMul;
     if (game.map.inRiver(this.x, this.y)) speed *= CONFIG.riverSpeedMul; // wading is slow
+    if (game.map.inSand && game.map.inSand(this.x, this.y)) speed *= CONFIG.sandSpeedMul; // trudging through sand
     const tryAt = (dx, dy) =>
       game.map.resolveCollision(this.x + dx * speed, this.y + dy * speed, this.radius);
 
@@ -455,7 +479,7 @@ class Unit {
       const bx = this.x + dx * (this.radius + 6);
       const by = this.y + dy * (this.radius + 6);
       game.bullets.push(new Bullet(bx, by, dx, dy, this.team, {
-        damage, speed, life,
+        damage, speed, life, pierce: w.pierce, breakRock: w.breakRock || w.fire,
       }));
     }
 
@@ -489,6 +513,15 @@ class Unit {
     if (this.movingTimer > 0) this.movingTimer -= dt; // walk-cycle grace timer
     this.sinceShot += dt;
 
+    // Temporary chest weapon reverts to the normal gun when its timer runs out.
+    if (this.special) {
+      this.specialTimer -= dt;
+      if (this.specialTimer <= 0) {
+        this.special = false;
+        this.setWeapon(this.baseWeaponKey || "rifle");
+      }
+    }
+
     if (this.reloading) {
       this.reloadTimer -= dt;
       if (this.reloadTimer <= 0) {
@@ -505,8 +538,12 @@ class Unit {
       }
     }
 
-    // Slowly regenerate while standing in your own base/fort.
-    if (this.hp < CONFIG.unit.maxHp && game.map.inBase(this.x, this.y, this.team)) {
+    // Slowly regenerate while standing in your own base/fort, a neutral oasis,
+    // or a control point your team has captured.
+    const onOasis = game.map.inOasis && game.map.inOasis(this.x, this.y);
+    const onOwnPoint = game.capturedPointFor && game.capturedPointFor(this.x, this.y, this.team);
+    if (this.hp < CONFIG.unit.maxHp &&
+        (game.map.inBase(this.x, this.y, this.team) || onOasis || onOwnPoint)) {
       this.hp = Math.min(CONFIG.unit.maxHp, this.hp + CONFIG.base.regenPerSec * dt / 1000);
     }
 

@@ -1,0 +1,145 @@
+// Chest pickup for Cover Battle.
+//
+// Loaded as a plain <script> (no ES modules) AFTER weapons.js so that the
+// global `CHEST_LOOT` array is available. Self-contained: knows only how to
+// update, draw, and be opened. The game layer owns spawning and the proximity
+// check that decides *when* to call open().
+//
+// A chest sits on the map until a unit opens it. On open() it grants a random
+// special weapon to that unit, plays a brief flash, then marks itself dead so
+// the game can remove it.
+class Chest {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 16;
+    this.opened = false;
+    this.dead = false;
+
+    // Idle bob/glow animation clock (ms).
+    this.animTime = 0;
+    // Counts up after opening; once it passes openDuration the chest dies.
+    this.openTimer = 0;
+    this.openDuration = 400; // ms of "burst of light" before vanishing
+  }
+
+  update(dt, game) {
+    if (this.dead) return;
+    this.animTime += dt;
+
+    if (this.opened) {
+      this.openTimer += dt;
+      if (this.openTimer >= this.openDuration) {
+        this.dead = true;
+      }
+    }
+  }
+
+  draw(ctx) {
+    if (this.dead) return;
+
+    if (this.opened) {
+      this._drawOpened(ctx);
+    } else {
+      this._drawClosed(ctx);
+    }
+  }
+
+  // Unopened: golden box with a lid, gently bobbing and pulsing.
+  _drawClosed(ctx) {
+    const r = this.radius;
+    const bob = Math.sin(this.animTime / 320) * 2; // vertical sway in px
+    const glow = 0.5 + 0.5 * Math.sin(this.animTime / 260); // 0..1 pulse
+
+    ctx.save();
+    ctx.translate(this.x, this.y + bob);
+
+    // Soft glow halo.
+    ctx.globalAlpha = 0.25 + 0.25 * glow;
+    ctx.fillStyle = "#ffe27a";
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Box body.
+    const w = r * 2;
+    const h = r * 1.7;
+    ctx.fillStyle = "#caa12e";
+    ctx.fillRect(-w / 2, -h / 2 + h * 0.3, w, h * 0.7);
+    // Lid.
+    ctx.fillStyle = "#f0c64b";
+    ctx.fillRect(-w / 2, -h / 2, w, h * 0.4);
+    // Lid rim / outline.
+    ctx.strokeStyle = "#7a5e10";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, -h / 2 + h * 0.4);
+    ctx.lineTo(w / 2, -h / 2 + h * 0.4);
+    ctx.stroke();
+    // Center latch.
+    ctx.fillStyle = "#fff2b0";
+    ctx.fillRect(-3, -h / 2 + h * 0.28, 6, h * 0.24);
+
+    ctx.restore();
+  }
+
+  // Opened: lid flipped up, with a quick fading flash of light.
+  _drawOpened(ctx) {
+    const r = this.radius;
+    const t = Math.min(1, this.openTimer / this.openDuration); // 0..1
+    const flash = 1 - t;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+
+    // Expanding burst of light.
+    ctx.globalAlpha = 0.6 * flash;
+    ctx.fillStyle = "#fff7d6";
+    ctx.beginPath();
+    ctx.arc(0, 0, r * (1 + 2.2 * t), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    const w = r * 2;
+    const h = r * 1.7;
+    // Box body (open, slightly dim as it fades).
+    ctx.globalAlpha = 0.4 + 0.6 * flash;
+    ctx.fillStyle = "#caa12e";
+    ctx.fillRect(-w / 2, -h / 2 + h * 0.3, w, h * 0.7);
+    // Flipped-up lid above the box.
+    ctx.fillStyle = "#f0c64b";
+    ctx.fillRect(-w / 2, -h / 2 - h * 0.45, w, h * 0.4);
+    ctx.strokeStyle = "#7a5e10";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-w / 2, -h / 2 + h * 0.3, w, h * 0.7);
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+  }
+
+  // Grant a random special weapon to `unit`. No-op if already opened.
+  // The game layer is responsible for the proximity check that calls this.
+  open(unit, game) {
+    if (this.opened) return;
+    this.opened = true;
+    this.openTimer = 0;
+
+    const key = CHEST_LOOT[(Math.random() * CHEST_LOOT.length) | 0];
+    if (unit) {
+      if (typeof unit.grantSpecial === "function") {
+        unit.grantSpecial(key);
+      } else if (typeof unit.setWeapon === "function") {
+        unit.setWeapon(key);
+      }
+    }
+
+    // Optional celebratory sound, if the game wires one up.
+    if (game && game.sound && typeof game.sound.victory === "function") {
+      game.sound.victory();
+    }
+
+    return key;
+  }
+}

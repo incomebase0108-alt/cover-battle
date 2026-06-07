@@ -61,6 +61,7 @@ class AIController {
   // Pick the best weapon for the current engagement distance, with a cooldown.
   pickWeapon(self, dist, dt) {
     this.weaponTimer -= dt;
+    if (self.special) return; // keep the chest weapon while it lasts
     if (this.weaponTimer > 0 || self.reloading) return;
     if (typeof WEAPON_ORDER === "undefined") return;
     let want = "rifle";
@@ -111,6 +112,23 @@ class AIController {
     if (ownFrac < 0.45 || threatened) return "DEFEND";
     if (foeFrac < ownFrac - 0.05 || allies > enemies + 1) return "PUSH";
     return "BALANCED";
+  }
+
+  // High-stage coordination: the squad concentrates fire on one enemy (the
+  // weakest one it can see), so late stages feel like the enemy "has a plan".
+  // Returns a shared focus target, or null. Only kicks in from stage 7+.
+  teamFocus(self, game) {
+    if ((game.stageIndex || 0) < 6) return null;
+    let best = null;
+    let bestHp = Infinity;
+    for (const u of game.units) {
+      if (!u.alive || u.team === self.team) continue;
+      const d = V.dist(self.x, self.y, u.x, u.y);
+      if (d > CONFIG.unit.range) continue;
+      if (game.map.inForest(u.x, u.y) && d > CONFIG.forestDetectRange) continue;
+      if (u.hp < bestHp) { bestHp = u.hp; best = u; }
+    }
+    return best;
   }
 
   // Nearest living enemy within `range` of a point (for fort defence).
@@ -332,8 +350,11 @@ class AIController {
       this.strafeTimer = V.randRange(600, 1400);
     }
 
-    const target = this.findTarget(self, game);
+    let target = this.findTarget(self, game);
     if (target) this.pickWeapon(self, V.dist(self.x, self.y, target.x, target.y), dt);
+    // High stages: concentrate fire on the squad's shared focus target.
+    const focus = this.teamFocus(self, game);
+    if (focus) target = focus;
 
     let state = this.desiredState(self, game);
     // Anti-stall: when the match has gone quiet too long, everyone charges the

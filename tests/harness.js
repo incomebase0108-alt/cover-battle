@@ -22,10 +22,12 @@ const LOAD_ORDER = [
   "vector.js",
   "config.js",
   "weapons.js",
+  "chest.js",
   "input.js",
   "map.js",
   "entities.js",
   "ai.js",
+  "overlay.js",
   "game.js",
 ];
 
@@ -90,6 +92,7 @@ function loadGame() {
     "ITEM_TYPES",
     "WEAPONS",
     "WEAPON_ORDER",
+    "CHEST_LOOT",
     "getWeapon",
     "Input",
     "GameMap",
@@ -97,6 +100,7 @@ function loadGame() {
     "Item",
     "Bomb",
     "Dynamite",
+    "Chest",
     "Unit",
     "AIController",
     "Game",

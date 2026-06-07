@@ -86,6 +86,15 @@ const CONFIG = {
 
   // Movement speed multiplier while wading through a river.
   riverSpeedMul: 0.5,
+  // Movement speed multiplier while crossing desert sand.
+  sandSpeedMul: 0.7,
+
+  // Neutral control point at mid-field: stand near it (uncontested) to capture
+  // it for your team; a captured point heals your team and is a forward foothold.
+  capture: {
+    radius: 80,         // how close you must be to contest/capture
+    captureTime: 3500,  // ms of uncontested presence to flip it
+  },
 
   // Home base/fort: standing in your own base slowly regenerates HP. The fort
   // also has a destructible core — destroy the enemy's fort to win, lose yours
@@ -220,6 +229,65 @@ const STAGES = [
     rivers: [ { x: 0, y: 285, w: 960, h: 36 }, { x: 460, y: 0, w: 40, h: 600 } ],
     blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 280 }, { x: 150, y: 360 } ],
     redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 280 }, { x: 810, y: 360 } ],
+    enemySkill: 1.0,
+  },
+  {
+    name: "STAGE 7 — 砂漠とオアシス",
+    // Open desert (slows movement) with neutral oases that heal — contest them.
+    rocks: [ { x: 480, y: 160, r: 36 }, { x: 480, y: 440, r: 36 }, { x: 330, y: 300, r: 30 }, { x: 630, y: 300, r: 30 } ],
+    forests: [ { x: 200, y: 110, r: 50 }, { x: 760, y: 490, r: 50 } ],
+    mountains: [ { x: 480, y: 300, r: 40 } ],
+    rivers: [],
+    sand: [ { x: 120, y: 0, w: 720, h: 600 } ],
+    oases: [ { x: 300, y: 300, r: 60 }, { x: 660, y: 300, r: 60 }, { x: 480, y: 90, r: 48 } ],
+    blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 290 }, { x: 150, y: 350 } ],
+    redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 290 }, { x: 810, y: 350 } ],
+    enemySkill: 1.0,
+  },
+  {
+    name: "STAGE 8 — 四つの砦跡",
+    rocks: [
+      { x: 300, y: 160, r: 40 }, { x: 660, y: 160, r: 40 },
+      { x: 300, y: 440, r: 40 }, { x: 660, y: 440, r: 40 },
+      { x: 480, y: 300, r: 30 },
+    ],
+    forests: [ { x: 480, y: 110, r: 56 }, { x: 480, y: 490, r: 56 }, { x: 150, y: 300, r: 48 }, { x: 810, y: 300, r: 48 } ],
+    mountains: [ { x: 300, y: 300, r: 30 }, { x: 660, y: 300, r: 30 } ],
+    rivers: [ { x: 0, y: 285, w: 960, h: 36 } ],
+    blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 290 }, { x: 150, y: 350 } ],
+    redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 290 }, { x: 810, y: 350 } ],
+    enemySkill: 1.0,
+  },
+  {
+    name: "STAGE 9 — 山岳要塞",
+    rocks: [ { x: 480, y: 150, r: 34 }, { x: 480, y: 450, r: 34 }, { x: 360, y: 300, r: 30 }, { x: 600, y: 300, r: 30 } ],
+    forests: [ { x: 230, y: 480, r: 58 }, { x: 730, y: 120, r: 58 } ],
+    mountains: [
+      { x: 480, y: 60, r: 36 }, { x: 480, y: 540, r: 36 },
+      { x: 360, y: 160, r: 30 }, { x: 600, y: 160, r: 30 },
+      { x: 360, y: 440, r: 30 }, { x: 600, y: 440, r: 30 },
+    ],
+    rivers: [ { x: 440, y: 0, w: 80, h: 600 } ],
+    oases: [ { x: 480, y: 300, r: 54 } ],
+    blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 290 }, { x: 150, y: 350 } ],
+    redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 290 }, { x: 810, y: 350 } ],
+    enemySkill: 1.0,
+  },
+  {
+    name: "STAGE 10 — 最終決戦",
+    // Everything at once: desert flanks, central oasis, fortified rocks, a river.
+    rocks: [
+      { x: 260, y: 220, r: 32 }, { x: 260, y: 380, r: 32 },
+      { x: 700, y: 220, r: 32 }, { x: 700, y: 380, r: 32 },
+      { x: 480, y: 170, r: 36 }, { x: 480, y: 430, r: 36 },
+    ],
+    forests: [ { x: 480, y: 300, r: 60 }, { x: 200, y: 110, r: 48 }, { x: 760, y: 490, r: 48 } ],
+    mountains: [ { x: 480, y: 64, r: 34 }, { x: 480, y: 536, r: 34 }, { x: 360, y: 300, r: 26 }, { x: 600, y: 300, r: 26 } ],
+    rivers: [ { x: 0, y: 285, w: 960, h: 34 } ],
+    sand: [ { x: 0, y: 0, w: 220, h: 600 }, { x: 740, y: 0, w: 220, h: 600 } ],
+    oases: [ { x: 480, y: 440, r: 46 } ],
+    blueSpawns: [ { x: 80, y: 230 }, { x: 80, y: 370 }, { x: 140, y: 290 }, { x: 140, y: 350 } ],
+    redSpawns:  [ { x: 880, y: 230 }, { x: 880, y: 370 }, { x: 820, y: 290 }, { x: 820, y: 350 } ],
     enemySkill: 1.0,
   },
 ];

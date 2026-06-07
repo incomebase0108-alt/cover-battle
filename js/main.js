@@ -28,6 +28,7 @@
 
   let game = null;
   let nextAction = "start";
+  let playerIndex = 0; // chosen character slot, kept across stages
 
   function newGameAt(index) {
     game = new Game(canvas, {
@@ -43,6 +44,7 @@
       },
     });
     game.sound = Sound;
+    game.playerIndex = playerIndex;
     game.loadStage(index);
     // On touch devices, default to lock-on so aiming is one-button.
     if (Input.isTouch) {
@@ -52,15 +54,32 @@
     game.start();
   }
 
-  function startGame() {
-    Sound.start(); // begin BGM on the user gesture
+  // Build the character-select grid (6 blue slots; slot also picks the weapon).
+  function showCharSelect() {
+    Sound.start();
     UI.showStart(false);
-    UI.hideResult();
-    UI.showHud(true);
-    newGameAt(0);
+    const grid = document.getElementById("charGrid");
+    const loadout = ["rifle", "sniper", "shotgun", "smg"];
+    grid.innerHTML = "";
+    for (let i = 0; i < (CONFIG.teamSize || 6); i++) {
+      const key = loadout[i % loadout.length];
+      const label = (typeof WEAPONS !== "undefined" && WEAPONS[key]) ? WEAPONS[key].label : key;
+      const btn = document.createElement("button");
+      btn.className = "char-card";
+      btn.innerHTML = `<b>青${i + 1}</b><span>${label}</span>`;
+      btn.addEventListener("click", () => {
+        playerIndex = i;
+        document.getElementById("charSelect").classList.add("hidden");
+        UI.hideResult();
+        UI.showHud(true);
+        newGameAt(0);
+      });
+      grid.appendChild(btn);
+    }
+    document.getElementById("charSelect").classList.remove("hidden");
   }
 
-  document.getElementById("startBtn").addEventListener("click", startGame);
+  document.getElementById("startBtn").addEventListener("click", showCharSelect);
 
   document.getElementById("nextBtn").addEventListener("click", () => {
     Sound.start();

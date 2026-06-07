@@ -28,6 +28,12 @@ class GameMap {
     this.rivers = (stage.rivers || []).map((r) => ({
       x: r.x * sx, y: r.y * sy, w: r.w * sx, h: r.h * sy,
     }));
+    // Desert patches (passable; slow you down — handled by entities via inSand).
+    this.sand = (stage.sand || []).map((s) => ({
+      x: s.x * sx, y: s.y * sy, w: s.w * sx, h: s.h * sy,
+    }));
+    // Oases: neutral healing circles (passable; effect handled via inOasis).
+    this.oases = (stage.oases || []).map((o) => ({ x: o.x * sx, y: o.y * sy, r: o.r * sx }));
 
     this.blueSpawns = stage.blueSpawns.map(sp);
     this.redSpawns = stage.redSpawns.map(sp);
@@ -125,6 +131,22 @@ class GameMap {
     return false;
   }
 
+  // Inside a desert patch? (passable; entities use this to slow movement.)
+  inSand(x, y) {
+    for (const s of this.sand) {
+      if (x >= s.x && x <= s.x + s.w && y >= s.y && y <= s.y + s.h) return true;
+    }
+    return false;
+  }
+
+  // Inside any oasis circle? (passable; entities use this for neutral healing.)
+  inOasis(x, y) {
+    for (const o of this.oases) {
+      if (V.dist(x, y, o.x, o.y) <= o.r) return true;
+    }
+    return false;
+  }
+
   // Apply damage to rocks within `radius` of a point (used by bombs). Mountains
   // are immune. Returns the list of rocks shattered by this hit.
   damageRocksInRadius(x, y, radius, amount) {
@@ -152,6 +174,37 @@ class GameMap {
     }
     for (let gy = 0; gy <= H; gy += 48) {
       ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+    }
+
+    // Desert patches (over the grass, under the water so riverbanks read as wet
+    // sand). Broad sandy fill plus light grain + wind-ripple detail.
+    for (const s of this.sand) {
+      const sg = ctx.createLinearGradient(s.x, s.y, s.x, s.y + s.h);
+      sg.addColorStop(0, "rgba(206,179,124,0.78)");
+      sg.addColorStop(0.5, "rgba(201,176,121,0.82)");
+      sg.addColorStop(1, "rgba(188,160,104,0.78)");
+      ctx.fillStyle = sg;
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      // Wind ripples (gentle horizontal arcs across the patch).
+      ctx.strokeStyle = "rgba(150,120,70,0.22)";
+      ctx.lineWidth = 1.5;
+      for (let yy = s.y + 16; yy < s.y + s.h; yy += 26) {
+        ctx.beginPath();
+        for (let xx = s.x; xx < s.x + s.w; xx += 14) {
+          ctx.lineTo(xx, yy + Math.sin((xx + yy) * 0.08) * 3);
+        }
+        ctx.stroke();
+      }
+      // Scattered sand grains (deterministic stipple so it doesn't flicker).
+      ctx.fillStyle = "rgba(235,214,160,0.5)";
+      for (let yy = s.y + 8; yy < s.y + s.h; yy += 18) {
+        for (let xx = s.x + 8; xx < s.x + s.w; xx += 22) {
+          const j = Math.sin(xx * 12.9898 + yy * 78.233) * 43758.5453;
+          const ox = (j - Math.floor(j)) * 12;
+          const oy = (Math.cos(xx * 4.1 + yy * 7.7) * 0.5 + 0.5) * 10;
+          ctx.fillRect(xx + ox, yy + oy, 1.5, 1.5);
+        }
+      }
     }
 
     // Rivers (under everything else).
@@ -251,6 +304,42 @@ class GameMap {
           ctx.fill();
         }
       }
+    }
+
+    // Oases (neutral healing pools): grassy fringe ring, blue-green water, and a
+    // bright water highlight. Drawn under forests/units (ground decoration).
+    for (const o of this.oases) {
+      // Grassy fringe around the pool.
+      ctx.fillStyle = "rgba(70,140,75,0.7)";
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill();
+      // Little tufts of reeds/grass around the rim.
+      ctx.fillStyle = "rgba(95,165,90,0.85)";
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        const rx = o.x + Math.cos(a) * o.r * 0.88;
+        const ry = o.y + Math.sin(a) * o.r * 0.88;
+        ctx.beginPath(); ctx.arc(rx, ry, o.r * 0.16, 0, Math.PI * 2); ctx.fill();
+      }
+      // Water body: blue-green radial gradient.
+      const wr = o.r * 0.72;
+      const wg = ctx.createRadialGradient(o.x, o.y, wr * 0.1, o.x, o.y, wr);
+      wg.addColorStop(0, "rgba(120,210,200,0.95)");
+      wg.addColorStop(0.6, "rgba(60,160,180,0.92)");
+      wg.addColorStop(1, "rgba(40,120,150,0.9)");
+      ctx.fillStyle = wg;
+      ctx.beginPath(); ctx.arc(o.x, o.y, wr, 0, Math.PI * 2); ctx.fill();
+      // Central water highlight (small bright pool / reflection).
+      ctx.fillStyle = "rgba(225,250,250,0.55)";
+      ctx.beginPath();
+      ctx.arc(o.x - wr * 0.22, o.y - wr * 0.22, wr * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+      // Label so it reads as a neutral recovery point.
+      ctx.fillStyle = "rgba(20,60,70,0.85)";
+      ctx.font = "bold 11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("オアシス", o.x, o.y + o.r + 8);
+      ctx.textAlign = "left";
     }
 
     // Forests (drawn under units so units appear "inside" them).
