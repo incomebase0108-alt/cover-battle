@@ -1,6 +1,5 @@
 @echo off
 chcp 932 >nul
-setlocal enabledelayedexpansion
 cd /d "%~dp0"
 title Cover Battle LAN サーバー
 echo ====================================
@@ -19,18 +18,16 @@ if not exist node_modules (
   call npm install
   echo.
 )
-echo 同じ Wi-Fi のスマホ／PC のブラウザで、下のURLのどれかを開いてください:
-echo （192.168 で始まるものが Wi-Fi のことが多いです）
+echo ■ このPCでは、数秒後にブラウザが自動で開きます。
+echo     http://localhost:8080/netclient.html
 echo.
-for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
-  set "ip=%%a"
-  set "ip=!ip: =!"
-  echo     http://!ip!:8080/netclient.html
-)
+echo ■ 同じ Wi-Fi のスマホ／別PC は、次のURLを開いてください:
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0show-ip.ps1"
 echo.
-echo ※このウィンドウは開いたままにしてください（閉じるとサーバーが止まります）。
-echo   終了するときはウィンドウを閉じるか Ctrl+C を押します。
+echo （複数出たら 192.168 で始まるものが Wi-Fi のことが多いです）
+echo ※このウィンドウは開いたままに（閉じるとサーバーが止まります）。終了は Ctrl+C。
 echo ====================================
 echo.
+start "" /min powershell -NoProfile -Command "Start-Sleep 2; Start-Process 'http://localhost:8080/netclient.html'"
 node server.js
 pause
