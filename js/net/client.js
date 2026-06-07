@@ -289,11 +289,19 @@
         ctx.fillText(gtxt, pad, pad + 114);
       }
       // HPバー。
-      const hw = 120, hh = 7, hy = pad + 114;
+      const hw = 120, hh = 7, hy = pad + 134;
       ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(pad, hy, hw, hh);
       const frac = me.mh ? Math.max(0, me.h / me.mh) : 0;
       ctx.fillStyle = frac > 0.4 ? "#62e08a" : "#ff5a5a";
       ctx.fillRect(pad, hy, hw * frac, hh);
+      ctx.fillStyle = "#cfe3ff"; ctx.font = "bold 10px system-ui, sans-serif"; ctx.fillText("HP", pad + hw + 6, hy - 1);
+      // 体力（スタミナ）バー：刀クラスのみ。剣を振ると減り、低いと移動が鈍る。
+      if (typeof me.st === "number" && WEAPONS[me.w] && WEAPONS[me.w].isMelee) {
+        const sy = hy + hh + 3;
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(pad, sy, hw, 5);
+        ctx.fillStyle = me.st > 0.35 ? "#ffd24a" : "#ff7a3c"; ctx.fillRect(pad, sy, hw * me.st, 5);
+        ctx.fillStyle = "#cfe3ff"; ctx.font = "bold 10px system-ui, sans-serif"; ctx.fillText("体力", pad + hw + 6, sy - 1);
+      }
     }
     ctx.restore();
   }

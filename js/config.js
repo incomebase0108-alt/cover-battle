@@ -129,6 +129,15 @@ const CONFIG = {
 
   // 刀の振りアニメーション時間（ms）。攻撃時にこの時間だけ刃の弧を描く。
   melee: { swingMs: 220 },
+
+  // 体力（スタミナ）：刀を振ると消費し、0に近いほど移動が鈍る。止まれば自然回復。
+  // 飛び道具(弓/鉄砲)は消費しない＝近接の「振りすぎ」だけにペナルティがかかる。
+  stamina: {
+    max: 100,
+    swingCost: 18,     // 刀1振りの消費
+    regenPerSec: 30,   // 毎秒の回復
+    minSpeedMul: 0.5,  // 体力0での移動倍率（満タンで1.0）
+  },
 };
 
 // Difficulty levels in order, with the Japanese labels shown on the selector

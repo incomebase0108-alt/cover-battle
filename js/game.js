@@ -192,6 +192,7 @@ class Game {
         am: u.ammo, mg: u.magSizeVal(), rl: u.reloading ? 1 : 0,
         nr: u.weapon().noReload ? 1 : 0, // 装填不要（刀/弓）＝HUDで弾を出さない
         sw: u.swingMs > 0 ? Math.round(u.swingMs) : 0, // 刀の振り残り時間（ms）
+        st: u.maxStamina ? +(u.stamina / u.maxStamina).toFixed(2) : 1, // 体力(0..1)
       })),
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),

@@ -103,6 +103,48 @@ s.test("攻撃するとモーション(swingMs)が立つ（刀も弓も）", (t)
   t.greaterThan(bow.swingMs, 0, "弓の攻撃でもモーションが立つ");
 });
 
+s.test("刀を振ると体力が減り、止まれば回復する", (t) => {
+  const { sb, game } = newGame(0);
+  const a = new sb.Unit(1500, 300, "blue");
+  a.applyClass("ashigaru");
+  game.units = [a, new sb.Unit(1530, 300, "red")];
+  const full = a.stamina;
+  a.tryShoot(game); // 刀を振る
+  t.lessThan(a.stamina, full, "刀を振ると体力が減る");
+  const drained = a.stamina;
+  a.cooldown = 0;
+  a.update(1000, game); // 攻撃せず1秒
+  t.greaterThan(a.stamina, drained, "止まれば体力が回復する");
+});
+
+s.test("弓は体力を消費しない", (t) => {
+  const { sb, game } = newGame(0);
+  const u = new sb.Unit(1500, 300, "blue");
+  u.applyClass("archer");
+  game.bullets = [];
+  const full = u.stamina;
+  u.tryShoot(game);
+  t.equal(u.stamina, full, "飛び道具(弓)は体力を消費しない");
+});
+
+s.test("体力が低いと移動が遅くなる", (t) => {
+  const { sb, game } = newGame(0);
+  const a = new sb.Unit(1500, 200, "blue"); // open ground
+  a.applyClass("ashigaru");
+  game.units = [a];
+  a.x = 1500; a.y = 200;
+  const fast = a.move(1, 0, game); // 体力満タンで1歩
+  a.stamina = 0;
+  a.x = 1500; a.y = 200;
+  const slow = a.move(1, 0, game); // 体力0で1歩
+  t.lessThan(slow, fast, "体力0だと移動量が小さい");
+});
+
+s.test("弓の連射間隔は控えめ(>=600ms)", (t) => {
+  const sb = loadGame();
+  t.greaterThan(sb.WEAPONS.yumi.fireCooldown, 599, "弓のfireCooldownは600ms以上");
+});
+
 s.test("味方AIは倒れた総大将を最優先で救出に向かう", (t) => {
   const { sb, game } = newGame(0);
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);

@@ -44,8 +44,8 @@ const WEAPONS = {
   },
   yumi: {
     label: "弓",
-    damage: 12,
-    fireCooldown: 360,
+    damage: 14,
+    fireCooldown: 620,   // 連射は控えめ（装填不要だが矢継ぎ早には撃てない）
     bulletSpeedMul: 1.2,
     rangeMul: 1.3,
     noReload: true,      // 装填無しで撃ち続けられる

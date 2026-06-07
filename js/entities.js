@@ -319,6 +319,8 @@ class Unit {
     this.regenAccum = 0;     // accumulator for partial regenerated rounds
     this.muzzleFlash = 0;    // ms remaining on the muzzle-flash effect
     this.swingMs = 0;        // ms remaining on the katana swing animation
+    this.maxStamina = (CONFIG.stamina && CONFIG.stamina.max) || 100;
+    this.stamina = this.maxStamina; // 体力：刀の振りで減り、止まれば回復。移動速度に効く
     this.skill = 0.7; // AI accuracy/decision quality, overridden per spawn
     this.aiSkill = null; // difficulty coefficient 0..1 (null = use `skill`); set per AI spawn
     this.damageMul = 1;  // bullet damage multiplier (weak AI < 1; players stay 1)
@@ -477,6 +479,11 @@ class Unit {
   // dirX/dirY are a (roughly) unit vector of intended movement.
   move(dirX, dirY, game) {
     let speed = CONFIG.unit.speed * this.speedMul * this.classSpeedMul * (this.moraleMul || 1);
+    // 体力が減るほど移動が鈍る（刀を振りすぎると遅くなる）。満タンで等速、0で minSpeedMul。
+    if (CONFIG.stamina && this.maxStamina) {
+      const min = CONFIG.stamina.minSpeedMul;
+      speed *= min + (1 - min) * (this.stamina / this.maxStamina);
+    }
     if (this.dashMs > 0) speed *= ABILITY.dashMul; // 騎馬/総大将のダッシュ加速
     if (this.carrying) speed *= RESCUE.carrySpeedMul; // slowed while hauling an ally
     if (game.map.inRiver(this.x, this.y)) {
@@ -580,6 +587,7 @@ class Unit {
     this.cooldown = this.fireCooldownVal();
     this.muzzleFlash = 70;
     this.swingMs = (CONFIG.melee && CONFIG.melee.swingMs) || 220; // 刃の弧アニメ開始
+    if (CONFIG.stamina) this.stamina = Math.max(0, this.stamina - CONFIG.stamina.swingCost); // 振るほど体力消費
     const reach = w.meleeRange ?? 40;
     const arc = w.meleeArc ?? 1.0;
     const dmg = (this.weapon().damage ?? CONFIG.bullet.damage) * (this.damageMul || 1) * (this.moraleMul || 1);
@@ -643,6 +651,9 @@ class Unit {
     if (this.cooldown > 0) this.cooldown -= dt;
     if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
     if (this.swingMs > 0) this.swingMs -= dt;
+    if (CONFIG.stamina && this.stamina < this.maxStamina) {
+      this.stamina = Math.min(this.maxStamina, this.stamina + CONFIG.stamina.regenPerSec * dt / 1000);
+    }
     if (this.movingTimer > 0) this.movingTimer -= dt; // walk-cycle grace timer
     if (this.abilityCd > 0) this.abilityCd -= dt;
     if (this.dashMs > 0) this.dashMs -= dt;
@@ -942,6 +953,14 @@ class Unit {
     ctx.fillRect(hx, hy, w, h);
     ctx.fillStyle = this.team === "blue" ? "#7fb0ff" : "#ff8a8a";
     ctx.fillRect(hx, hy, w * (this.hp / this.maxHp), h);
+
+    // 体力（スタミナ）バー：自分が刀クラスのときだけ HP バーの下に表示。
+    if (this.isPlayer && this.weapon().isMelee && this.maxStamina) {
+      const sf = this.stamina / this.maxStamina;
+      const sy = hy + h + 1;
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(hx, sy, w, 3);
+      ctx.fillStyle = sf > 0.35 ? "#ffd24a" : "#ff7a3c"; ctx.fillRect(hx, sy, w * sf, 3);
+    }
 
     // "HP回復中！" while regenerating in a heal zone.
     if (this.healing) {

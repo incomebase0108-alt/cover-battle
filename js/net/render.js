@@ -90,6 +90,12 @@ const NetRender = {
     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(u.x - w / 2, u.y - r - 12, w, 4);
     ctx.fillStyle = team === "blue" ? "#7fb0ff" : "#ff8a8a";
     ctx.fillRect(u.x - w / 2, u.y - r - 12, w * (u.h / mh), 4);
+    // 体力（スタミナ）バー：自分が刀クラスのときだけ HP の下に表示。
+    if (isMe && typeof u.st === "number" && WEAPONS[u.w] && WEAPONS[u.w].isMelee) {
+      const sy = u.y - r - 7;
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(u.x - w / 2, sy, w, 3);
+      ctx.fillStyle = u.st > 0.35 ? "#ffd24a" : "#ff7a3c"; ctx.fillRect(u.x - w / 2, sy, w * u.st, 3);
+    }
     ctx.fillStyle = team === "blue" ? "#9cc2ff" : "#ff9c9c";
     ctx.font = "bold 12px system-ui, sans-serif";
     ctx.textAlign = "center";

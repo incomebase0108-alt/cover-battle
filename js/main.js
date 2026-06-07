@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v30 中立の動物→野武士/剣豪（人型・総大将が説得で仲間に）。Blender浪人スプライト対応";
+  const BUILD = "v31 体力(スタミナ)ゲージ追加：刀の振りすぎで移動が鈍る／止まれば回復。弓の連射を控えめに";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
