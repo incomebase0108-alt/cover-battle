@@ -1,10 +1,19 @@
-# NAS で常時起動させるための Compose 設定。
-#   docker compose up -d --build   で起動（NAS再起動後も自動で立ち上がる）。
+# NAS で常時起動させるための Compose 設定（ビルド不要・最も確実）。
+# 公式 node イメージを使い、このフォルダをそのまま動かす。
+#   docker compose up -d     で起動（NAS再起動後も自動で立ち上がる）。
 # 同じ Wi-Fi の端末から  http://<NASのIP>:8080/netclient.html  で参加。
+#   例: http://192.168.0.16:8080/netclient.html
+#
+# ※ イメージをビルドして使いたい場合は Dockerfile があるので、下を
+#   「build: .」に置き換えて image/working_dir/volumes/command を消せばOK。
 services:
   cover-battle:
-    build: .
+    image: node:20-alpine
     container_name: cover-battle
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: sh -c "npm install --omit=dev && node server.js"
     ports:
       - "8080:8080"
     restart: unless-stopped
