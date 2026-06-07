@@ -825,127 +825,90 @@ class Unit {
     ctx.globalAlpha = concealed ? 0.55 : 1;
 
     const r = this.radius;
-    const uniform = this.team === "blue" ? "#2f7bff" : "#ff4d4d";
-    const dark = this.team === "blue" ? "#17407f" : "#7f2222";
-
     // Drop shadow.
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath();
     ctx.ellipse(this.x, this.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const light = this.team === "blue" ? "#9cc2ff" : "#ffb3b3";
-
-    // Draw the soldier oriented toward the aim direction.
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.aim);
-
-    // --- Walk cycle --------------------------------------------------------
-    // In this rotated frame local +X is "forward" (the aim direction) and the
-    // Y axis runs left/right across the body. We use a single sine of walkPhase
-    // so the two feet stay exactly out of phase (left = sin, right = -sin) and
-    // the body bobs with it. `walking` decays a few frames after the unit stops
-    // (movingTimer) so the cycle settles smoothly instead of snapping shut.
-    const walking = this.movingTimer > 0;
-    const swing = walking ? Math.sin(this.walkPhase) : 0;
-    const stepX = swing * r * 0.45;          // feet slide fore/aft along aim
-    const bob = walking ? Math.abs(Math.sin(this.walkPhase)) * r * 0.12 : 0; // 1-2px bob
-
-    // Feet drawn first (under the body, so they read for sprites too). Left and
-    // right boots sit either side of centre and step in opposition.
-    ctx.fillStyle = "#222630";
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.15 + stepX, -r * 0.42, r * 0.42, r * 0.22, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.15 - stepX,  r * 0.42, r * 0.42, r * 0.22, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Body group: lift everything above the feet by the bob (toward +X reads as
-    // a subtle forward weight-shift in this top-down view). Feet stay grounded.
-    // 攻撃時は前後の反動（刀=踏み込み/飛び道具=後ろへ）も本体に乗せる。
-    const recoil = (typeof attackRecoil === "function") ? attackRecoil(this.weapon(), this.swingMs, r) : 0;
-    ctx.save();
-    ctx.translate(bob + recoil, 0);
-
+    // クラス別スプライト（DQ風3/4立ち姿）。無ければベクター（回転）にフォールバック。
     let sprite = null;
     if (typeof Assets !== "undefined") {
       const ck = "soldier_" + this.team + "_" + this.cls;
       if (Assets.ready(ck)) sprite = Assets.get(ck);
       else if (Assets.ready("soldier_" + this.team)) sprite = Assets.get("soldier_" + this.team);
     }
-    if (sprite) {
-      const s = r * 5.2; // sprite faces +X, matching aim
-      ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
+
+    if (sprite && typeof Assets.drawSprite === "function") {
+      // 上向き固定＋左右反転で立ち姿を描く。
+      Assets.drawSprite(ctx, sprite, this.x, this.y, this.aim, r, this.movingTimer > 0 ? this.walkPhase : 0);
+      // 攻撃モーション＆マズルフラッシュは aim 方向に出す（武器なし素体なので攻撃時に武器が見える）。
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.aim);
+      if (this.muzzleFlash > 0) {
+        const f = this.muzzleFlash / 70;
+        ctx.fillStyle = `rgba(255,${200 + Math.floor(40 * f)},120,${0.9 * f})`;
+        ctx.beginPath();
+        ctx.moveTo(r * 1.5, 0);
+        ctx.lineTo(r * 1.5 + r * 0.7 * f, -r * 0.28 * f);
+        ctx.lineTo(r * 1.9 + r * 0.9 * f, 0);
+        ctx.lineTo(r * 1.5 + r * 0.7 * f, r * 0.28 * f);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (typeof drawAttackFX === "function") drawAttackFX(ctx, this.weapon(), this.swingMs, r);
+      ctx.restore();
     } else {
-    // Backpack.
-    ctx.fillStyle = dark;
-    ctx.beginPath();
-    ctx.arc(-r * 0.55, 0, r * 0.48, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Torso / vest (uniform) with a webbing stripe.
-    ctx.fillStyle = uniform;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, r * 0.98, r * 0.82, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = dark;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.fillStyle = "rgba(0,0,0,0.22)"; // chest webbing
-    ctx.fillRect(-r * 0.1, -r * 0.7, r * 0.22, r * 1.4);
-
-    // Arms reaching to the rifle.
-    ctx.strokeStyle = uniform;
-    ctx.lineWidth = r * 0.34;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(r * 0.1, -r * 0.45); ctx.lineTo(r * 0.7, -r * 0.1);
-    ctx.moveTo(r * 0.1,  r * 0.45); ctx.lineTo(r * 0.7,  r * 0.1);
-    ctx.stroke();
-    ctx.lineCap = "butt";
-
-    // Rifle (held forward): stock, body, barrel.
-    ctx.fillStyle = "#23262e";
-    ctx.fillRect(-r * 0.25, -r * 0.13, r * 0.55, r * 0.46); // stock/grip
-    ctx.fillStyle = "#15181f";
-    ctx.fillRect(r * 0.1, -r * 0.15, r * 1.4, r * 0.22);    // body + barrel
-    ctx.fillStyle = "#3a3f4a";
-    ctx.fillRect(r * 0.55, -r * 0.05, r * 0.45, r * 0.12);  // sight rail
-
-    // Helmet with a front brim/visor.
-    const hg = ctx.createRadialGradient(-r * 0.12, -r * 0.12, r * 0.1, 0, 0, r * 0.62);
-    hg.addColorStop(0, light);
-    hg.addColorStop(1, dark);
-    ctx.fillStyle = hg;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.56, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = dark;
-    ctx.beginPath();
-    ctx.arc(r * 0.2, 0, r * 0.56, -0.9, 0.9); // brim toward the front
-    ctx.fill();
-    } // end vector-art fallback
-
-    // Muzzle flash when a shot was just fired.
-    if (this.muzzleFlash > 0) {
-      const f = this.muzzleFlash / 70;
-      ctx.fillStyle = `rgba(255,${200 + Math.floor(40 * f)},120,${0.9 * f})`;
+      // ===== ベクター（回転フレーム）フォールバック =====
+      const uniform = this.team === "blue" ? "#2f7bff" : "#ff4d4d";
+      const dark = this.team === "blue" ? "#17407f" : "#7f2222";
+      const light = this.team === "blue" ? "#9cc2ff" : "#ffb3b3";
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.aim);
+      const walking = this.movingTimer > 0;
+      const swing = walking ? Math.sin(this.walkPhase) : 0;
+      const stepX = swing * r * 0.45;
+      const bob = walking ? Math.abs(Math.sin(this.walkPhase)) * r * 0.12 : 0;
+      ctx.fillStyle = "#222630";
+      ctx.beginPath(); ctx.ellipse(-r * 0.15 + stepX, -r * 0.42, r * 0.42, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-r * 0.15 - stepX, r * 0.42, r * 0.42, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+      const recoil = (typeof attackRecoil === "function") ? attackRecoil(this.weapon(), this.swingMs, r) : 0;
+      ctx.save();
+      ctx.translate(bob + recoil, 0);
+      ctx.fillStyle = dark;
+      ctx.beginPath(); ctx.arc(-r * 0.55, 0, r * 0.48, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = uniform;
+      ctx.beginPath(); ctx.ellipse(0, 0, r * 0.98, r * 0.82, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = dark; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "rgba(0,0,0,0.22)"; ctx.fillRect(-r * 0.1, -r * 0.7, r * 0.22, r * 1.4);
+      ctx.strokeStyle = uniform; ctx.lineWidth = r * 0.34; ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(r * 1.5, 0);
-      ctx.lineTo(r * 1.5 + r * 0.7 * f, -r * 0.28 * f);
-      ctx.lineTo(r * 1.9 + r * 0.9 * f, 0);
-      ctx.lineTo(r * 1.5 + r * 0.7 * f, r * 0.28 * f);
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(r * 0.1, -r * 0.45); ctx.lineTo(r * 0.7, -r * 0.1);
+      ctx.moveTo(r * 0.1, r * 0.45); ctx.lineTo(r * 0.7, r * 0.1);
+      ctx.stroke(); ctx.lineCap = "butt";
+      ctx.fillStyle = "#23262e"; ctx.fillRect(-r * 0.25, -r * 0.13, r * 0.55, r * 0.46);
+      ctx.fillStyle = "#15181f"; ctx.fillRect(r * 0.1, -r * 0.15, r * 1.4, r * 0.22);
+      ctx.fillStyle = "#3a3f4a"; ctx.fillRect(r * 0.55, -r * 0.05, r * 0.45, r * 0.12);
+      const hg = ctx.createRadialGradient(-r * 0.12, -r * 0.12, r * 0.1, 0, 0, r * 0.62);
+      hg.addColorStop(0, light); hg.addColorStop(1, dark);
+      ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, 0, r * 0.56, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(r * 0.2, 0, r * 0.56, -0.9, 0.9); ctx.fill();
+      if (this.muzzleFlash > 0) {
+        const f = this.muzzleFlash / 70;
+        ctx.fillStyle = `rgba(255,${200 + Math.floor(40 * f)},120,${0.9 * f})`;
+        ctx.beginPath();
+        ctx.moveTo(r * 1.5, 0);
+        ctx.lineTo(r * 1.5 + r * 0.7 * f, -r * 0.28 * f);
+        ctx.lineTo(r * 1.9 + r * 0.9 * f, 0);
+        ctx.lineTo(r * 1.5 + r * 0.7 * f, r * 0.28 * f);
+        ctx.closePath(); ctx.fill();
+      }
+      if (typeof drawAttackFX === "function") drawAttackFX(ctx, this.weapon(), this.swingMs, r);
+      ctx.restore(); // body group
+      ctx.restore(); // rotated frame
     }
-
-    // 攻撃モーション：刀＝斬りの弧／弓＝弓引き（鉄砲はマズルフラッシュ＋本体反動）。
-    if (typeof drawAttackFX === "function") drawAttackFX(ctx, this.weapon(), this.swingMs, r);
-
-    ctx.restore(); // end body group (undo walk bob + recoil)
-    ctx.restore(); // end rotated frame
 
     // Class accent ring + rank badge (screen-space, not rotated).
     const cls = (typeof getClass === "function") ? getClass(this.cls) : null;

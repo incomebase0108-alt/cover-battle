@@ -153,18 +153,18 @@ class Beast {
     ctx.beginPath(); ctx.ellipse(this.x, this.y + r * 0.5, r * 1.0, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
 
     const sprite = (typeof Assets !== "undefined" && Assets.ready("beast_" + this.type)) ? Assets.get("beast_" + this.type) : null;
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.aim);
-    if (sprite) {
-      const s = r * 4.8;
-      if (this.flash > 0) { ctx.globalAlpha = 0.85; }
-      ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
+    if (sprite && typeof Assets.drawSprite === "function") {
+      // DQ風3/4：上向き固定＋左右反転。
+      if (this.flash > 0) ctx.globalAlpha = 0.85;
+      Assets.drawSprite(ctx, sprite, this.x, this.y, this.aim, r, this.walkPhase);
       ctx.globalAlpha = 1;
     } else {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.aim);
       drawRoninBody(ctx, this.type, r, this.flash, this.walkPhase);
+      ctx.restore();
     }
-    ctx.restore();
 
     // 仲間になったらチームの輪を描く。
     if (this.team) {

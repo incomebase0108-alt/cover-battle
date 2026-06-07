@@ -53,22 +53,32 @@ const NetRender = {
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath(); ctx.ellipse(u.x, u.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
     const wdef = (typeof WEAPONS !== "undefined") ? WEAPONS[u.w] : null;
-    const recoil = (typeof attackRecoil === "function") ? attackRecoil(wdef, u.sw || 0, r) : 0;
-    ctx.save();
-    ctx.translate(u.x, u.y);
-    ctx.rotate(u.a);
-    if (recoil) ctx.translate(recoil, 0); // 攻撃の反動/踏み込み
-    const sprite = typeof Assets !== "undefined" && Assets.ready("soldier_" + team) ? Assets.get("soldier_" + team) : null;
-    if (sprite) {
-      const s = r * 5.2;
-      ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
+    // クラス別スプライト（DQ風3/4立ち姿）を優先。無ければ汎用→ベクター。
+    let sprite = null;
+    if (typeof Assets !== "undefined") {
+      const ck = "soldier_" + team + "_" + u.cl;
+      if (Assets.ready(ck)) sprite = Assets.get(ck);
+      else if (Assets.ready("soldier_" + team)) sprite = Assets.get("soldier_" + team);
+    }
+    if (sprite && typeof Assets.drawSprite === "function") {
+      // 上向き固定＋左右反転。walkPhase は無いので移動中は時間ベースで軽く弾ませる。
+      Assets.drawSprite(ctx, sprite, u.x, u.y, u.a, r, u.mv ? Date.now() * 0.012 : 0);
     } else {
+      const recoil = (typeof attackRecoil === "function") ? attackRecoil(wdef, u.sw || 0, r) : 0;
+      ctx.save();
+      ctx.translate(u.x, u.y);
+      ctx.rotate(u.a);
+      if (recoil) ctx.translate(recoil, 0);
       ctx.fillStyle = team === "blue" ? "#2f7bff" : "#ff4d4d";
       ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#15181f";
       ctx.fillRect(r * 0.2, -r * 0.12, r * 1.2, r * 0.24);
+      ctx.restore();
     }
-    // 攻撃モーション（刀=斬り弧／弓=弓引き）。前方+X基準でこの回転フレーム内に描く。
+    // 攻撃モーション（刀=斬り弧／弓=弓引き）は aim 方向に描く。
+    ctx.save();
+    ctx.translate(u.x, u.y);
+    ctx.rotate(u.a);
     if (typeof drawAttackFX === "function") drawAttackFX(ctx, wdef, u.sw || 0, r);
     ctx.restore();
     // Class accent ring + rank badge.
@@ -179,14 +189,13 @@ const NetRender = {
       // 影
       ctx.fillStyle = "rgba(0,0,0,0.28)";
       ctx.beginPath(); ctx.ellipse(b.x, b.y + r * 0.5, r * 1.0, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.a);
-      if (sprite) {
-        const s = r * 4.8;
-        ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
+      if (sprite && typeof Assets.drawSprite === "function") {
+        Assets.drawSprite(ctx, sprite, b.x, b.y, b.a, r, 0); // DQ風3/4：上向き固定＋左右反転
       } else if (typeof drawRoninBody === "function") {
+        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.a);
         drawRoninBody(ctx, b.ty, r, 0, 0); // 人型（浪人）ベクター
+        ctx.restore();
       }
-      ctx.restore();
       // 仲間になったらチームの輪
       if (b.tm) {
         ctx.strokeStyle = b.tm === "blue" ? "#5ad6ff" : "#ff6b6b"; ctx.lineWidth = 2.5;

@@ -42,6 +42,19 @@ const Assets = {
     return this._loaded[name] === true;
   },
 
+  // DQ風の3/4立ち姿スプライトを「上向き固定＋左右反転」で描く。回転しない（回転すると
+  // 立ち姿が横倒しになるため）。aim が左向き(cos<0)のときだけ左右反転。足元を接地点
+  // (gx,gy)付近に置き、本体は上へ伸ばす。歩行中(walkPhase>0)は軽く上下に弾む。
+  drawSprite(ctx, sprite, gx, gy, aim, r, walkPhase) {
+    const s = r * 5.6;
+    const bob = walkPhase ? Math.abs(Math.sin(walkPhase)) * r * 0.16 : 0;
+    ctx.save();
+    ctx.translate(gx, gy - bob);
+    if (Math.cos(aim) < 0) ctx.scale(-1, 1); // 左向きは反転
+    ctx.drawImage(sprite, -s / 2, -s * 0.80, s, s); // 下端＝接地点付近、本体は上へ
+    ctx.restore();
+  },
+
   get(name) {
     return this.images[name];
   },
