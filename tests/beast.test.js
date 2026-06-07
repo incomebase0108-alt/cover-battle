@@ -36,4 +36,18 @@ s.test("enough damage kills a beast", (t) => {
   t.equal(beast.dead, true, "beast dies when HP hits 0");
 });
 
+s.test("a tamed beast is friendly: allies ignore it and it spares them", (t) => {
+  const { sb, game } = newGame(0);
+  const beast = new sb.Beast(800, 800, "tiger");
+  beast.team = "blue"; // tamed by blue
+  const ally = new sb.Unit(810, 800, "blue");
+  const ai = new sb.AIController();
+  game.beasts = [beast];
+  game.units = [ally];
+  t.equal(ai.nearestBeast(ally, game, 300), null, "allies don't target their own beast");
+  const hp0 = ally.hp;
+  beast.update(16, game);
+  t.equal(ally.hp, hp0, "tamed beast does not maul its own team");
+});
+
 module.exports = s;

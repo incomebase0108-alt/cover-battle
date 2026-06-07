@@ -162,7 +162,7 @@ class AIController {
     let best = null;
     let bd = range;
     for (const b of game.beasts) {
-      if (b.dead) continue;
+      if (b.dead || b.team === self.team) continue; // ignore our own tamed beasts
       const d = V.dist(self.x, self.y, b.x, b.y);
       if (d < bd) { bd = d; best = b; }
     }
