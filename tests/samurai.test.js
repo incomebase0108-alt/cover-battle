@@ -117,14 +117,46 @@ s.test("刀を振ると体力が減り、止まれば回復する", (t) => {
   t.greaterThan(a.stamina, drained, "止まれば体力が回復する");
 });
 
-s.test("弓は体力を消費しない", (t) => {
+s.test("弓も体力を消費する（全攻撃で消費）", (t) => {
   const { sb, game } = newGame(0);
   const u = new sb.Unit(1500, 300, "blue");
   u.applyClass("archer");
   game.bullets = [];
   const full = u.stamina;
   u.tryShoot(game);
-  t.equal(u.stamina, full, "飛び道具(弓)は体力を消費しない");
+  t.lessThan(u.stamina, full, "弓を撃つと体力が減る");
+});
+
+s.test("刀は仲間にした浪人(同チーム)を斬らない（友軍誤射しない）", (t) => {
+  const { sb, game } = newGame(0);
+  const a = new sb.Unit(1500, 300, "blue");
+  a.applyClass("ashigaru");
+  const friend = new sb.Beast(1530, 300, "nobushi");
+  friend.team = "blue"; // 説得で仲間になった野武士
+  const enemy = new sb.Beast(1530, 330, "nobushi"); // 中立はまだ斬れる
+  game.units = [a];
+  game.beasts = [friend, enemy];
+  a.aim = 0;
+  a.tryShoot(game);
+  t.equal(friend.hp, friend.maxHp, "仲間の浪人は斬られない");
+  t.lessThan(enemy.hp, enemy.maxHp, "中立の浪人は斬れる");
+});
+
+s.test("体力切れでは攻撃できない（連打抑止＝駆け引き）", (t) => {
+  const { sb, game } = newGame(0);
+  const a = new sb.Unit(1500, 300, "blue");
+  a.applyClass("ashigaru");
+  const enemy = new sb.Unit(1530, 300, "red");
+  game.units = [a, enemy];
+  a.aim = 0;
+  a.stamina = 5; // 体力切れ（swingCost 未満）
+  a.cooldown = 0;
+  a.tryShoot(game);
+  t.equal(enemy.hp, enemy.maxHp, "体力切れだと刀を振れない（敵は無傷）");
+  a.stamina = a.maxStamina; // 回復
+  a.cooldown = 0;
+  a.tryShoot(game);
+  t.lessThan(enemy.hp, enemy.maxHp, "体力が戻れば斬れる");
 });
 
 s.test("体力が低いと移動が遅くなる", (t) => {

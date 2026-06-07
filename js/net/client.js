@@ -295,12 +295,15 @@
       ctx.fillStyle = frac > 0.4 ? "#62e08a" : "#ff5a5a";
       ctx.fillRect(pad, hy, hw * frac, hh);
       ctx.fillStyle = "#cfe3ff"; ctx.font = "bold 10px system-ui, sans-serif"; ctx.fillText("HP", pad + hw + 6, hy - 1);
-      // 体力（スタミナ）バー：刀クラスのみ。剣を振ると減り、低いと移動が鈍る。
-      if (typeof me.st === "number" && WEAPONS[me.w] && WEAPONS[me.w].isMelee) {
+      // 体力（スタミナ）バー：全クラス表示。攻撃で減り、低いと移動が鈍る。
+      // 体力が一定以下だと攻撃できない＝息切れ（連打抑止の駆け引き）。
+      if (typeof me.st === "number") {
         const sy = hy + hh + 3;
+        const winded = me.st < 0.34;
         ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(pad, sy, hw, 5);
-        ctx.fillStyle = me.st > 0.35 ? "#ffd24a" : "#ff7a3c"; ctx.fillRect(pad, sy, hw * me.st, 5);
-        ctx.fillStyle = "#cfe3ff"; ctx.font = "bold 10px system-ui, sans-serif"; ctx.fillText("体力", pad + hw + 6, sy - 1);
+        ctx.fillStyle = winded ? "#ff5a5a" : (me.st > 0.6 ? "#ffd24a" : "#ffb24a"); ctx.fillRect(pad, sy, hw * me.st, 5);
+        ctx.font = "bold 10px system-ui, sans-serif";
+        ctx.fillStyle = winded ? "#ff5a5a" : "#cfe3ff"; ctx.fillText(winded ? "息切れ!" : "体力", pad + hw + 6, sy - 1);
       }
     }
     ctx.restore();

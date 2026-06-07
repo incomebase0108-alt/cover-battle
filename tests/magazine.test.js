@@ -11,6 +11,7 @@ s.test("rifle fires exactly magSize rounds before forced reload", (t) => {
   const { sb, game } = newGame(0);
   const u = new sb.Unit(500, 300, "blue");
   game.units = [u];
+  u.stamina = 1e9; // マガジン機構の検証では体力ゲートを無効化（体力切れで止めない）
 
   const mag = u.magSizeVal();
   let fired = 0;
@@ -28,6 +29,7 @@ s.test("emptying the magazine sets reloading=true and ammo=0", (t) => {
   const { sb, game } = newGame(0);
   const u = new sb.Unit(500, 300, "blue");
   game.units = [u];
+  u.stamina = 1e9; // マガジン機構の検証では体力ゲートを無効化（体力切れで止めない）
   for (let i = 0; i < u.magSizeVal(); i++) {
     u.cooldown = 0;
     u.tryShoot(game);
@@ -40,6 +42,7 @@ s.test("cannot fire while reloading", (t) => {
   const { sb, game } = newGame(0);
   const u = new sb.Unit(500, 300, "blue");
   game.units = [u];
+  u.stamina = 1e9; // マガジン機構の検証では体力ゲートを無効化（体力切れで止めない）
   for (let i = 0; i < u.magSizeVal(); i++) {
     u.cooldown = 0;
     u.tryShoot(game);
@@ -54,6 +57,7 @@ s.test("reload completes after reloadTime and refills magazine", (t) => {
   const { sb, game } = newGame(0);
   const u = new sb.Unit(500, 300, "blue");
   game.units = [u];
+  u.stamina = 1e9; // マガジン機構の検証では体力ゲートを無効化（体力切れで止めない）
   for (let i = 0; i < u.magSizeVal(); i++) {
     u.cooldown = 0;
     u.tryShoot(game);
@@ -71,6 +75,7 @@ s.test("fireCooldown blocks back-to-back shots within a magazine", (t) => {
   const { sb, game } = newGame(0);
   const u = new sb.Unit(500, 300, "blue");
   game.units = [u];
+  u.stamina = 1e9; // マガジン機構の検証では体力ゲートを無効化（体力切れで止めない）
   const before = u.ammo;
   u.cooldown = 0;
   u.tryShoot(game);

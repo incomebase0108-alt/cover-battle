@@ -539,6 +539,12 @@ class Unit {
     if (this.cooldown > 0 || this.reloading) return;
 
     const w = this.weapon();
+    // 体力切れでは攻撃できない＝連打を抑止。息切れしたら間合いを取って回復を待つ
+    // 駆け引きが生まれる（刀＝大きく消費、弓/鉄砲＝中程度）。
+    if (CONFIG.stamina) {
+      const stCost = w.isMelee ? CONFIG.stamina.swingCost : CONFIG.stamina.shootCost;
+      if (this.stamina < stCost) return;
+    }
     // 刀などの近接武器は弾を撃たず、前方の敵を直接斬る。
     if (w.isMelee) { this._meleeStrike(game, w); return; }
     // 装填のある武器だけ弾切れでリロード（弓=noReload は弾数概念なし）。
@@ -552,6 +558,7 @@ class Unit {
     }
     this.muzzleFlash = 70;
     this.swingMs = (CONFIG.melee && CONFIG.melee.swingMs) || 220; // 攻撃モーション（弓引き/反動）
+    if (CONFIG.stamina) this.stamina = Math.max(0, this.stamina - (CONFIG.stamina.shootCost || 0)); // 射撃も体力消費
 
     const pellets = w.pellets ?? 1;
     const spread = w.spread ?? 0;
@@ -604,7 +611,7 @@ class Unit {
       if (hitArc(u.x, u.y, u.radius)) u.takeDamage(dmg);
     }
     for (const b of (game.beasts || [])) {
-      if (b.dead || !b.takeDamage) continue;
+      if (b.dead || !b.takeDamage || (b.team && b.team === this.team)) continue; // 仲間の浪人は斬らない
       if (hitArc(b.x, b.y, b.r || 22)) b.takeDamage(dmg);
     }
     for (const tt of (game.turrets || [])) {
@@ -954,8 +961,8 @@ class Unit {
     ctx.fillStyle = this.team === "blue" ? "#7fb0ff" : "#ff8a8a";
     ctx.fillRect(hx, hy, w * (this.hp / this.maxHp), h);
 
-    // 体力（スタミナ）バー：自分が刀クラスのときだけ HP バーの下に表示。
-    if (this.isPlayer && this.weapon().isMelee && this.maxStamina) {
+    // 体力（スタミナ）バー：自分のキャラの HP バーの下に表示（全クラス）。
+    if (this.isPlayer && this.maxStamina) {
       const sf = this.stamina / this.maxStamina;
       const sy = hy + h + 1;
       ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(hx, sy, w, 3);

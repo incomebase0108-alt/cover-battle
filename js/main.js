@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v31 体力(スタミナ)ゲージ追加：刀の振りすぎで移動が鈍る／止まれば回復。弓の連射を控えめに";
+  const BUILD = "v32 体力で駆け引き：全攻撃が体力消費、体力切れは攻撃不可(息切れ)＋移動鈍化。仲間の浪人を斬る友軍誤射を修正";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

@@ -12,6 +12,7 @@ s.test("ammo regenerates after the regen delay while not firing", (t) => {
   const CONFIG = sb.CONFIG;
   const u = new sb.Unit(400, 400, "blue");
   game.units = [u];
+  u.stamina = 1e9; // 弾薬機構の検証では体力ゲートを無効化
   u.ammo = 2;
   u.sinceShot = CONFIG.unit.ammoRegenDelay; // already past the delay
   u.update(CONFIG.unit.ammoRegenInterval + 5, game);
@@ -22,6 +23,7 @@ s.test("no regen immediately after firing (within the delay)", (t) => {
   const { sb, game } = newGame(0);
   const u = new sb.Unit(400, 400, "blue");
   game.units = [u];
+  u.stamina = 1e9; // 弾薬機構の検証では体力ゲートを無効化
   u.cooldown = 0;
   u.tryShoot(game); // sinceShot resets to 0
   const after = u.ammo;
@@ -34,6 +36,7 @@ s.test("regen never exceeds the magazine size", (t) => {
   const CONFIG = sb.CONFIG;
   const u = new sb.Unit(400, 400, "blue");
   game.units = [u];
+  u.stamina = 1e9; // 弾薬機構の検証では体力ゲートを無効化
   u.ammo = u.magSizeVal() - 1;
   u.sinceShot = CONFIG.unit.ammoRegenDelay;
   u.update(CONFIG.unit.ammoRegenInterval * 10, game);
@@ -44,6 +47,7 @@ s.test("emptying the magazine still forces a full reload", (t) => {
   const { sb, game } = newGame(0);
   const u = new sb.Unit(400, 400, "blue");
   game.units = [u];
+  u.stamina = 1e9; // 弾薬機構の検証では体力ゲートを無効化
   for (let i = 0; i < u.magSizeVal() + 2; i++) { u.cooldown = 0; u.tryShoot(game); }
   t.equal(u.reloading, true, "reloading after emptying the magazine");
   t.equal(u.ammo, 0, "magazine is empty during reload");
