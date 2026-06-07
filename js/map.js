@@ -58,31 +58,41 @@ class GameMap {
       mkBase("red", this.redSpawns),
     ];
 
-    // Fortify each fort: an indestructible front wall (facing mid-field) with
-    // TWO destructible gates (top & bottom). Allies pass the gates freely; the
-    // enemy must destroy a gate to get through.
+    // Fortify each fort like a CASTLE: walls on all four sides so the enemy
+    // can't just walk around the back. The only way in is two destructible
+    // gates on the front (enemy-facing) wall — top & bottom. Allies pass gates
+    // freely; the enemy must destroy a gate to break in.
     this.walls = [];   // {x,y,w,h} solid for everyone
     this.gates = [];   // {x,y,w,h,team,hp,maxHp}
+    const HW = 340;    // half-width / half-height of the keep enclosure (world px)
+    const HH = 340;    // big enough to hold the whole spawn cluster inside
+    const wth = 26;    // wall thickness
     for (const b of this.bases) {
       const dir = b.team === "blue" ? 1 : -1;
-      const fx = b.x + dir * (b.coreR + 70);  // front-wall x
-      const wth = 26;                          // wall thickness
-      const wx = fx - wth / 2;
-      // Segments down the front face: pillar / GATE / pillar / GATE / pillar.
+      const left = b.x - HW;
+      const right = b.x + HW;
+      const top = b.y - HH;
+      const bot = b.y + HH;
+      // Walls/gates belong to the fort's team: ALLIES pass their own fort
+      // freely (no pathfinding traps), only the ENEMY is blocked.
+      const wall = (x, y, w, h) => this.walls.push({ x, y, w, h, team: b.team });
+      // Top & bottom walls (full width) and the back wall (own-edge side).
+      wall(left, top, 2 * HW, wth);
+      wall(left, bot - wth, 2 * HW, wth);
+      wall(dir > 0 ? left : right - wth, top, wth, 2 * HH);
+      // Front (enemy-facing) wall with two gate gaps in the upper & lower thirds.
+      const fx = dir > 0 ? right - wth : left;
       const segs = [
-        { y0: b.y - 170, y1: b.y - 110, gate: false },
-        { y0: b.y - 110, y1: b.y - 40, gate: true },
-        { y0: b.y - 40, y1: b.y + 40, gate: false },
-        { y0: b.y + 40, y1: b.y + 110, gate: true },
-        { y0: b.y + 110, y1: b.y + 170, gate: false },
+        { y0: top, y1: b.y - 150, gate: false },
+        { y0: b.y - 150, y1: b.y - 70, gate: true },
+        { y0: b.y - 70, y1: b.y + 70, gate: false },
+        { y0: b.y + 70, y1: b.y + 150, gate: true },
+        { y0: b.y + 150, y1: bot, gate: false },
       ];
       for (const s of segs) {
-        const rect = { x: wx, y: s.y0, w: wth, h: s.y1 - s.y0 };
-        if (s.gate) {
-          this.gates.push({ ...rect, team: b.team, hp: CONFIG.gate.hp, maxHp: CONFIG.gate.hp });
-        } else {
-          this.walls.push(rect);
-        }
+        const rect = { x: fx, y: s.y0, w: wth, h: s.y1 - s.y0 };
+        if (s.gate) this.gates.push({ ...rect, team: b.team, hp: CONFIG.gate.hp, maxHp: CONFIG.gate.hp });
+        else this.walls.push({ ...rect, team: b.team });
       }
     }
   }
@@ -166,8 +176,9 @@ class GameMap {
   resolveCollision(x, y, radius, canClimb, team) {
     let nx = x;
     let ny = y;
-    // Indestructible fort walls block everyone.
+    // Fort walls block only the ENEMY team; allies pass their own fort freely.
     for (const w of this.walls) {
+      if (w.team === team) continue;
       const out = this._pushOutRect(nx, ny, radius, w);
       if (out) { nx = out.x; ny = out.y; }
     }

@@ -59,8 +59,8 @@ class Game {
     // Spread starting weapons across each AI squad so fights feel varied (the
     // AI also switches weapon by range at runtime — see ai.js).
     const loadout = ["rifle", "sniper", "shotgun", "smg"];
-    const blueSpawns = this._teamSpawns(this.map.blueSpawns);
-    const redSpawns = this._teamSpawns(this.map.redSpawns);
+    const blueSpawns = this._teamSpawns(this.map.blueSpawns, "blue");
+    const redSpawns = this._teamSpawns(this.map.redSpawns, "red");
     const pIdx = V.clamp(this.playerIndex, 0, blueSpawns.length - 1);
 
     // Blue team: the chosen slot is the human player (single-player only); the
@@ -101,7 +101,7 @@ class Game {
   // Build CONFIG.teamSize spawn points for a team: use the stage's authored
   // spawns, then generate extra ones fanned out around their centroid (pushed
   // clear of obstacles) so we can field 6-a-side without hand-authoring them.
-  _teamSpawns(spawns) {
+  _teamSpawns(spawns, team) {
     const n = CONFIG.teamSize || spawns.length;
     const pts = spawns.map((s) => ({ x: s.x, y: s.y }));
     let cx = 0;
@@ -113,7 +113,7 @@ class Game {
       const ang = i * 2.3999; // golden angle -> even fan
       const rad = 50 + 24 * i;
       const p = this.map.resolveCollision(
-        cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad, CONFIG.unit.radius);
+        cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad, CONFIG.unit.radius, false, team);
       pts.push(p);
       i++;
     }

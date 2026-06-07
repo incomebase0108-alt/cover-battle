@@ -52,4 +52,17 @@ s.test("a destroyed gate no longer blocks", (t) => {
   t.equal(out.x, cx, "enemy passes a broken gate");
 });
 
+s.test("fort walls block the enemy but allies pass their own fort", (t) => {
+  const { game } = newGame(0);
+  t.ok(game.map.walls.length > 0, "fort has walls");
+  const w = game.map.walls[0];
+  const cx = w.x + w.w / 2;
+  const cy = w.y + w.h / 2;
+  const enemyTeam = w.team === "blue" ? "red" : "blue";
+  const ally = game.map.resolveCollision(cx, cy, 14, false, w.team);
+  const enemy = game.map.resolveCollision(cx, cy, 14, false, enemyTeam);
+  t.equal(ally.x === cx && ally.y === cy, true, "ally passes its own wall");
+  t.equal(enemy.x === cx && enemy.y === cy, false, "enemy is blocked by the wall");
+});
+
 module.exports = s;

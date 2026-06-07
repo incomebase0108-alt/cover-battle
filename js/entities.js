@@ -52,8 +52,11 @@ class Bullet {
       }
     }
 
-    // Indestructible fort walls stop bullets.
-    if (game.map.walls && game.map.wallAt(this.x, this.y)) { this.dead = true; return; }
+    // Enemy fort walls stop bullets; your own walls let your shots pass out.
+    if (game.map.walls) {
+      const w = game.map.wallAt(this.x, this.y);
+      if (w && w.team !== this.team) { this.dead = true; return; }
+    }
     // Enemy gates take damage from your fire; your own gate lets your shots pass.
     if (game.map.gates) {
       const gate = game.map.enemyGateAt(this.x, this.y, this.team);

@@ -133,14 +133,20 @@ const STAGES = [
       { x: 480, y: 300, r: 46 },
       { x: 250, y: 180, r: 34 },
       { x: 710, y: 420, r: 34 },
+      // Scattered lone boulders breaking up the open ground.
+      { x: 360, y: 420, r: 28 }, { x: 600, y: 180, r: 28 },
     ],
     forests: [
       { x: 200, y: 440, r: 64 },
       { x: 760, y: 160, r: 64 },
+      // Small mid-field copses to break sightlines without closing the field.
+      { x: 340, y: 110, r: 40 }, { x: 620, y: 490, r: 40 },
     ],
     // Mountains: indestructible solid cover. Rivers: passable but slow you down.
-    mountains: [ { x: 250, y: 470, r: 44 } ],
+    mountains: [ { x: 250, y: 470, r: 44 }, { x: 540, y: 470, r: 32 } ],
     rivers: [ { x: 430, y: 0, w: 60, h: 600 } ],
+    // A dry sand patch off-center adds a slow zone without choking the lanes.
+    sand: [ { x: 300, y: 230, w: 160, h: 140 } ],
     // Ledges in front of each fort: climbers cross straight (shortcut), others
     // detour around the open top/bottom lanes.
     blueSpawns: [ { x: 90, y: 220 }, { x: 90, y: 300 }, { x: 90, y: 380 }, { x: 150, y: 300 } ],
@@ -153,15 +159,25 @@ const STAGES = [
       { x: 360, y: 150, r: 40 }, { x: 600, y: 150, r: 40 },
       { x: 360, y: 450, r: 40 }, { x: 600, y: 450, r: 40 },
       { x: 480, y: 300, r: 52 },
+      // Extra rubble fills out the canyon into a dense destructible-cover maze.
+      { x: 290, y: 300, r: 30 }, { x: 670, y: 300, r: 30 },
+      { x: 480, y: 160, r: 28 }, { x: 480, y: 440, r: 28 },
+      { x: 420, y: 230, r: 24 }, { x: 540, y: 370, r: 24 },
     ],
     forests: [
       { x: 160, y: 300, r: 58 }, { x: 800, y: 300, r: 58 },
+      // Tucked-away thickets give a flanker something to hide behind.
+      { x: 480, y: 70, r: 34 }, { x: 480, y: 530, r: 34 },
     ],
     mountains: [ { x: 480, y: 70, r: 36 }, { x: 480, y: 530, r: 36 } ],
     rivers: [ { x: 0, y: 275, w: 960, h: 50 } ],
     // Staggered "banks" (土手) flanking the central rock: climbers cut straight
     // across toward mid-field; others detour around the open ends of each bank.
-    ledges: [ { x: 380, y: 360, w: 50, h: 170 }, { x: 530, y: 70, w: 50, h: 170 } ],
+    ledges: [
+      { x: 380, y: 360, w: 50, h: 170 }, { x: 530, y: 70, w: 50, h: 170 },
+      // Two more short banks add raised firing steps over the rubble.
+      { x: 290, y: 110, w: 46, h: 120 }, { x: 620, y: 370, w: 46, h: 120 },
+    ],
     blueSpawns: [ { x: 90, y: 200 }, { x: 90, y: 400 }, { x: 160, y: 120 }, { x: 160, y: 480 } ],
     redSpawns:  [ { x: 870, y: 200 }, { x: 870, y: 400 }, { x: 800, y: 120 }, { x: 800, y: 480 } ],
     enemySkill: 0.8,
@@ -176,6 +192,11 @@ const STAGES = [
       { x: 200, y: 160, r: 70 }, { x: 760, y: 160, r: 70 },
       { x: 200, y: 440, r: 70 }, { x: 760, y: 440, r: 70 },
       { x: 480, y: 300, r: 60 },
+      // Dense canopy infill — overlapping copses turn the mid into near-total
+      // concealment, with only thin sightline gaps between clumps.
+      { x: 360, y: 180, r: 50 }, { x: 600, y: 180, r: 50 },
+      { x: 360, y: 420, r: 50 }, { x: 600, y: 420, r: 50 },
+      { x: 480, y: 110, r: 36 }, { x: 480, y: 490, r: 36 },
     ],
     mountains: [ { x: 130, y: 300, r: 34 }, { x: 830, y: 300, r: 34 } ],
     rivers: [ { x: 440, y: 0, w: 80, h: 600 } ],
@@ -194,14 +215,21 @@ const STAGES = [
     rocks: [
       { x: 480, y: 110, r: 36 }, { x: 480, y: 490, r: 36 },
       { x: 320, y: 300, r: 34 }, { x: 640, y: 300, r: 34 },
+      // Cover stationed inside each corridor for the fights along the lanes.
+      { x: 380, y: 110, r: 26 }, { x: 580, y: 490, r: 26 },
+      { x: 380, y: 490, r: 26 }, { x: 580, y: 110, r: 26 },
     ],
     forests: [
       { x: 230, y: 110, r: 60 }, { x: 730, y: 490, r: 60 },
       { x: 480, y: 300, r: 52 },
+      // Brush at the lane gaps where the corridors reconnect — ambush the crossers.
+      { x: 480, y: 60, r: 34 }, { x: 480, y: 540, r: 34 },
     ],
-    // Three stacked mountains down the middle, leaving lane gaps top & bottom.
+    // Stacked mountains down the middle plus short outer spurs tighten the
+    // wall, but the top & bottom lane gaps stay open so units still cross.
     mountains: [
       { x: 480, y: 210, r: 40 }, { x: 480, y: 300, r: 40 }, { x: 480, y: 390, r: 40 },
+      { x: 380, y: 300, r: 28 }, { x: 580, y: 300, r: 28 },
     ],
     rivers: [ { x: 0, y: 280, w: 960, h: 40 } ],
     // Banks gate the top & bottom lane gaps that bypass the mountain wall:
@@ -218,13 +246,25 @@ const STAGES = [
     rocks: [
       { x: 480, y: 140, r: 34 }, { x: 480, y: 300, r: 44 }, { x: 480, y: 460, r: 34 },
       { x: 380, y: 220, r: 30 }, { x: 580, y: 380, r: 30 },
+      // Stepping-stone boulders staggered across the ford for in-river cover.
+      { x: 440, y: 80, r: 24 }, { x: 520, y: 220, r: 24 },
+      { x: 440, y: 380, r: 24 }, { x: 520, y: 520, r: 24 },
     ],
     forests: [
       { x: 300, y: 110, r: 58 }, { x: 660, y: 490, r: 58 },
       { x: 300, y: 490, r: 58 }, { x: 660, y: 110, r: 58 },
+      // Reed thickets right on the banks to ambush troops mid-wade.
+      { x: 360, y: 300, r: 36 }, { x: 600, y: 300, r: 36 },
     ],
     mountains: [ { x: 480, y: 60, r: 30 }, { x: 480, y: 540, r: 30 } ],
-    rivers: [ { x: 410, y: 0, w: 140, h: 600 } ],
+    rivers: [
+      { x: 410, y: 0, w: 140, h: 600 },
+      // Tributary inlets reaching off the main channel widen the slow zone.
+      { x: 280, y: 280, w: 130, h: 40 }, { x: 550, y: 280, w: 130, h: 40 },
+    ],
+    // Raised banks let climbers vault the main channel as a shortcut; foot
+    // troops still have the open river to wade across.
+    ledges: [ { x: 380, y: 130, w: 200, h: 44 }, { x: 380, y: 426, w: 200, h: 44 } ],
     blueSpawns: [ { x: 90, y: 240 }, { x: 90, y: 360 }, { x: 150, y: 180 }, { x: 150, y: 420 } ],
     redSpawns:  [ { x: 870, y: 240 }, { x: 870, y: 360 }, { x: 810, y: 180 }, { x: 810, y: 420 } ],
     enemySkill: 1.0,
@@ -241,16 +281,25 @@ const STAGES = [
       { x: 710, y: 200, r: 34 }, { x: 680, y: 300, r: 34 }, { x: 710, y: 400, r: 34 },
       // Central contested cover
       { x: 480, y: 180, r: 38 }, { x: 480, y: 420, r: 38 },
+      // Forward redoubts pushed out from each fortress toward the middle.
+      { x: 380, y: 180, r: 30 }, { x: 580, y: 420, r: 30 },
+      { x: 380, y: 420, r: 30 }, { x: 580, y: 180, r: 30 },
     ],
     forests: [
       { x: 480, y: 300, r: 64 },
       { x: 250, y: 90, r: 50 }, { x: 710, y: 510, r: 50 },
+      // Scrub flanking the central wood thickens the midfield brawl.
+      { x: 360, y: 90, r: 40 }, { x: 600, y: 510, r: 40 },
     ],
     mountains: [
       { x: 480, y: 70, r: 36 }, { x: 480, y: 530, r: 36 },
       { x: 380, y: 300, r: 30 }, { x: 580, y: 300, r: 30 },
     ],
-    rivers: [ { x: 0, y: 285, w: 960, h: 36 }, { x: 460, y: 0, w: 40, h: 600 } ],
+    rivers: [
+      { x: 0, y: 285, w: 960, h: 36 }, { x: 460, y: 0, w: 40, h: 600 },
+      // A diagonal-feel pair of moat arms slows the approach to center.
+      { x: 320, y: 200, w: 36, h: 200 }, { x: 604, y: 200, w: 36, h: 200 },
+    ],
     blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 280 }, { x: 150, y: 360 } ],
     redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 280 }, { x: 810, y: 360 } ],
     enemySkill: 1.0,
@@ -258,12 +307,28 @@ const STAGES = [
   {
     name: "STAGE 7 — 砂漠とオアシス",
     // Open desert (slows movement) with neutral oases that heal — contest them.
-    rocks: [ { x: 480, y: 160, r: 36 }, { x: 480, y: 440, r: 36 }, { x: 330, y: 300, r: 30 }, { x: 630, y: 300, r: 30 } ],
-    forests: [ { x: 200, y: 110, r: 50 }, { x: 760, y: 490, r: 50 } ],
-    mountains: [ { x: 480, y: 300, r: 40 } ],
+    rocks: [
+      { x: 480, y: 160, r: 36 }, { x: 480, y: 440, r: 36 }, { x: 330, y: 300, r: 30 }, { x: 630, y: 300, r: 30 },
+      // Rare rocky outcrops give scarce hard cover amid the dunes.
+      { x: 400, y: 230, r: 24 }, { x: 560, y: 370, r: 24 },
+    ],
+    forests: [
+      { x: 200, y: 110, r: 50 }, { x: 760, y: 490, r: 50 },
+      // Sparse palm stands cling to the oasis edges.
+      { x: 300, y: 200, r: 34 }, { x: 660, y: 400, r: 34 },
+    ],
+    mountains: [ { x: 480, y: 300, r: 40 }, { x: 480, y: 90, r: 28 }, { x: 480, y: 510, r: 28 } ],
     rivers: [],
-    sand: [ { x: 120, y: 0, w: 720, h: 600 } ],
-    oases: [ { x: 300, y: 300, r: 60 }, { x: 660, y: 300, r: 60 }, { x: 480, y: 90, r: 48 } ],
+    // Deeper drift dunes layered on the sand sea make a slow center.
+    sand: [
+      { x: 120, y: 0, w: 720, h: 600 },
+      { x: 360, y: 110, w: 240, h: 110 }, { x: 360, y: 380, w: 240, h: 110 },
+    ],
+    oases: [
+      { x: 300, y: 300, r: 60 }, { x: 660, y: 300, r: 60 }, { x: 480, y: 90, r: 48 },
+      // A fourth, southern oasis to fight over.
+      { x: 480, y: 510, r: 48 },
+    ],
     blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 290 }, { x: 150, y: 350 } ],
     redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 290 }, { x: 810, y: 350 } ],
     enemySkill: 1.0,
@@ -274,8 +339,17 @@ const STAGES = [
       { x: 300, y: 160, r: 40 }, { x: 660, y: 160, r: 40 },
       { x: 300, y: 440, r: 40 }, { x: 660, y: 440, r: 40 },
       { x: 480, y: 300, r: 30 },
+      // Crumbled outer walls ring each of the four ruined forts.
+      { x: 370, y: 160, r: 22 }, { x: 590, y: 160, r: 22 },
+      { x: 370, y: 440, r: 22 }, { x: 590, y: 440, r: 22 },
+      { x: 300, y: 230, r: 22 }, { x: 660, y: 230, r: 22 },
+      { x: 300, y: 370, r: 22 }, { x: 660, y: 370, r: 22 },
     ],
-    forests: [ { x: 480, y: 110, r: 56 }, { x: 480, y: 490, r: 56 }, { x: 150, y: 300, r: 48 }, { x: 810, y: 300, r: 48 } ],
+    forests: [
+      { x: 480, y: 110, r: 56 }, { x: 480, y: 490, r: 56 }, { x: 150, y: 300, r: 48 }, { x: 810, y: 300, r: 48 },
+      // Overgrowth reclaiming the gaps between the ruins.
+      { x: 390, y: 300, r: 30 }, { x: 570, y: 300, r: 30 },
+    ],
     mountains: [ { x: 300, y: 300, r: 30 }, { x: 660, y: 300, r: 30 } ],
     rivers: [ { x: 0, y: 285, w: 960, h: 36 } ],
     // Central plateau (高台) around the mid rock: three banks with the right
@@ -298,13 +372,21 @@ const STAGES = [
       { x: 480, y: 60, r: 36 }, { x: 480, y: 540, r: 36 },
       { x: 360, y: 160, r: 30 }, { x: 600, y: 160, r: 30 },
       { x: 360, y: 440, r: 30 }, { x: 600, y: 440, r: 30 },
+      // Inner peaks ring the redoubt tighter, but the east/west flank lanes
+      // (around x300 and x680 at mid-height) stay open for foot troops.
+      { x: 300, y: 240, r: 26 }, { x: 660, y: 240, r: 26 },
+      { x: 300, y: 360, r: 26 }, { x: 660, y: 360, r: 26 },
     ],
     rivers: [ { x: 440, y: 0, w: 80, h: 600 } ],
     oases: [ { x: 480, y: 300, r: 54 } ],
     // The healing oasis sits on a raised redoubt: banks wall it off north & south
     // while the east/west sides stay open. Climbers vault straight onto the heal
     // point; foot soldiers must enter from the flanks (across the river lane).
-    ledges: [ { x: 400, y: 206, w: 160, h: 40 }, { x: 400, y: 354, w: 160, h: 40 } ],
+    // Extra outer terraces add a second tier of high ground for climbers.
+    ledges: [
+      { x: 400, y: 206, w: 160, h: 40 }, { x: 400, y: 354, w: 160, h: 40 },
+      { x: 300, y: 120, w: 120, h: 38 }, { x: 540, y: 442, w: 120, h: 38 },
+    ],
     blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 290 }, { x: 150, y: 350 } ],
     redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 290 }, { x: 810, y: 350 } ],
     enemySkill: 1.0,
@@ -316,12 +398,28 @@ const STAGES = [
       { x: 260, y: 220, r: 32 }, { x: 260, y: 380, r: 32 },
       { x: 700, y: 220, r: 32 }, { x: 700, y: 380, r: 32 },
       { x: 480, y: 170, r: 36 }, { x: 480, y: 430, r: 36 },
+      // Forward rubble bridging the bases to the center cauldron.
+      { x: 380, y: 220, r: 24 }, { x: 580, y: 380, r: 24 },
+      { x: 380, y: 380, r: 24 }, { x: 580, y: 220, r: 24 },
     ],
-    forests: [ { x: 480, y: 300, r: 60 }, { x: 200, y: 110, r: 48 }, { x: 760, y: 490, r: 48 } ],
-    mountains: [ { x: 480, y: 64, r: 34 }, { x: 480, y: 536, r: 34 }, { x: 360, y: 300, r: 26 }, { x: 600, y: 300, r: 26 } ],
-    rivers: [ { x: 0, y: 285, w: 960, h: 34 } ],
-    sand: [ { x: 0, y: 0, w: 220, h: 600 }, { x: 740, y: 0, w: 220, h: 600 } ],
-    oases: [ { x: 480, y: 440, r: 46 } ],
+    forests: [
+      { x: 480, y: 300, r: 60 }, { x: 200, y: 110, r: 48 }, { x: 760, y: 490, r: 48 },
+      // Flanking woods around the central thicket.
+      { x: 340, y: 110, r: 38 }, { x: 620, y: 490, r: 38 },
+    ],
+    mountains: [
+      { x: 480, y: 64, r: 34 }, { x: 480, y: 536, r: 34 }, { x: 360, y: 300, r: 26 }, { x: 600, y: 300, r: 26 },
+      { x: 480, y: 120, r: 22 }, { x: 480, y: 480, r: 22 },
+    ],
+    rivers: [ { x: 0, y: 285, w: 960, h: 34 }, { x: 300, y: 380, w: 360, h: 30 } ],
+    // Central drifting sand strip adds a slow band on top of the flank deserts.
+    sand: [
+      { x: 0, y: 0, w: 220, h: 600 }, { x: 740, y: 0, w: 220, h: 600 },
+      { x: 330, y: 180, w: 300, h: 90 },
+    ],
+    oases: [ { x: 480, y: 440, r: 46 }, { x: 480, y: 220, r: 40 } ],
+    // High-ground steps flanking the center for climbers in the final fight.
+    ledges: [ { x: 320, y: 280, w: 110, h: 40 }, { x: 530, y: 280, w: 110, h: 40 } ],
     blueSpawns: [ { x: 80, y: 230 }, { x: 80, y: 370 }, { x: 140, y: 290 }, { x: 140, y: 350 } ],
     redSpawns:  [ { x: 880, y: 230 }, { x: 880, y: 370 }, { x: 820, y: 290 }, { x: 820, y: 350 } ],
     enemySkill: 1.0,
