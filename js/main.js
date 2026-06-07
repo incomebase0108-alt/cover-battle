@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v13 砦の自動ドレイン誤発動を修正";
+  const BUILD = "v14 ダイナマイト廃止＋AI動物使いが捕獲";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
@@ -37,7 +37,6 @@
     lock: document.getElementById("btnLock"),
     cycle: document.getElementById("btnCycle"),
     weapon: document.getElementById("btnWeapon"),
-    dynamite: document.getElementById("btnDynamite"),
     ability: document.getElementById("btnAbility"),
   });
 

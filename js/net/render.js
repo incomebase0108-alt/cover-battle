@@ -41,8 +41,7 @@ const NetRender = {
     }
     map.drawSolids(ctx);
     if (snap.sm) for (const s of snap.sm) this._smoke(ctx, s);
-    for (const d of snap.d) this._blast(ctx, d, "#ff7a2c");
-    for (const b of snap.bo) this._blast(ctx, b, "#ff8a3c");
+    if (snap.bo) for (const b of snap.bo) this._blast(ctx, b, "#ff8a3c");
     ctx.restore();
     this._minimap(ctx, snap, map, myIndex, cam);
   },
@@ -134,7 +133,7 @@ const NetRender = {
       ctx.beginPath(); ctx.arc(e.x, e.y, 9, 0, Math.PI * 2); ctx.fill();
       return;
     }
-    const R = e.fl > 360 ? CONFIG.dynamite.radius : CONFIG.bomb.radius;
+    const R = CONFIG.bomb.radius;
     ctx.save(); ctx.globalAlpha = Math.max(0, e.fl / 400);
     const g = ctx.createRadialGradient(e.x, e.y, 4, e.x, e.y, R);
     g.addColorStop(0, "#fff2b0"); g.addColorStop(0.5, color); g.addColorStop(1, "rgba(255,80,40,0)");

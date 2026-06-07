@@ -14,7 +14,6 @@ class Game {
     this.bullets = [];
     this.items = [];
     this.bombs = [];
-    this.dynamites = [];
     this.chests = [];
     this.capturePoints = [];
     this.beasts = [];
@@ -42,7 +41,6 @@ class Game {
     this.bullets = [];
     this.items = [];
     this.bombs = [];
-    this.dynamites = [];
     this.chests = [];
     this.capturePoints = [];
     this.beasts = [];
@@ -166,7 +164,6 @@ class Game {
       })),
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),
-      d: this.dynamites.map((d) => ({ x: Math.round(d.x), y: Math.round(d.y), e: d.exploded ? 1 : 0, fl: Math.round(d.flash) })),
       c: this.chests.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.opened ? 1 : 0 })),
       be: this.beasts.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), a: +b.aim.toFixed(2), ty: b.type, h: half(b.hp, b.maxHp), tm: b.team || null })),
       sm: this.smokes.map((s) => ({ x: Math.round(s.x), y: Math.round(s.y), r: Math.round(s.r), l: Math.round(s.life) })),
@@ -352,7 +349,6 @@ class Game {
     for (const u of this.units) u.update(dt, this);
     for (const b of this.bullets) b.update(dt, this);
     for (const b of this.bombs) b.update(dt, this);
-    for (const d of this.dynamites) d.update(dt, this);
     for (const it of this.items) it.update(dt);
 
     for (const sm of this.smokes) sm.update(dt);
@@ -368,7 +364,6 @@ class Game {
 
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.bombs = this.bombs.filter((b) => !b.dead);
-    this.dynamites = this.dynamites.filter((d) => !d.dead);
     this.items = this.items.filter((it) => !it.dead);
 
     this._updateCamera();
@@ -402,7 +397,7 @@ class Game {
     }
 
     // "Fort under attack" warning: trigger when our fort loses HP, or when an
-    // enemy bomb/dynamite is set near it. サドンデス(storm)のドレインは攻撃では
+    // enemy bomb is set near it. サドンデス(storm)のドレインは攻撃では
     // ないので、storm中はHP減少による警告を出さない(誤警告の防止)。
     if (this.blueFortAlert > 0) this.blueFortAlert -= dt;
     if (!this.stormActive && this._prevBlueFort != null && blueFort < this._prevBlueFort - 0.01) {
@@ -447,13 +442,10 @@ class Game {
     return this.map.bases.find((b) => b.team !== unit.team);
   }
 
-  // Is there a live enemy bomb/dynamite set close to the player's fort?
+  // Is there a live enemy bomb set close to the player's fort?
   _enemyThreatNearBlueFort() {
     const b = this.map.baseOf("blue");
     const near = b.coreR + 150;
-    for (const d of this.dynamites) {
-      if (!d.exploded && d.team === "red" && V.dist(d.x, d.y, b.x, b.y) <= near) return true;
-    }
     for (const bo of this.bombs) {
       if (!bo.exploded && bo.owner && bo.owner.team === "red" &&
           V.dist(bo.x, bo.y, b.x, b.y) <= near) return true;
@@ -551,9 +543,8 @@ class Game {
     this.map.drawSolids(ctx);
     // Smoke clouds over units (so they actually hide what's underneath).
     for (const sm of this.smokes) sm.draw(ctx);
-    // Bombs/dynamite/explosions on top so blasts read clearly over everything.
+    // Bombs/explosions on top so blasts read clearly over everything.
     for (const b of this.bombs) b.draw(ctx);
-    for (const d of this.dynamites) d.draw(ctx);
     this._drawLockOn(ctx);
     if (typeof Overlay !== "undefined") Overlay.drawNames(ctx, this);
     ctx.restore();

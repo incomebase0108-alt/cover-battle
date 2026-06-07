@@ -11,7 +11,7 @@ const ABILITY = {
   turretDamage: 12,
   dashMs: 230,            // duration of an assault dash
   dashMul: 2.6,           // speed multiplier during a dash
-  captureRange: 230,      // beast-tamer capture reach
+  captureRange: 280,      // beast-tamer capture reach
 };
 
 // Downed-ally rescue tuning.

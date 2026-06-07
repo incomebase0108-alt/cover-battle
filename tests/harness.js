@@ -104,7 +104,6 @@ function loadGame() {
     "Bullet",
     "Item",
     "Bomb",
-    "Dynamite",
     "Chest",
     "Beast",
     "Smoke",

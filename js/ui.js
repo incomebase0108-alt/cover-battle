@@ -54,7 +54,7 @@ const UI = {
     this.el.cbClass.textContent = `${c ? c.badge + " " + c.label : "兵士"}（${traits}）`;
     this.el.cbKeys.innerHTML =
       `移動 <b>WASD/スティック</b> ・ 撃つ <b>クリック/スペース/撃</b> ・ ` +
-      `爆弾 <b>E / 💣</b> ・ ダイナマイト <b>X / 🧨</b> ・ ` +
+      `爆弾 <b>E / 💣</b> ・ ` +
       `武器 <b>1-4 / F / 🔫</b> ・ ロック <b>R / 🔒</b> ・ ` +
       `特殊 <b>C / 🎯</b>：${this.abilityHelp(p.cls)}`;
   },

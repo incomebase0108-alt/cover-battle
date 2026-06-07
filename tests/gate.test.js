@@ -69,7 +69,7 @@ s.test("自軍の爆発は自分の砦を傷つけない(誤爆防止)", (t) => 
   const { sb, game } = newGame(0);
   const blue = game.map.baseOf("blue");
   const before = blue.hp;
-  const owner = { team: "blue", activeBombs: 1, activeDynamite: 1 };
+  const owner = { team: "blue", activeBombs: 1 };
   const bomb = new sb.Bomb(blue.x, blue.y, owner);
   if (typeof bomb.explode === "function") bomb.explode(game);
   else bomb.detonate(game);
@@ -82,7 +82,7 @@ s.test("敵砦への攻撃は自軍砦を巻き込まない", (t) => {
   const red = game.map.baseOf("red");
   const blueBefore = blue.hp;
   const redBefore = red.hp;
-  const owner = { team: "blue", activeBombs: 1, activeDynamite: 1 };
+  const owner = { team: "blue", activeBombs: 1 };
   const bomb = new sb.Bomb(red.x, red.y, owner);
   if (typeof bomb.explode === "function") bomb.explode(game);
   else bomb.detonate(game);

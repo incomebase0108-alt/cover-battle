@@ -36,6 +36,19 @@ s.test("beast tamer captures a nearby wild beast", (t) => {
   t.equal(game.beasts[0].team, "blue", "beast joined the tamer's team");
 });
 
+s.test("AI動物使いは野生動物に向かって捕獲する", (t) => {
+  const { sb, game } = newGame(0);
+  const tamer = new sb.Unit(500, 500, "blue");
+  tamer.applyClass("tamer");
+  tamer.name = "AI獣";
+  tamer.ai = new sb.AIController();
+  game.units = [tamer];
+  const beast = new sb.Beast(560, 500, "tiger"); // 60px = 捕獲射程内
+  game.beasts = [beast];
+  tamer.ai.update(tamer, 16, game);
+  t.equal(beast.team, "blue", "AI動物使いが射程内の野生動物を捕獲した");
+});
+
 s.test("assault dash makes the unit move faster briefly", (t) => {
   const { sb, game } = newGame(0);
   const a = new sb.Unit(1500, 200, "blue"); // open ground

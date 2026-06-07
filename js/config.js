@@ -61,18 +61,6 @@ const CONFIG = {
     flashTime: 320,    // ms the explosion is drawn
   },
 
-  // Dynamite: a powerful fort-buster. Set it, and 3s later it blows with a big
-  // blast (especially vs forts). It has HP, so the ENEMY can shoot it to defuse
-  // it before it detonates.
-  dynamite: {
-    fuse: 3000,
-    radius: 130,
-    unitDamage: 95,
-    rockDamage: 400,
-    fortDamage: 320,   // the whole point — wreck forts fast
-    hp: 30,            // shoot it (enemy bullets) to defuse before it blows
-    flashTime: 420,
-  },
 
   // Item pickups dropped by broken rocks. duration 0 = instant/permanent.
   items: {

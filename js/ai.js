@@ -169,6 +169,30 @@ class AIController {
     return best;
   }
 
+  // 動物使いAI: 最も近い「野生(未捕獲)」動物へ向かい、射程に入ったら捕獲する。
+  // 捕獲枠が空いていて野生動物がいる限り、戦闘より優先して動く。返り値=この
+  // フレームの行動を引き受けたか。
+  huntBeastAsTamer(self, game) {
+    const cls = (typeof getClass === "function") ? getClass(self.cls) : null;
+    if (!cls || cls.ability !== "capture") return false;
+    if (self.abilityRemaining && self.abilityRemaining(game) <= 0) return false; // 上限まで捕獲済み
+    let best = null;
+    let bd = 900; // 広めに索敵して率先して向かう
+    for (const b of (game.beasts || [])) {
+      if (b.dead || b.team) continue; // 野生のみが対象
+      const d = V.dist(self.x, self.y, b.x, b.y);
+      if (d < bd) { bd = d; best = b; }
+    }
+    if (!best) return false;
+    this.aimAt(self, best.x, best.y);
+    if (bd <= ABILITY.captureRange - 10) {
+      self.useAbility(game); // 射程内：捕獲（クマ/トラを仲間に）
+    } else {
+      this.moveTo(self, best.x, best.y, game); // まだ遠い：近づく
+    }
+    return true;
+  }
+
   // Nearest living enemy within `range` of a point (for fort defence).
   nearestEnemyNear(self, game, x, y, range) {
     let best = null;
@@ -398,6 +422,9 @@ class AIController {
       const d = this.nearestDowned(self, game, 430);
       if (d) { this.moveTo(self, d.x, d.y, game); return; }
     }
+
+    // 動物使いは率先して野生動物を捕獲しに行く（＝無害化して仲間にする）。
+    if (!this.shouldRetreat(self) && this.huntBeastAsTamer(self, game)) return;
 
     this.strafeTimer -= dt;
     if (this.strafeTimer <= 0) {
@@ -700,12 +727,12 @@ class AIController {
     const hasLOS = !game.map.blockedBetween(self.x, self.y, fort.x, fort.y);
     self.aim = baseAngle;
     if (hasLOS && d <= CONFIG.unit.range) {
-      // Close in; plant dynamite point-blank, otherwise pour fire into it.
+      // Close in; lob a bomb point-blank to crack the fort, otherwise pour fire.
       if (d > fort.coreR + 70) {
         self.move(Math.cos(baseAngle), Math.sin(baseAngle), game);
-      } else if (self.activeDynamite < 1 && Math.random() < 0.02) {
-        // Right next to the fort: set the fort-buster, then peel off.
-        self.placeDynamite(game);
+      } else if (Math.random() < 0.02) {
+        // Right next to the fort: drop a bomb, then peel off.
+        self.placeBomb(game);
         self.move(-Math.cos(baseAngle), -Math.sin(baseAngle), game);
       } else {
         self.move(-Math.cos(baseAngle), -Math.sin(baseAngle), game); // back off a touch

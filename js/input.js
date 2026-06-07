@@ -5,7 +5,6 @@ const Input = {
   mouseY: CONFIG.height / 2,
   shooting: false,
   bombQueued: false,        // edge-triggered, consumed once
-  dynamiteQueued: false,    // edge-triggered, consumed once
   abilityQueued: false,     // edge-triggered, consumed once (class ability)
   lockToggleQueued: false,  // edge-triggered, consumed once
   cycleQueued: false,       // edge-triggered, consumed once
@@ -21,7 +20,6 @@ const Input = {
     window.addEventListener("keydown", (e) => {
       const k = e.key.toLowerCase();
       if ((k === "e" || k === "q") && !this.keys[k]) this.bombQueued = true;
-      if (k === "x" && !this.keys[k]) this.dynamiteQueued = true;
       if (k === "c" && !this.keys[k]) this.abilityQueued = true;
       if (k === "r" && !this.keys[k]) this.lockToggleQueued = true;
       if (k === "tab" && !this.keys[k]) { this.cycleQueued = true; e.preventDefault(); }
@@ -110,7 +108,6 @@ const Input = {
     hold(els.lock, () => { this.lockToggleQueued = true; });
     hold(els.cycle, () => { this.cycleQueued = true; });
     hold(els.weapon, () => { this.weaponCycleQueued = true; });
-    hold(els.dynamite, () => { this.dynamiteQueued = true; });
     hold(els.ability, () => { this.abilityQueued = true; });
   },
 
@@ -170,7 +167,6 @@ const Input = {
   },
 
   consumeBomb() { const v = this.bombQueued; this.bombQueued = false; return v; },
-  consumeDynamite() { const v = this.dynamiteQueued; this.dynamiteQueued = false; return v; },
   consumeAbility() { const v = this.abilityQueued; this.abilityQueued = false; return v; },
   consumeLockToggle() { const v = this.lockToggleQueued; this.lockToggleQueued = false; return v; },
   consumeCycle() { const v = this.cycleQueued; this.cycleQueued = false; return v; },

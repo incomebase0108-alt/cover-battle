@@ -97,7 +97,6 @@ wss.on("connection", (ws) => {
         if (typeof m.aim === "number") n.aim = m.aim;
         n.shoot = !!m.shoot;
         if (m.bomb) n.bomb = true;
-        if (m.dyn) n.dyn = true;
         if (m.ability) n.ability = true;
         if (m.slot) n.slot = m.slot;
         if (m.cycleW) n.cycleW = true;
