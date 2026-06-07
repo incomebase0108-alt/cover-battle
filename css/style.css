@@ -145,6 +145,31 @@ body.touch .hud-row { gap: 8px; font-size: 14px; }
 .river-key { color: #6fb6ff; font-weight: 700; }
 .base-key { color: #9cc2ff; font-weight: 700; }
 
+/* プレイ中のクラス情報チップ（スマホのみ）。ボタンのすぐ上に小さく常時表示し、
+   何が得意か・特殊が何かを邪魔にならない程度に知らせる。 */
+.mclass { display: none; }
+body.touch .mclass {
+  display: block;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
+  max-width: 64vw;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #e3ebf5;
+  background: rgba(10,14,20,0.5);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  padding: 3px 12px;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+}
+
 /* Mobile touch controls */
 .touch-controls { display: none; }
 body.touch .touch-controls {

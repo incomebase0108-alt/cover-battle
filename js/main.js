@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v18 スマホはロックオン撤廃・攻撃スティックのみ";
+  const BUILD = "v19 プレイ中にクラスの得意/特殊を表示";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

@@ -10,6 +10,8 @@ const UI = {
     this.el.ammo = document.getElementById("ammo");
     this.el.abilitySmall = document.getElementById("abilitySmall");
     this.el.abilityBtn = document.getElementById("btnAbility");
+    this.el.mClassInfo = document.getElementById("mClassInfo");
+    this._mClassStr = null;
     this.el.weaponName = document.getElementById("weaponName");
     this.el.lockState = document.getElementById("lockState");
     this.el.blueFortBar = document.getElementById("blueFortBar");
@@ -29,6 +31,19 @@ const UI = {
     this.el.hud.classList.toggle("hidden", !show);
     if (this.el.controlBar) this.el.controlBar.classList.toggle("hidden", !show);
   },
+
+  // クラスが「何が得意か」を一言で。プレイ中のスマホ表示用。
+  classTrait(cls) {
+    switch (cls) {
+      case "assault":  return "接近戦・ダッシュで急接近/離脱";
+      case "sniper":   return "遠距離狙撃（一撃が重い）";
+      case "heavy":    return "頑丈・近距離(ショットガン)";
+      case "climber":  return "段差を登れる・水上が速い";
+      case "engineer": return "自動砲台・爆弾多め";
+      case "tamer":    return "動物を捕獲して仲間に";
+      default:         return "";
+    }
+  }
 
   // Short, per-class description of the special ability (C / 🎯).
   abilityHelp(cls) {
@@ -73,6 +88,15 @@ const UI = {
         this.el.ammo.innerHTML = `弾 <b>${p.ammo}</b>/${p.magSize}`;
         if (p.ammo <= 3) this.el.ammo.classList.add("low");
         else this.el.ammo.classList.remove("low");
+      }
+    }
+    // プレイ中のクラス情報チップ（スマホ）：得意なこと＋特殊（残数つき）を1行で。
+    if (this.el.mClassInfo && p) {
+      const c = (typeof getClass === "function") ? getClass(p.cls) : null;
+      if (c) {
+        let s = `${c.badge} ${c.label}：${this.classTrait(p.cls)}`;
+        if (p.abilityRemaining != null) s += `（特殊 残${p.abilityRemaining}）`;
+        if (s !== this._mClassStr) { this._mClassStr = s; this.el.mClassInfo.textContent = s; }
       }
     }
     // 個数制アビリティ（工兵=砲台/動物使い=動物）の残り設置・捕獲数をボタンに表示。
