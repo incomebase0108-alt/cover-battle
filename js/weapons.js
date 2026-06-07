@@ -14,7 +14,12 @@
 //   spread         : max angular jitter in radians for pellets/shots (default 0)
 //   bulletSpeedMul : weapon bullet-speed multiplier (default 1)
 //   rangeMul       : weapon range/bullet-life multiplier (default 1)
+// 近接(刀)は extra フラグで表現する（entities.js が解釈）:
+//   isMelee   : 弾を撃たず、前方の扇内の敵/城門/砦を直接斬る
+//   meleeRange: 斬撃の届く距離(px)、meleeArc: 扇の半角(rad)
+//   noReload  : 弾数/装填の概念を持たない（HUDでも弾を出さない）
 const WEAPONS = {
+  // 内部デフォルト（クラス未設定時のフォールバック専用。プレイヤーは選べない）。
   rifle: {
     label: "ライフル",
     damage: 16,
@@ -26,61 +31,53 @@ const WEAPONS = {
     bulletSpeedMul: 1,
     rangeMul: 1,
   },
-  sniper: {
-    label: "スナイパー",
-    damage: 55,
-    fireCooldown: 900,
-    magSize: 5,
-    reloadTime: 3500,
-    pellets: 1,
-    spread: 0,
-    bulletSpeedMul: 1.6,
-    rangeMul: 1.8,
+
+  // --- 合戦の標準武器（クラス固定） ---
+  katana: {
+    label: "刀",
+    damage: 34,
+    fireCooldown: 420,   // 振りの間隔
+    isMelee: true,
+    meleeRange: 46,      // 前方リーチ(px)。unit.radius(14)+α
+    meleeArc: 1.1,       // 左右±約63°の扇
+    noReload: true,
   },
-  shotgun: {
-    label: "ショットガン",
-    damage: 8,
-    fireCooldown: 700,
-    magSize: 6,
-    reloadTime: 3200,
-    pellets: 6,
-    spread: 0.35,
-    bulletSpeedMul: 1,
-    rangeMul: 0.5,
+  yumi: {
+    label: "弓",
+    damage: 12,
+    fireCooldown: 360,
+    bulletSpeedMul: 1.2,
+    rangeMul: 1.3,
+    noReload: true,      // 装填無しで撃ち続けられる
   },
-  smg: {
-    label: "サブマシンガン",
-    damage: 10,
-    fireCooldown: 120,
-    magSize: 25,
-    reloadTime: 2600,
-    pellets: 1,
-    spread: 0.08,
-    bulletSpeedMul: 1,
-    rangeMul: 0.85,
+  teppo: {
+    label: "鉄砲",
+    damage: 62,          // 一撃が重い
+    fireCooldown: 1100,
+    magSize: 1,          // 一発撃つたびに装填＝火縄銃感
+    reloadTime: 2600,    // 長い装填
+    bulletSpeedMul: 1.7,
+    rangeMul: 1.7,
+    spread: 0.02,
   },
 
-  // --- Special weapons (chest-only, NOT in WEAPON_ORDER) ---
-  //
-  // These carry extra behavior flags (handled in entities.js):
-  //   fire      : on hit, applies extra fire/burn to rock & enemies; short range
-  //   pierce    : bullets pass through enemies and thin objects
-  //   breakRock : deals greatly increased damage to rock/cover
+  // --- 宝箱限定の強力武器（WEAPON_ORDER外）。フラグは entities.js が解釈 ---
+  //   fire : 着弾で延焼（岩/敵に追加）・短射程  pierce : 敵/薄い物を貫通  breakRock : 岩に大ダメージ
   flame: {
-    label: "火炎放射器",
-    damage: 14,          // strong up close
-    fireCooldown: 55,    // rapid stream
+    label: "焙烙火矢",     // 火薬玉の火炎放射（宝箱）
+    damage: 14,
+    fireCooldown: 55,
     magSize: 110,
     reloadTime: 2600,
-    pellets: 3,          // a fuller cone of flame
+    pellets: 3,
     spread: 0.42,
     bulletSpeedMul: 0.6,
-    rangeMul: 0.5,       // short reach, but melts anything near
+    rangeMul: 0.5,
     fire: true,
     breakRock: true,
   },
   piercer: {
-    label: "貫通ライフル",
+    label: "強弓",         // 貫通する強弓（宝箱）
     damage: 22,
     fireCooldown: 260,
     magSize: 12,
@@ -92,7 +89,7 @@ const WEAPONS = {
     pierce: true,
   },
   rockbuster: {
-    label: "破岩砲",
+    label: "大筒",         // 城/岩を砕く大砲（宝箱）
     damage: 18,
     fireCooldown: 650,
     magSize: 6,
@@ -105,11 +102,10 @@ const WEAPONS = {
   },
 };
 
-// Cycle order for number-key selection and the F-key cycle.
-// Special weapons are intentionally excluded; they are chest-only drops.
-const WEAPON_ORDER = ["rifle", "sniper", "shotgun", "smg"];
+// クラス固定の3武器（刀/弓/鉄砲）。宝箱武器は除外（拾った時だけ一時的に持つ）。
+const WEAPON_ORDER = ["katana", "yumi", "teppo"];
 
-// Special weapon keys a chest can drop (granted via grantSpecial/setWeapon).
+// 宝箱がドロップしうる特殊武器キー（grantSpecial/setWeapon 経由）。
 const CHEST_LOOT = ["flame", "piercer", "rockbuster"];
 
 // Resolve a weapon definition, defaulting to rifle for unknown keys.

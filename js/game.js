@@ -56,9 +56,8 @@ class Game {
     this._eventSig = null;
     this.over = false; // 新しいステージ＝未終了に戻す
 
-    // Spread starting weapons across each AI squad so fights feel varied (the
-    // AI also switches weapon by range at runtime — see ai.js).
-    const loadout = ["rifle", "sniper", "shotgun", "smg"];
+    // クラス未設定スロットの予備武器（通常は classKey(i) が常にクラスを返すので未使用）。
+    const loadout = ["katana", "yumi", "teppo"];
     const blueSpawns = this._teamSpawns(this.map.blueSpawns, "blue");
     const redSpawns = this._teamSpawns(this.map.redSpawns, "red");
     const pIdx = V.clamp(this.playerIndex, 0, blueSpawns.length - 1);
@@ -191,6 +190,7 @@ class Game {
         n: u.name, w: u.weaponKey, mv: u.movingTimer > 0 ? 1 : 0,
         cl: u.cls, mh: u.maxHp, dn: u.downed ? 1 : 0,
         am: u.ammo, mg: u.magSizeVal(), rl: u.reloading ? 1 : 0,
+        nr: u.weapon().noReload ? 1 : 0, // 装填不要（刀/弓）＝HUDで弾を出さない
       })),
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),
@@ -203,6 +203,7 @@ class Game {
       ft: { b: half(this.map.baseOf("blue").hp, this.map.baseOf("blue").maxHp), r: half(this.map.baseOf("red").hp, this.map.baseOf("red").maxHp) },
       al: { b: this.aliveCount("blue"), r: this.aliveCount("red") },
       rush: this.rushMode ? 1 : 0,
+      gen: { b: this.generalStatus("blue"), r: this.generalStatus("red") }, // 大将状態 0健在/1危機/2討死
     };
   }
 
@@ -341,6 +342,44 @@ class Game {
     return this.units.filter((u) => u.team === team && u.alive).length;
   }
 
+  // --- 大将ルール ---------------------------------------------------------
+  // 各チームの総大将（slot0＝cls "general"）。
+  generalOf(team) {
+    return this.units.find((u) => u.team === team && u.cls === "general");
+  }
+
+  // 総大将が健在か。回復ゾーンの有効/無効と士気の判定に使う。
+  // 大将が「居るのに倒れている」時だけペナルティを課す（実戦では slot0 に必ず大将が
+  // 居る。大将そのものが存在しない最小構成では健在＝OK扱いにして副作用を出さない）。
+  generalOkFor(team) {
+    const g = this.generalOf(team);
+    return !g || g.alive;
+  }
+
+  // 大将の状態：0=健在 / 1=危機(SOSで倒れている) / 2=討死(救出されず一定時間経過＝サドンデス)。
+  generalStatus(team) {
+    const g = this.generalOf(team);
+    if (!g) return 0; // 大将不在（最小構成/テスト）は健在扱い＝サドンデスを誤発火させない
+    if (g.alive) return 0;
+    const ms = (this._genDownMs && this._genDownMs[team]) || 0;
+    const limit = (CONFIG.morale && CONFIG.morale.discardMs) || 14000;
+    return ms >= limit ? 2 : 1;
+  }
+
+  // 倒れている時間を計測し、各ユニットに士気倍率を乗せる（ユニット更新の前に呼ぶ）。
+  _updateGenerals(dt) {
+    if (!this._genDownMs) this._genDownMs = { blue: 0, red: 0 };
+    for (const team of ["blue", "red"]) {
+      const g = this.generalOf(team);
+      const downed = !!(g && !g.alive);
+      this._genDownMs[team] = downed ? this._genDownMs[team] + dt : 0;
+    }
+    const debuff = (CONFIG.morale && CONFIG.morale.debuffMul) || 0.7;
+    for (const u of this.units) {
+      u.moraleMul = this.generalOkFor(u.team) ? 1 : debuff;
+    }
+  }
+
   // Forest stealth: the player always sees allies and themself. An enemy
   // hidden in a forest is invisible until a friendly unit gets close enough
   // to spot them (matching the AI's own detection rule).
@@ -377,6 +416,7 @@ class Game {
 
   _update(dt) {
     if (this.over) return; // 試合終了後は一切更新しない（サーバーの多重終了/多重再戦を防ぐ）
+    this._updateGenerals(dt); // 大将ルール：士気倍率と「討死」までの計時をユニット更新前に確定
     for (const u of this.units) u.update(dt, this);
     for (const b of this.bullets) b.update(dt, this);
     for (const b of this.bombs) b.update(dt, this);
@@ -416,6 +456,9 @@ class Game {
     // Hard cap: force sudden death only after 3 minutes so a match always ends.
     this.elapsedMs += dt;
     if (this.elapsedMs > 180000) this.stormActive = true;
+    // 大将ルール：どちらかの総大将が「討死」（救出されず一定時間経過）したら、
+    // 弱体化に加えてサドンデス(storm)を発動し、決着を促す。
+    if (this.generalStatus("blue") === 2 || this.generalStatus("red") === 2) this.stormActive = true;
     this.rushMode = this.idleMs > 12000 || this.stormActive;
     if (this.stormActive) {
       const drain = 45 * dt / 1000;
@@ -530,6 +573,8 @@ class Game {
       blueFort: this.map.baseOf("blue").hp / this.map.baseOf("blue").maxHp,
       redFort: this.map.baseOf("red").hp / this.map.baseOf("red").maxHp,
       fortAlert: this.blueFortAlert > 0,
+      general: this.generalStatus(this.playerTeam || "blue"),     // 自軍の大将 0健在/1危機/2討死
+      enemyGeneral: this.generalStatus(this.playerTeam === "red" ? "blue" : "red"),
       player: p ? {
         alive: p.alive,
         ammo: p.ammo,
@@ -538,6 +583,7 @@ class Game {
         reloadPct: 1 - p.reloadTimer / p.reloadTimeVal(),
         hp: Math.round(p.hp),
         lockMode: p.lockMode,
+        noReload: !!p.weapon().noReload,
         weapon: p.weapon().label,
         weaponKey: p.weaponKey,
         cls: p.cls,

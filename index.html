@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cover Battle — 岩と森の4vs4バトル</title>
-  <link rel="stylesheet" href="css/style.css?v=27" />
+  <link rel="stylesheet" href="css/style.css?v=28" />
 </head>
 <body>
   <div id="app">
@@ -55,16 +55,16 @@
     <div id="overlay" class="overlay">
       <div class="panel">
         <h1>COVER BATTLE</h1>
-        <p class="subtitle">岩と森に隠れて戦う 4 vs 4 サバイバルバトル　<span id="buildTag" style="color:#7CFC9A;font-weight:700;"></span></p>
+        <p class="subtitle">山城を攻め落とす 6 vs 6 合戦バトル　<span id="buildTag" style="color:#7CFC9A;font-weight:700;"></span></p>
         <div class="how">
-          <p><b>操作</b>： 移動=WASD/矢印 ・ 照準=マウス ・ 射撃=クリック/スペース ・ 爆弾=E ・ ロックオン=R（切替）/Tab（対象変更）</p>
-          <p><b>爆弾</b>： <b>E / 💣</b>で設置。敵や岩はもちろん、<b>砦・城門の破壊</b>にも使える主力武器。</p>
-          <p><b>武器切替</b>： 数字 <b>1</b>=ライフル / <b>2</b>=スナイパー / <b>3</b>=ショットガン / <b>4</b>=サブマシンガン ・ <b>F</b> キーで順送り。武器ごとに威力・連射・装弾数・射程・拡散が異なる。</p>
-          <p><b>弾薬</b>： マガジンは <b>10発</b>。撃ち切ると <b>3秒リロード</b>（その間は撃てない）が、<b>撃つのをやめれば弾は自然回復</b>。乱射せずタップで撃つのが強い。</p>
-          <p><b>勝利条件</b>： 赤チームを<b>全滅</b>させる、または<b>赤の砦を破壊</b>でクリア。味方全滅か<b>自分の砦が破壊されると敗北</b>。</p>
-          <p><b>地形</b>： <span class="rock-key">岩</span>=破壊できる盾 / <span class="mtn-key">山</span>=壊せない遮蔽 / <span class="bush-key">森</span>=隠れると敵から見えない / <span class="river-key">川</span>=移動が遅くなる</p>
-          <p><b>砦</b>： 自分の<span class="base-key">砦</span>（自陣）に戻ると体力が回復。砦には<b>耐久ゲージ</b>があり、敵に壊されると負け。</p>
-          <p><b>クラス特殊（C / 🎯）</b>： 工兵=自動砲台（最大2）／突撃兵=ダッシュ／動物使い=動物を捕獲（最大2）。山岳海兵=段差を登れて水上も速い。</p>
+          <p><b>操作</b>： 移動=WASD/矢印 ・ 照準=マウス ・ 攻撃=クリック/スペース ・ 爆弾=E ・ 特殊=C/🎯</p>
+          <p><b>爆弾</b>： <b>E / 💣</b>で設置。敵や石垣はもちろん、<b>砦・城門の破壊</b>にも使える。</p>
+          <p><b>武器（クラス固定）</b>： 総大将・足軽・騎馬・忍者=<b>刀</b>（前方を斬る近接・装填不要）／弓兵=<b>弓</b>（装填不要で撃ち続けられる）／鉄砲兵=<b>鉄砲</b>（一撃が重いが撃つたび長い装填）。</p>
+          <p><b>大将ルール</b>： 各軍に<b>総大将</b>が1人。倒れている間は<b>自陣の回復ゾーンが無効</b>になり<b>味方全員が弱体</b>。救出されず討死すると<b>サドンデス</b>。総大将を守り、敵将を討て。</p>
+          <p><b>勝利条件</b>： 赤チームを<b>全滅</b>、<b>赤の砦を破壊</b>、または<b>赤の総大将を討ち取る</b>。味方全滅か<b>自分の砦が破壊されると敗北</b>。</p>
+          <p><b>地形</b>： <span class="rock-key">石垣</span>=破壊できる盾 / <span class="mtn-key">山(本丸)</span>=壊せない遮蔽 / <span class="bush-key">森</span>=隠れると敵から見えない / <span class="river-key">堀</span>=移動が遅くなる</p>
+          <p><b>砦</b>： 自分の<span class="base-key">砦</span>（自陣）に戻ると体力が回復（総大将が健在なときのみ）。砦には<b>耐久ゲージ</b>があり、敵に壊されると負け。</p>
+          <p><b>クラス特殊（C / 🎯）</b>： 総大将=<b>野武士を説得</b>して仲間に（最大2）／騎馬=<b>突進ダッシュ</b>／忍者=<b>煙幕</b>。野武士は中立で誰にでも襲うが、総大将が近づけば味方になる。</p>
           <p><b>マップ</b>： 画面よりかなり広く、<b>カメラが自分を追って</b>スクロールする。段差は山岳海兵だけ越えられる近道。</p>
           <p><b>スマホ</b>： 左の「<b>移</b>」スティックで移動、右の「<b>攻</b>」スティックを倒すと<b>その方向へ照準＋射撃</b>（押している間だけ撃つ）。下のボタンで 爆弾／特殊／武器。</p>
         </div>
@@ -99,23 +99,23 @@
     </div>
   </div>
 
-  <script src="js/vector.js?v=27"></script>
-  <script src="js/config.js?v=27"></script>
-  <script src="js/classes.js?v=27"></script>
-  <script src="js/assets.js?v=27"></script>
-  <script src="js/audio.js?v=27"></script>
-  <script src="js/input.js?v=27"></script>
-  <script src="js/map.js?v=27"></script>
-  <script src="js/weapons.js?v=27"></script>
-  <script src="js/chest.js?v=27"></script>
-  <script src="js/beast.js?v=27"></script>
-  <script src="js/abilities.js?v=27"></script>
-  <script src="js/entities.js?v=27"></script>
-  <script src="js/ai.js?v=27"></script>
-  <script src="js/overlay.js?v=27"></script>
-  <script src="js/game.js?v=27"></script>
-  <script src="js/ui.js?v=27"></script>
-  <script src="js/main.js?v=27"></script>
-  <script src="js/help.js?v=27"></script>
+  <script src="js/vector.js?v=28"></script>
+  <script src="js/config.js?v=28"></script>
+  <script src="js/classes.js?v=28"></script>
+  <script src="js/assets.js?v=28"></script>
+  <script src="js/audio.js?v=28"></script>
+  <script src="js/input.js?v=28"></script>
+  <script src="js/map.js?v=28"></script>
+  <script src="js/weapons.js?v=28"></script>
+  <script src="js/chest.js?v=28"></script>
+  <script src="js/beast.js?v=28"></script>
+  <script src="js/abilities.js?v=28"></script>
+  <script src="js/entities.js?v=28"></script>
+  <script src="js/ai.js?v=28"></script>
+  <script src="js/overlay.js?v=28"></script>
+  <script src="js/game.js?v=28"></script>
+  <script src="js/ui.js?v=28"></script>
+  <script src="js/main.js?v=28"></script>
+  <script src="js/help.js?v=28"></script>
 </body>
 </html>

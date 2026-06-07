@@ -11,8 +11,9 @@ const Assets = {
     fort_red: "assets/fort_red.png",
   },
 
-  // Per-class soldier sprites (helmet/shoulders tinted to the class accent).
-  _classKeys: ["sniper", "heavy", "climber", "engineer", "assault", "tamer"],
+  // クラス別スプライト（assets/soldier_{team}_{key}.png）。無ければ soldier_{team}.png →
+  // それも無ければベクター描画にフォールバックする。Blender侍12枚はこのキー名で投下。
+  _classKeys: ["general", "ashigaru", "archer", "gunner", "cavalry", "ninja"],
 
   load() {
     if (typeof Image === "undefined") return; // Node / no DOM

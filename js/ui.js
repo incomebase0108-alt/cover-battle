@@ -35,12 +35,12 @@ const UI = {
   // クラスが「何が得意か」を一言で。プレイ中のスマホ表示用。
   classTrait(cls) {
     switch (cls) {
-      case "assault":  return "接近戦・ダッシュで急接近/離脱";
-      case "sniper":   return "遠距離狙撃（一撃が重い）";
-      case "heavy":    return "頑丈・近距離(ショットガン)";
-      case "climber":  return "段差を登れる・水上が速い";
-      case "engineer": return "自動砲台・爆弾多め";
-      case "tamer":    return "動物を捕獲して仲間に";
+      case "general":  return "総大将・最も頑丈な刀（討たれると不利）";
+      case "ashigaru": return "足軽・刀の標準前衛";
+      case "archer":   return "弓・遠距離の手数（装填不要）";
+      case "gunner":   return "鉄砲・一撃重いが長い装填";
+      case "cavalry":  return "騎馬・突進で急接近する刀";
+      case "ninja":    return "忍者・森に潜む刀＋煙幕";
       default:         return "";
     }
   },
@@ -49,9 +49,9 @@ const UI = {
   abilityHelp(cls) {
     const c = (typeof getClass === "function") ? getClass(cls) : null;
     const a = c && c.ability;
-    if (a === "dash") return "ダッシュ（急接近/離脱）";
+    if (a === "dash") return "突進ダッシュ（急接近/離脱）";
     if (a === "turret") return "自動砲台を設置";
-    if (a === "capture") return "近くの動物を捕獲して仲間に";
+    if (a === "capture") return "近くの野武士を説得して仲間に";
     if (a === "repair") return "砦・城門を修復";
     if (a === "smoke") return "煙幕で隠れる";
     return "なし";
@@ -81,9 +81,13 @@ const UI = {
 
     const p = state.player;
     if (this.el.ammo && p) {
-      if (p.reloading) {
+      if (p.noReload) {
+        // 装填不要（刀/弓）は弾数を出さず武器名のみ。
+        this.el.ammo.innerHTML = `<b>${p.weapon}</b>`;
+        this.el.ammo.classList.remove("low");
+      } else if (p.reloading) {
         const pct = Math.round(p.reloadPct * 100);
-        this.el.ammo.innerHTML = `<span class="reloading">リロード中… ${pct}%</span>`;
+        this.el.ammo.innerHTML = `<span class="reloading">装填中… ${pct}%</span>`;
       } else {
         this.el.ammo.innerHTML = `弾 <b>${p.ammo}</b>/${p.magSize}`;
         if (p.ammo <= 3) this.el.ammo.classList.add("low");
@@ -91,11 +95,14 @@ const UI = {
       }
     }
     // プレイ中のクラス情報チップ（スマホ）：得意なこと＋特殊（残数つき）を1行で。
+    // 自軍の総大将が危機/討死のときは、その警告を最優先で前置きする。
     if (this.el.mClassInfo && p) {
       const c = (typeof getClass === "function") ? getClass(p.cls) : null;
       if (c) {
         let s = `${c.badge} ${c.label}：${this.classTrait(p.cls)}`;
         if (p.abilityRemaining != null) s += `（特殊 残${p.abilityRemaining}）`;
+        if (state.general === 1) s = "⚠ 大将 危機！救出せよ ｜ " + s;
+        else if (state.general === 2) s = "大将 討死…決戦(サドンデス) ｜ " + s;
         if (s !== this._mClassStr) { this._mClassStr = s; this.el.mClassInfo.textContent = s; }
       }
     }

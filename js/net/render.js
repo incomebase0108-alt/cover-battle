@@ -78,9 +78,10 @@ const NetRender = {
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(u.x, u.y, r + 7, 0, Math.PI * 2); ctx.stroke();
     }
-    // HP bar + name.
-    const w = 30;
+    // HP bar + name. ゲージ幅を maxHp に比例させ、総大将など頑丈なユニットは
+    // バーが目に見えて長くなる（最大2倍）。
     const mh = u.mh || CONFIG.unit.maxHp;
+    const w = 30 * V.clamp(mh / (CONFIG.unit.maxHp || 100), 0.8, 2.0);
     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(u.x - w / 2, u.y - r - 12, w, 4);
     ctx.fillStyle = team === "blue" ? "#7fb0ff" : "#ff8a8a";
     ctx.fillRect(u.x - w / 2, u.y - r - 12, w * (u.h / mh), 4);

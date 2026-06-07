@@ -8,14 +8,19 @@ const s = suite();
 
 s.test("applyClass sets weapon, scaled HP and abilities", (t) => {
   const sb = loadGame();
-  const heavy = new sb.Unit(0, 0, "blue");
-  heavy.applyClass("heavy");
-  const sniper = new sb.Unit(0, 0, "blue");
-  sniper.applyClass("sniper");
-  t.equal(heavy.weaponKey, "shotgun", "heavy carries a shotgun");
-  t.greaterThan(heavy.maxHp, sniper.maxHp, "heavy is tougher than the sniper");
-  t.greaterThan(sniper.classSpeedMul, heavy.classSpeedMul, "sniper is faster than heavy");
-  t.equal(sniper.hp, sniper.maxHp, "spawns at full (scaled) HP");
+  const general = new sb.Unit(0, 0, "blue");
+  general.applyClass("general");
+  const ashigaru = new sb.Unit(0, 0, "blue");
+  ashigaru.applyClass("ashigaru");
+  const gunner = new sb.Unit(0, 0, "blue");
+  gunner.applyClass("gunner");
+  const cavalry = new sb.Unit(0, 0, "blue");
+  cavalry.applyClass("cavalry");
+  t.equal(general.weaponKey, "katana", "総大将は刀を持つ");
+  t.equal(gunner.weaponKey, "teppo", "鉄砲兵は鉄砲を持つ");
+  t.greaterThan(general.maxHp, ashigaru.maxHp, "総大将は足軽より頑丈");
+  t.greaterThan(cavalry.classSpeedMul, general.classSpeedMul, "騎馬は総大将より速い");
+  t.equal(general.hp, general.maxHp, "spawns at full (scaled) HP");
 });
 
 s.test("only the climber can pass a ledge", (t) => {

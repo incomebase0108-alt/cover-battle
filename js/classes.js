@@ -19,13 +19,16 @@
 //   turret  : deploys an auto-firing sentry (engineer)
 //   dash    : a short burst of speed in the move direction (assault)
 //   capture : tame the nearest wild beast so it fights for you (beast tamer)
+// 日本の合戦テーマ。slot index → CLASSES[i % 6] なので、配列0番＝総大将にすると
+// 「各チームの slot0 が必ず総大将」が自動で保証される（大将ルールの起点）。
+// 近接(刀)＝総大将/足軽/騎馬/忍者、遠隔＝弓兵(弓・装填無し)/鉄砲兵(鉄砲・装填有り強力)。
 const CLASSES = [
-  { key: "assault",  label: "突撃兵",  desc: "バランス攻撃型。ダッシュで急接近/離脱。", weapon: "rifle",  hpMul: 1.15, speedMul: 1.15, sizeMul: 1.04, accent: "#ff6b6b", badge: "突", ability: "dash", abilityCd: 5000 },
-  { key: "sniper",   label: "狙撃兵",  desc: "遠距離特化。一撃が重いが連射は遅い。", weapon: "sniper", hpMul: 0.9, speedMul: 1.0, sizeMul: 0.96, accent: "#c98cff", badge: "狙" },
-  { key: "heavy",    label: "重装兵",  desc: "頑丈・低速・近距離。前線の壁。", weapon: "shotgun", hpMul: 1.7, speedMul: 0.78, sizeMul: 1.28, accent: "#ffb347", badge: "重" },
-  { key: "climber",  label: "山岳海兵", desc: "段差を登れて近道でき、水の上も速く移動できる。", weapon: "rifle",  hpMul: 1.0, speedMul: 1.12, sizeMul: 1.0, canClimb: true, accent: "#5ad6ff", badge: "山" },
-  { key: "engineer", label: "工兵",    desc: "爆破支援。自動砲台を最大2基まで設置でき、爆弾も多い。", weapon: "rifle",  hpMul: 1.0, speedMul: 1.05, sizeMul: 1.02, maxBombs: 3, accent: "#ff8a5a", badge: "工", ability: "turret", abilityMax: 2 },
-  { key: "tamer",    label: "動物使い", desc: "野生のクマ/トラを最大2匹まで捕獲して仲間にする。", weapon: "rifle",  hpMul: 1.05, speedMul: 1.05, sizeMul: 1.02, accent: "#b9f27c", badge: "獣", ability: "capture", abilityMax: 2 },
+  { key: "general",  label: "総大将",  desc: "最も頑丈な近接の要。体力が群を抜いて高い。野武士に近づき説得すると仲間にできる。討たれると味方の回復が止まり士気が崩れる。", weapon: "katana", hpMul: 2.2, speedMul: 0.8, sizeMul: 1.34, accent: "#ffd24a", badge: "将", ability: "capture", abilityMax: 2 },
+  { key: "ashigaru", label: "足軽",    desc: "刀で斬り込む標準の前衛。数で押す。", weapon: "katana", hpMul: 1.0, speedMul: 1.05, sizeMul: 1.0, accent: "#9cc2ff", badge: "足" },
+  { key: "archer",   label: "弓兵",    desc: "弓で遠くから手数で攻める。装填不要で撃ち続けられる。", weapon: "yumi", hpMul: 0.85, speedMul: 1.05, sizeMul: 0.96, accent: "#b9f27c", badge: "弓" },
+  { key: "gunner",   label: "鉄砲兵",  desc: "鉄砲の一撃は重いが、撃つたびに長い装填が要る。", weapon: "teppo", hpMul: 0.9, speedMul: 0.92, sizeMul: 1.0, accent: "#c98cff", badge: "鉄" },
+  { key: "cavalry",  label: "騎馬",    desc: "高速で突進し一気に間合いを詰める刀の遊撃。", weapon: "katana", hpMul: 1.2, speedMul: 1.28, sizeMul: 1.08, accent: "#ff8a5a", badge: "騎", ability: "dash", abilityCd: 4000 },
+  { key: "ninja",    label: "忍者",    desc: "森に潜み煙幕で撹乱する刀の奇襲。", weapon: "katana", hpMul: 0.9, speedMul: 1.18, sizeMul: 0.92, accent: "#5ad6ff", badge: "忍", ability: "smoke", abilityCd: 9000 },
 ];
 
 function getClass(keyOrIndex) {

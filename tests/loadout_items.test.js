@@ -39,15 +39,16 @@ s.test("wantsItem reflects whether a buff is still useful", (t) => {
   t.equal(u.wantsItem(new sb.Item(0, 0, "speed")), true, "speed wanted by default");
 });
 
-s.test("AI picks a sniper at long range and a shotgun up close", (t) => {
+s.test("pickWeapon keeps the unit's class weapon (no range swapping)", (t) => {
   const { sb, game } = newGame(0);
   const u = new sb.Unit(700, 700, "blue");
+  u.applyClass("archer"); // 弓兵
   u.ai = new sb.AIController();
   game.units = [u];
-  u.ai.pickWeapon(u, 500, 9999); // far
-  t.equal(u.weaponKey, "sniper", "long range -> sniper");
-  u.ai.pickWeapon(u, 100, 9999); // close (cooldown elapsed via big dt)
-  t.equal(u.weaponKey, "shotgun", "close range -> shotgun");
+  u.ai.pickWeapon(u, 500, 9999); // 遠距離
+  t.equal(u.weaponKey, "yumi", "遠距離でも弓のまま");
+  u.ai.pickWeapon(u, 100, 9999); // 近距離
+  t.equal(u.weaponKey, "yumi", "近距離でも弓のまま（持ち替えない）");
 });
 
 module.exports = s;

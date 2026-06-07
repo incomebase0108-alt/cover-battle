@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v27 戻る→再入場の死に画面を修正（試合中も未参加ならロビー表示で途中参加可）";
+  const BUILD = "v28 合戦テーマ刷新（総大将/足軽/弓兵/鉄砲兵/騎馬/忍者・刀近接・大将ルール・山城決戦・LANステージ選択）";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

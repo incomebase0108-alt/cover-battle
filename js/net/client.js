@@ -35,17 +35,18 @@
     myIndex: -1, myTeam: 0, joined: false,
     myId: null, host: null, started: false,
     difficulty: "normal", // AI難易度（ホストが選ぶ。全員に共有される）
+    lobbyStage: 0,        // ロビーでホストが選んだ次戦ステージ（試合中の Net.stage とは別）
     cam: { x: 0, y: 0 },
   };
 
   // クラスの「得意なこと」一言（HUD表示用。ui.js はネット版では読まないので独自に持つ）。
   const CLASS_TRAIT = {
-    assault: "接近戦・ダッシュ",
-    sniper: "遠距離狙撃",
-    heavy: "頑丈・近距離",
-    climber: "段差○・水上が速い",
-    engineer: "自動砲台・爆弾多",
-    tamer: "動物を捕獲",
+    general: "総大将・最も頑丈",
+    ashigaru: "刀の標準前衛",
+    archer: "弓・装填不要",
+    gunner: "鉄砲・一撃重い",
+    cavalry: "突進する刀",
+    ninja: "森に潜む＋煙幕",
   };
 
   const statusEl = document.getElementById("netStatus");
@@ -78,8 +79,10 @@
     } else if (m.type === "lobby") {
       Net.host = m.host; Net.started = !!m.started;
       if (m.diff) Net.difficulty = m.diff;
+      if (typeof m.stage === "number") Net.lobbyStage = m.stage;
       renderLobby(m.roster);
       renderDifficulty();
+      renderStage();
       // ロビーを隠すのは「試合中 かつ 自分が参加済み」のときだけ。試合中でも
       // 未参加（再入場でスロットを失った／後から来た）なら出したままにして、空き
       // スロットを選んで途中参加できるようにする（戻る→再入場の死に画面を防ぐ）。
@@ -173,6 +176,28 @@
     if (sel) sel.classList.toggle("not-host", !isHost);
   }
 
+  // ステージセレクタ（難易度と同じ作法）。変更できるのはホスト・待機中のみ。
+  function renderStage() {
+    const box = document.getElementById("stageButtons");
+    if (!box || typeof STAGE_ORDER === "undefined") return;
+    const isHost = Net.myId != null && Net.myId === Net.host;
+    box.innerHTML = "";
+    for (const i of STAGE_ORDER) {
+      const btn = document.createElement("button");
+      btn.className = "diff-btn stage-btn" + (Net.lobbyStage === i ? " active" : "");
+      btn.textContent = (typeof STAGE_LABEL !== "undefined" && STAGE_LABEL[i]) || ("STAGE " + (i + 1));
+      btn.disabled = !isHost || Net.started;
+      btn.addEventListener("click", () => {
+        if (!Net.ws || Net.ws.readyState !== 1) return;
+        Net.ws.send(JSON.stringify({ type: "stage", index: i }));
+        Sound.start();
+      });
+      box.appendChild(btn);
+    }
+    const sel = document.getElementById("stageSelect");
+    if (sel) sel.classList.toggle("not-host", !isHost);
+  }
+
   let banner = "";
   let bannerT = 0;
   function flashBanner(t) { banner = t; bannerT = 3500; }
@@ -236,18 +261,32 @@
       const wlabel = (typeof WEAPONS !== "undefined" && WEAPONS[me.w]) ? WEAPONS[me.w].label : (me.w || "");
       ctx.textAlign = "left";
       ctx.font = "bold 20px system-ui, sans-serif";
-      if (me.rl) { ctx.fillStyle = "#ffd34a"; ctx.fillText("リロード中…", pad, pad + 48); }
-      else {
+      if (me.nr) {
+        // 装填不要（刀/弓）は弾数を出さず、武器名だけ大きく表示。
+        ctx.fillStyle = "#ffffff"; ctx.fillText(wlabel, pad, pad + 48);
+      } else if (me.rl) {
+        ctx.fillStyle = "#ffd34a"; ctx.fillText("装填中…", pad, pad + 48);
+      } else {
         ctx.fillStyle = (me.am <= 3) ? "#ff7a7a" : "#ffffff";
         ctx.fillText("弾 " + me.am + "/" + me.mg, pad, pad + 48);
       }
-      ctx.fillStyle = "#cfe3ff"; ctx.font = "bold 13px system-ui, sans-serif";
-      ctx.fillText(wlabel, pad, pad + 74);
+      if (!me.nr) {
+        ctx.fillStyle = "#cfe3ff"; ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.fillText(wlabel, pad, pad + 74);
+      }
       // クラスの得意なこと（操作中に何が得意か分かるように）。
       const cls = (typeof getClass === "function") ? getClass(me.cl) : null;
       if (cls) {
         ctx.fillStyle = "#b9f27c"; ctx.font = "bold 12px system-ui, sans-serif";
-        ctx.fillText(cls.badge + " " + cls.label + "：" + CLASS_TRAIT[me.cl], pad, pad + 94);
+        ctx.fillText(cls.badge + " " + cls.label + "：" + (CLASS_TRAIT[me.cl] || ""), pad, pad + 94);
+      }
+      // 自軍の総大将の状態（0健在/1危機/2討死）。危機・討死は赤で警告。
+      if (snap.gen) {
+        const gs = me.t === 0 ? snap.gen.b : snap.gen.r;
+        const gtxt = gs === 0 ? "大将：健在" : gs === 1 ? "大将：危機！(救出せよ)" : "大将：討死…(サドンデス)";
+        ctx.fillStyle = gs === 0 ? "#ffd24a" : "#ff5a5a";
+        ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.fillText(gtxt, pad, pad + 114);
       }
       // HPバー。
       const hw = 120, hh = 7, hy = pad + 114;

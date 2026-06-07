@@ -301,11 +301,12 @@ class Unit {
     this.reviveT = 0;        // ms accrued at the fort toward revival
     this.healing = false;    // currently regenerating in a heal zone
     // Class / rank (see classes.js): affects look, stats and abilities.
-    this.cls = "assault";
+    this.cls = "ashigaru";
     this.classSpeedMul = 1;
     this.canClimb = false;
     this.abilityCd = 0;  // ms until the class ability is ready again
-    this.dashMs = 0;     // >0 while an assault dash is active
+    this.dashMs = 0;     // >0 while a dash (騎馬/総大将) is active
+    this.moraleMul = 1;  // 士気倍率（大将が discard すると<1。移動と与ダメに乗る）
     this.aim = team === "blue" ? 0 : Math.PI; // facing angle
     this.cooldown = 0;
     // Equipped weapon (see weapons.js). AI + player default to "rifle", which
@@ -479,8 +480,8 @@ class Unit {
 
   // dirX/dirY are a (roughly) unit vector of intended movement.
   move(dirX, dirY, game) {
-    let speed = CONFIG.unit.speed * this.speedMul * this.classSpeedMul;
-    if (this.dashMs > 0) speed *= ABILITY.dashMul; // assault dash burst
+    let speed = CONFIG.unit.speed * this.speedMul * this.classSpeedMul * (this.moraleMul || 1);
+    if (this.dashMs > 0) speed *= ABILITY.dashMul; // 騎馬/総大将のダッシュ加速
     if (this.carrying) speed *= RESCUE.carrySpeedMul; // slowed while hauling an ally
     if (game.map.inRiver(this.x, this.y)) {
       // 通常兵は川で減速。山岳海兵(canClimb)は水に強く、むしろ加速する。
@@ -533,20 +534,26 @@ class Unit {
 
   tryShoot(game) {
     if (this.cooldown > 0 || this.reloading) return;
-    if (this.ammo <= 0) { this.startReload(game); return; }
 
     const w = this.weapon();
+    // 刀などの近接武器は弾を撃たず、前方の敵を直接斬る。
+    if (w.isMelee) { this._meleeStrike(game, w); return; }
+    // 装填のある武器だけ弾切れでリロード（弓=noReload は弾数概念なし）。
+    if (!w.noReload && this.ammo <= 0) { this.startReload(game); return; }
+
     this.cooldown = this.fireCooldownVal();
-    this.ammo--; // one trigger pull = one round, even for multi-pellet weapons
-    this.sinceShot = 0;
-    this.regenAccum = 0;
+    if (!w.noReload) {
+      this.ammo--; // one trigger pull = one round, even for multi-pellet weapons
+      this.sinceShot = 0;
+      this.regenAccum = 0;
+    }
     this.muzzleFlash = 70;
 
     const pellets = w.pellets ?? 1;
     const spread = w.spread ?? 0;
     const wSpeedMul = w.bulletSpeedMul ?? 1;
     const wRangeMul = w.rangeMul ?? 1;
-    const damage = this.damageVal() * (this.damageMul || 1);
+    const damage = this.damageVal() * (this.damageMul || 1) * (this.moraleMul || 1);
     const speed = CONFIG.bullet.speed * wSpeedMul * this.bulletSpeedMul;
     const life = CONFIG.bullet.life * wRangeMul * this.rangeMul;
 
@@ -566,7 +573,58 @@ class Unit {
     }
 
     if (game.sound) game.sound.shoot();
-    if (this.ammo <= 0) this.startReload(game);
+    if (!w.noReload && this.ammo <= 0) this.startReload(game);
+  }
+
+  // 近接（刀）：弾を生成せず、前方の扇（meleeArc）内・meleeRange 以内にいる
+  // 敵ユニット／敵城門／敵砦コア／野生動物／敵砲台を直接斬る。攻城で城門を
+  // 刀で割れることが重要なので gate/base も対象に含める。
+  _meleeStrike(game, w) {
+    this.cooldown = this.fireCooldownVal();
+    this.muzzleFlash = 70;
+    const reach = w.meleeRange ?? 40;
+    const arc = w.meleeArc ?? 1.0;
+    const dmg = (this.weapon().damage ?? CONFIG.bullet.damage) * (this.damageMul || 1) * (this.moraleMul || 1);
+    // 点(tx,ty)が前方扇内かつ reach+extra 以内か。
+    const hitArc = (tx, ty, extra) => {
+      if (V.dist(this.x, this.y, tx, ty) > reach + (extra || 0)) return false;
+      const ang = Math.atan2(ty - this.y, tx - this.x);
+      const diff = Math.abs(Math.atan2(Math.sin(ang - this.aim), Math.cos(ang - this.aim)));
+      return diff <= arc;
+    };
+
+    for (const u of game.units) {
+      if (!u.alive || u.team === this.team) continue;
+      if (hitArc(u.x, u.y, u.radius)) u.takeDamage(dmg);
+    }
+    for (const b of (game.beasts || [])) {
+      if (b.dead || !b.takeDamage) continue;
+      if (hitArc(b.x, b.y, b.r || 22)) b.takeDamage(dmg);
+    }
+    for (const tt of (game.turrets || [])) {
+      if (tt.dead || tt.team === this.team || !tt.takeDamage) continue;
+      if (hitArc(tt.x, tt.y, 12)) tt.takeDamage(dmg);
+    }
+    // 敵城門：ユニットから最も近いゲート上の点が射程・扇内なら割る。
+    const gateDmg = (CONFIG.gate && CONFIG.gate.bulletDamage) || 10;
+    if (game.map && game.map.gates) {
+      for (const g of game.map.gates) {
+        if (g.team === this.team || g.hp <= 0) continue;
+        const cx = Math.max(g.x, Math.min(this.x, g.x + g.w));
+        const cy = Math.max(g.y, Math.min(this.y, g.y + g.h));
+        if (hitArc(cx, cy, 0)) g.hp = Math.max(0, g.hp - gateDmg);
+      }
+    }
+    // 敵砦コア：剣先が敵ベース中心付近なら削る。
+    const coreDmg = (CONFIG.base && CONFIG.base.bulletDamage) || 10;
+    if (game.map && game.map.bases) {
+      for (const base of game.map.bases) {
+        if (base.team === this.team) continue;
+        if (hitArc(base.x, base.y, base.coreR || 30)) base.hp = Math.max(0, base.hp - coreDmg);
+      }
+    }
+
+    if (game.sound) game.sound.shoot();
   }
 
   startReload(game) {
@@ -606,7 +664,7 @@ class Unit {
         this.reloading = false;
         this.ammo = this.magSizeVal();
       }
-    } else if (this.ammo < this.magSizeVal() && this.sinceShot >= CONFIG.unit.ammoRegenDelay) {
+    } else if (!this.weapon().noReload && this.ammo < this.magSizeVal() && this.sinceShot >= CONFIG.unit.ammoRegenDelay) {
       // Passive ammo recovery while holding fire.
       this.regenAccum += dt;
       const interval = CONFIG.unit.ammoRegenInterval;
@@ -620,9 +678,12 @@ class Unit {
     // or a control point your team has captured.
     const onOasis = game.map.inOasis && game.map.inOasis(this.x, this.y);
     const onOwnPoint = game.capturedPointFor && game.capturedPointFor(this.x, this.y, this.team);
+    // 大将ルール：自軍の総大将が倒れている間は「自陣の回復ゾーン(砦)」が無効化される。
+    // 中立オアシス／占領した拠点は影響を受けない。
+    const baseHeals = game.map.inBase(this.x, this.y, this.team) &&
+      (!game.generalOkFor || game.generalOkFor(this.team));
     this.healing = false;
-    if (this.hp < this.maxHp &&
-        (game.map.inBase(this.x, this.y, this.team) || onOasis || onOwnPoint)) {
+    if (this.hp < this.maxHp && (baseHeals || onOasis || onOwnPoint)) {
       this.hp = Math.min(this.maxHp, this.hp + CONFIG.base.regenPerSec * dt / 1000);
       this.healing = true;
     }
@@ -869,8 +930,8 @@ class Unit {
     ctx.globalAlpha = 1;
     ctx.textAlign = "left";
 
-    // HP bar
-    const w = 30;
+    // HP bar（ゲージ幅は maxHp に比例＝総大将など頑丈なユニットはバーが長い、最大2倍）
+    const w = 30 * V.clamp(this.maxHp / (CONFIG.unit.maxHp || 100), 0.8, 2.0);
     const h = 4;
     const hx = this.x - w / 2;
     const hy = this.y - this.radius - 12;

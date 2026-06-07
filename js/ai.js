@@ -106,20 +106,11 @@ class AIController {
     return true;
   }
 
-  // Pick the best weapon for the current engagement distance, with a cooldown.
+  // 合戦版：各兵は自分の職分（クラス）の武器を持ち続ける。刀/弓/鉄砲はクラス固定で、
+  // 距離に応じた持ち替えはしない（足軽が弓を持つ等を防ぐ）。宝箱で拾った特殊武器
+  // (self.special) はその効果が切れるまで優先され、切れれば baseWeaponKey に戻る。
   pickWeapon(self, dist, dt) {
-    this.weaponTimer -= dt;
-    if (self.special) return; // keep the chest weapon while it lasts
-    if (this.weaponTimer > 0 || self.reloading) return;
-    if (typeof WEAPON_ORDER === "undefined") return;
-    let want = "rifle";
-    if (dist > 460) want = "sniper";
-    else if (dist < 150) want = "shotgun";
-    else if (dist < 300) want = "smg";
-    if (WEAPONS[want] && self.weaponKey !== want) {
-      self.setWeapon(want);
-      this.weaponTimer = 2500; // don't re-evaluate for a bit
-    }
+    return;
   }
 
   // Nearest item this unit would actually benefit from, within `range`.
@@ -488,6 +479,12 @@ class AIController {
       return;
     }
     if (!this.shouldRetreat(self)) {
+      // 大将ルール：自軍の総大将が倒れていたら、距離を問わず最優先で救出に向かう
+      // （味方みんなで大将を守る）。回復ゾーン無効＋士気低下を解除する唯一の手段。
+      const gen = (game.generalOf && game.generalOf(self.team)) || null;
+      if (gen && gen.downed && !gen.carrier && gen !== self) {
+        this.moveTo(self, gen.x, gen.y, game); return;
+      }
       const d = this.nearestDowned(self, game, 430);
       if (d) { this.moveTo(self, d.x, d.y, game); return; }
     }

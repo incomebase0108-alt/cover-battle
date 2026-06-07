@@ -92,6 +92,8 @@ function loadGame() {
     "V",
     "CONFIG",
     "STAGES",
+    "STAGE_ORDER",
+    "STAGE_LABEL",
     "DIFFICULTY_ORDER",
     "DIFFICULTY_LABEL",
     "aiSkillFor",

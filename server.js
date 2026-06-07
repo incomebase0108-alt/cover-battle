@@ -37,6 +37,7 @@ const server = http.createServer((req, res) => {
 const sb = loadGame();
 let game;
 let stage = 0;
+let selectedStage = 0; // ロビーでホストが選んだ次戦のステージ
 let started = false; // 試合が開始済みか（待機ロビー中は false）
 let hostId = null;   // 最初に接続した人がホスト（開始ボタンを押せる）
 let difficulty = (sb.CONFIG && sb.CONFIG.difficulty) || "easy"; // AI難易度（ホストが選ぶ。既定はやさしい）
@@ -71,7 +72,7 @@ let nextId = 1;
 function send(ws, obj) { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
 function broadcast(obj) { const s = JSON.stringify(obj); for (const ws of clients.keys()) if (ws.readyState === WebSocket.OPEN) ws.send(s); }
 function broadcastStatic() { broadcast({ type: "static", ...game.serializeStatic() }); broadcastLobby(); }
-function broadcastLobby() { broadcast({ type: "lobby", roster: game.rosterState(), started, host: hostId, diff: difficulty }); }
+function broadcastLobby() { broadcast({ type: "lobby", roster: game.rosterState(), started, host: hostId, diff: difficulty, stage: selectedStage }); }
 
 wss.on("connection", (ws) => {
   const c = { id: nextId++, name: "", team: null, slot: null, unitIndex: -1 };
@@ -79,7 +80,7 @@ wss.on("connection", (ws) => {
   if (hostId === null) hostId = c.id; // 最初の接続者をホストに
   send(ws, { type: "hello", id: c.id });
   send(ws, { type: "static", ...game.serializeStatic() });
-  send(ws, { type: "lobby", roster: game.rosterState(), started, host: hostId, diff: difficulty });
+  send(ws, { type: "lobby", roster: game.rosterState(), started, host: hostId, diff: difficulty, stage: selectedStage });
 
   ws.on("message", (raw) => {
     let m;
@@ -106,10 +107,16 @@ wss.on("connection", (ws) => {
         if (game && game.applyDifficultyToAi) game.applyDifficultyToAi(); // 待機中のAIにも即反映
         broadcastLobby();
       }
+    } else if (m.type === "stage") {
+      // ホストだけが、待機ロビー中にステージを選べる。
+      if (c.id === hostId && !started && m.index >= 0 && m.index < sb.STAGES.length) {
+        selectedStage = m.index;
+        broadcastLobby();
+      }
     } else if (m.type === "start") {
-      // ホストだけが「新しい試合を最初から」開始できる。
+      // ホストだけが「新しい試合を最初から」開始できる。選択ステージで出撃。
       if (c.id === hostId && !started) {
-        newMatch(0);
+        newMatch(selectedStage);
         started = true;
         broadcast({ type: "static", ...game.serializeStatic() });
         // 各プレイヤーに新試合での操作ユニット番号を通知し直す。
