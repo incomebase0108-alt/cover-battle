@@ -7,7 +7,7 @@ const CONFIG = {
   // The whole battlefield is larger than the screen; the camera scrolls to
   // follow the player. Stages are authored in a 960x600 design space and
   // scaled up to fill this world at load (see GameMap).
-  world: { width: 3000, height: 1900 },
+  world: { width: 3600, height: 2250 },
 
   // Units per team (the engine supports any number; stages auto-generate spawns).
   teamSize: 6,

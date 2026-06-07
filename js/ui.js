@@ -13,6 +13,10 @@ const UI = {
     this.el.blueFortBar = document.getElementById("blueFortBar");
     this.el.redFortBar = document.getElementById("redFortBar");
     this.el.fortWarning = document.getElementById("fortWarning");
+    this.el.controlBar = document.getElementById("controlBar");
+    this.el.cbClass = document.getElementById("cbClass");
+    this.el.cbKeys = document.getElementById("cbKeys");
+    this._cbCls = null; // remember last class so we only rebuild on change
     this.el.overlay = document.getElementById("overlay");
     this.el.resultOverlay = document.getElementById("resultOverlay");
     this.el.resultTitle = document.getElementById("resultTitle");
@@ -21,6 +25,36 @@ const UI = {
 
   showHud(show) {
     this.el.hud.classList.toggle("hidden", !show);
+    if (this.el.controlBar) this.el.controlBar.classList.toggle("hidden", !show);
+  },
+
+  // Short, per-class description of the special ability (C / 🎯).
+  abilityHelp(cls) {
+    const c = (typeof getClass === "function") ? getClass(cls) : null;
+    const a = c && c.ability;
+    if (a === "dash") return "ダッシュ（急接近/離脱）";
+    if (a === "turret") return "自動砲台を設置";
+    if (a === "capture") return "近くの動物を捕獲して仲間に";
+    if (a === "repair") return "砦・城門を修復";
+    if (a === "smoke") return "煙幕で隠れる";
+    return "なし";
+  },
+
+  // Rebuild the bottom control/trait bar for the player's current class.
+  _updateControlBar(p) {
+    if (!this.el.cbClass || !p) return;
+    if (p.cls === this._cbCls) return; // unchanged
+    this._cbCls = p.cls;
+    const c = (typeof getClass === "function") ? getClass(p.cls) : null;
+    const traits = c
+      ? `速${Math.round((c.speedMul || 1) * 100)}% HP${Math.round((c.hpMul || 1) * 100)}%${c.canClimb ? " 段差○" : ""}`
+      : "";
+    this.el.cbClass.textContent = `${c ? c.badge + " " + c.label : "兵士"}（${traits}）`;
+    this.el.cbKeys.innerHTML =
+      `移動 <b>WASD/スティック</b> ・ 撃つ <b>クリック/スペース/撃</b> ・ ` +
+      `爆弾 <b>E / 💣</b> ・ ダイナマイト <b>X / 🧨</b> ・ ` +
+      `武器 <b>1-4 / F / 🔫</b> ・ ロック <b>R / 🔒</b> ・ ` +
+      `特殊 <b>C / 🎯</b>：${this.abilityHelp(p.cls)}`;
   },
 
   updateHud(state) {
@@ -55,6 +89,7 @@ const UI = {
     if (this.el.fortWarning) {
       this.el.fortWarning.classList.toggle("hidden", !state.fortAlert);
     }
+    this._updateControlBar(p);
   },
 
   showStart(show) {

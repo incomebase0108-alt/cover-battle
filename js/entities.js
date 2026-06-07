@@ -367,6 +367,7 @@ class Unit {
     this.carrier = null;     // teammate carrying me (if downed)
     this.carrying = null;    // downed teammate I'm carrying
     this.reviveT = 0;        // ms accrued at the fort toward revival
+    this.healing = false;    // currently regenerating in a heal zone
     // Class / rank (see classes.js): affects look, stats and abilities.
     this.cls = "assault";
     this.classSpeedMul = 1;
@@ -657,9 +658,11 @@ class Unit {
     // or a control point your team has captured.
     const onOasis = game.map.inOasis && game.map.inOasis(this.x, this.y);
     const onOwnPoint = game.capturedPointFor && game.capturedPointFor(this.x, this.y, this.team);
+    this.healing = false;
     if (this.hp < this.maxHp &&
         (game.map.inBase(this.x, this.y, this.team) || onOasis || onOwnPoint)) {
       this.hp = Math.min(this.maxHp, this.hp + CONFIG.base.regenPerSec * dt / 1000);
+      this.healing = true;
     }
 
     if (this.controller === "net") {
@@ -891,5 +894,14 @@ class Unit {
     ctx.fillRect(hx, hy, w, h);
     ctx.fillStyle = this.team === "blue" ? "#7fb0ff" : "#ff8a8a";
     ctx.fillRect(hx, hy, w * (this.hp / this.maxHp), h);
+
+    // "HP回復中！" while regenerating in a heal zone.
+    if (this.healing) {
+      ctx.fillStyle = "#62e08a";
+      ctx.font = "bold 11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("HP回復中!", this.x, hy - 6);
+      ctx.textAlign = "left";
+    }
   }
 }

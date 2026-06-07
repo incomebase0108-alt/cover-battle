@@ -513,6 +513,8 @@ class Game {
         lockMode: p.lockMode,
         weapon: p.weapon().label,
         weaponKey: p.weaponKey,
+        cls: p.cls,
+        healing: !!p.healing,
       } : null,
     });
   }
