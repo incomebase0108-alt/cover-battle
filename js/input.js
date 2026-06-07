@@ -98,6 +98,50 @@ const Input = {
     stick.addEventListener("touchend", end);
     stick.addEventListener("touchcancel", end);
 
+    // 右の攻撃スティック: 倒した方向へ照準し、押している間ずっと射撃する。
+    // 移動スティックとは独立（移動では撃たない＝弾の無駄撃ち防止）。
+    if (els.aimStick) {
+      const astick = els.aimStick;
+      const aknob = els.aimKnob;
+      const aMaxR = 46;
+      let aid = null;
+      const aSetKnob = (x, y) => { if (aknob) aknob.style.transform = `translate(${x}px, ${y}px)`; };
+      const aMove = (e) => {
+        const rect = astick.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        let t = null;
+        for (const ct of e.changedTouches) if (ct.identifier === aid) t = ct;
+        if (!t) return;
+        const dx = t.clientX - cx;
+        const dy = t.clientY - cy;
+        const len = Math.hypot(dx, dy) || 1;
+        this.aimStick.dx = dx / len;
+        this.aimStick.dy = dy / len;
+        const cl = Math.min(len, aMaxR);
+        aSetKnob((dx / len) * cl, (dy / len) * cl);
+        e.preventDefault();
+      };
+      const aStart = (e) => {
+        this.isTouch = true;
+        aid = e.changedTouches[0].identifier;
+        this.aimStick.active = true;
+        this.shooting = true;
+        aMove(e);
+        e.preventDefault();
+      };
+      const aEnd = () => {
+        this.aimStick.active = false;
+        this.shooting = false;
+        aid = null;
+        aSetKnob(0, 0);
+      };
+      astick.addEventListener("touchstart", aStart, { passive: false });
+      astick.addEventListener("touchmove", aMove, { passive: false });
+      astick.addEventListener("touchend", aEnd);
+      astick.addEventListener("touchcancel", aEnd);
+    }
+
     const hold = (el, on, off) => {
       if (!el) return;
       el.addEventListener("touchstart", (e) => { on(); e.preventDefault(); }, { passive: false });

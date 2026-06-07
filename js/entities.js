@@ -480,7 +480,10 @@ class Unit {
     let speed = CONFIG.unit.speed * this.speedMul * this.classSpeedMul;
     if (this.dashMs > 0) speed *= ABILITY.dashMul; // assault dash burst
     if (this.carrying) speed *= RESCUE.carrySpeedMul; // slowed while hauling an ally
-    if (game.map.inRiver(this.x, this.y)) speed *= CONFIG.riverSpeedMul; // wading is slow
+    if (game.map.inRiver(this.x, this.y)) {
+      // 通常兵は川で減速。山岳海兵(canClimb)は水に強く、むしろ加速する。
+      speed *= this.canClimb ? CONFIG.climberRiverSpeedMul : CONFIG.riverSpeedMul;
+    }
     if (game.map.inSand && game.map.inSand(this.x, this.y)) speed *= CONFIG.sandSpeedMul; // trudging through sand
     const tryAt = (dx, dy) =>
       game.map.resolveCollision(this.x + dx * speed, this.y + dy * speed, this.radius, this.canClimb, this.team);
@@ -684,9 +687,11 @@ class Unit {
       } else if (Input.aimStick && Input.aimStick.active) {
         this.aim = Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
       } else if (moving) {
-        this.aim = Math.atan2(dy, dx);
+        this.aim = Math.atan2(dy, dx); // 移動方向を向くだけ（射撃はしない）
       }
-      autoFire = moving || (this.lockMode && !!this.lockTarget);
+      // 射撃するのは「攻撃スティックを倒している間」だけ（移動では撃たない）。
+      // ロックオン中は対象へ自動射撃（明示的に切り替えた時だけの挙動）。
+      autoFire = (this.lockMode && !!this.lockTarget);
     } else if (this.lockMode) {
       // Keep a valid target, then aim straight at it.
       if (!this.lockTarget || !this.lockTarget.alive ||

@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v15 スマホ移動方向に自動攻撃＋画面上の欠け修正";
+  const BUILD = "v16 攻撃スティック(移/攻)＋ズームアウト＋山岳海兵";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
@@ -15,8 +15,15 @@
     const w = Math.round(app.clientWidth);
     const h = Math.round(app.clientHeight);
     if (w > 0 && h > 0) {
-      canvas.width = w; canvas.height = h;
-      CONFIG.width = w; CONFIG.height = h;
+      // スマホは少し引いて（ズームアウトして）戦場を広く見せる。内部解像度を
+      // 上げ、CSSで画面サイズに縮小表示することで「1.25倍ぶん広く」見せる。
+      // 描画は1:1のまま＝ミニマップ等の画面座標UIも崩れない。
+      const touch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+      const s = touch ? 1.25 : 1; // 1.25 = 1.25倍ぶん広く見える
+      canvas.width = Math.round(w * s);
+      canvas.height = Math.round(h * s);
+      CONFIG.width = canvas.width;
+      CONFIG.height = canvas.height;
     }
   }
   setViewport();
@@ -24,7 +31,6 @@
   window.addEventListener("orientationchange", setViewport);
 
   Input.init(canvas);
-  Input.initAim(canvas); // manual aim stick (touch)
   UI.init();
   Assets.load(); // Blender-rendered sprites (falls back to canvas art if absent)
 
@@ -32,6 +38,8 @@
   Input.initTouch({
     joystick: document.getElementById("joystick"),
     knob: document.getElementById("knob"),
+    aimStick: document.getElementById("aimStickEl"),
+    aimKnob: document.getElementById("aimKnob"),
     fire: document.getElementById("btnFire"),
     bomb: document.getElementById("btnBomb"),
     lock: document.getElementById("btnLock"),

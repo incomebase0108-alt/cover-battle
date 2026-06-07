@@ -5,17 +5,24 @@
     const app = document.getElementById("app");
     const w = Math.round(app.clientWidth);
     const h = Math.round(app.clientHeight);
-    if (w > 0 && h > 0) { canvas.width = w; canvas.height = h; CONFIG.width = w; CONFIG.height = h; }
+    if (w > 0 && h > 0) {
+      const touch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+      const s = touch ? 1.25 : 1; // スマホは内部解像度を上げCSSで縮小＝広く見せる
+      canvas.width = Math.round(w * s);
+      canvas.height = Math.round(h * s);
+      CONFIG.width = canvas.width;
+      CONFIG.height = canvas.height;
+    }
   }
   setViewport();
   window.addEventListener("resize", setViewport);
   window.addEventListener("orientationchange", setViewport);
   Input.init(canvas);
-  Input.initAim(canvas);
   Input.initTouch({
     joystick: document.getElementById("joystick"),
     knob: document.getElementById("knob"),
-    fire: document.getElementById("btnFire"),
+    aimStick: document.getElementById("aimStickEl"),
+    aimKnob: document.getElementById("aimKnob"),
     bomb: document.getElementById("btnBomb"),
     weapon: document.getElementById("btnWeapon"),
     ability: document.getElementById("btnAbility"),

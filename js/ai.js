@@ -254,6 +254,26 @@ class AIController {
     return game.map.baseOf(self.team);
   }
 
+  // 最寄りの回復地点を返す。自陣の砦だけでなく、自軍が確保した制圧点や中立オアシス
+  // も体力が回復するので、いちばん近い回復ポイントへ退避できるようにする。
+  nearestHealZone(self, game) {
+    const base = this.homeBase(self, game);
+    let best = base ? { x: base.x, y: base.y } : null;
+    let bd = best ? V.dist(self.x, self.y, best.x, best.y) : Infinity;
+    for (const cp of (game.capturePoints || [])) {
+      if (cp.owner !== self.team) continue; // 自軍が確保した拠点のみ回復できる
+      const d = V.dist(self.x, self.y, cp.x, cp.y);
+      if (d < bd) { bd = d; best = { x: cp.x, y: cp.y }; }
+    }
+    if (game.map.oases) {
+      for (const o of game.map.oases) {
+        const d = V.dist(self.x, self.y, o.x, o.y);
+        if (d < bd) { bd = d; best = { x: o.x, y: o.y }; }
+      }
+    }
+    return best;
+  }
+
   // Nearest forest circle ({x,y,r}) to a point, or null if there are none.
   nearestForest(self, game, fromX, fromY) {
     const px = fromX == null ? self.x : fromX;
@@ -590,8 +610,8 @@ class AIController {
   // we don't eat fire on the way. Keep facing (and discouraging) any chaser but
   // do not advance on them.
   doRetreat(self, dt, game, target) {
-    const base = this.homeBase(self, game);
-    let dest = base ? { x: base.x, y: base.y } : { x: self.x, y: self.y };
+    // 自陣・確保した制圧点・オアシスのうち最寄りの回復地点へ退避する。
+    let dest = this.nearestHealZone(self, game) || { x: self.x, y: self.y };
 
     // If a forest or solid cover lies roughly between us and home, route through
     // it to break line of sight while falling back.

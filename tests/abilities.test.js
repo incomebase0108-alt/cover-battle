@@ -86,4 +86,19 @@ s.test("突撃兵のダッシュは時間クールダウンで制限される", 
   t.equal(a.abilityRemaining(game), null, "個数制ではないので残数はnull");
 });
 
+s.test("山岳海兵は川の上を通常兵より速く移動する", (t) => {
+  const { sb, game } = newGame(0);
+  const river = game.map.rivers[0];
+  const rx = river.x + river.w / 2;
+  const ry = river.y + river.h / 2;
+  const normal = new sb.Unit(rx, ry, "blue");          // 通常兵（川で減速）
+  const marine = new sb.Unit(rx, ry, "blue");
+  marine.canClimb = true;                              // 山岳海兵（川で加速）
+  game.units = [normal, marine];
+  const dn = normal.move(0, -1, game);                 // 川に沿って上へ1歩
+  marine.x = rx; marine.y = ry;
+  const dm = marine.move(0, -1, game);
+  t.greaterThan(dm, dn, "山岳海兵の方が川で速く進む");
+});
+
 module.exports = s;

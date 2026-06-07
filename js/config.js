@@ -79,6 +79,8 @@ const CONFIG = {
 
   // Movement speed multiplier while wading through a river.
   riverSpeedMul: 0.5,
+  // 山岳海兵（canClimb）は水の扱いに長け、川の上をむしろ速く移動できる。
+  climberRiverSpeedMul: 1.3,
   // Movement speed multiplier while crossing desert sand.
   sandSpeedMul: 0.7,
 

@@ -175,7 +175,17 @@ body.touch .touch-controls {
   border-radius: 50%;
   background: rgba(47,123,255,0.6);
   border: 2px solid rgba(255,255,255,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
 }
+/* 右の攻撃スティック（倒した方向に照準＋射撃）。移動スティックの鏡像で赤系。 */
+.aimpad { left: auto; right: 16px; background: rgba(255,80,80,0.10); border-color: rgba(255,120,120,0.35); }
+.aimpad .knob { background: rgba(255,77,77,0.65); }
 .action-buttons {
   position: absolute;
   left: 0;

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cover Battle — 岩と森の4vs4バトル</title>
-  <link rel="stylesheet" href="css/style.css?v=15" />
+  <link rel="stylesheet" href="css/style.css?v=16" />
 </head>
 <body>
   <div id="app">
@@ -40,14 +40,14 @@
 
     <!-- Mobile touch controls (shown only on touch devices) -->
     <div id="touchControls" class="touch-controls">
-      <div id="joystick" class="joystick"><div id="knob" class="knob"></div></div>
+      <div id="joystick" class="joystick"><div id="knob" class="knob">移</div></div>
+      <div id="aimStickEl" class="joystick aimpad"><div id="aimKnob" class="knob aimknob">攻</div></div>
       <div class="action-buttons">
         <button id="btnAbility" class="act ability">🎯<small id="abilitySmall">特殊</small></button>
         <button id="btnWeapon" class="act weapon">🔫<small>武器</small></button>
         <button id="btnLock" class="act lock">🔒<small>ロック</small></button>
         <button id="btnCycle" class="act cycle">⇄<small>対象</small></button>
         <button id="btnBomb" class="act bomb">💣<small>爆弾</small></button>
-        <button id="btnFire" class="act fire">🔫<small>撃つ</small></button>
       </div>
     </div>
 
@@ -64,9 +64,9 @@
           <p><b>勝利条件</b>： 赤チームを<b>全滅</b>させる、または<b>赤の砦を破壊</b>でクリア。味方全滅か<b>自分の砦が破壊されると敗北</b>。</p>
           <p><b>地形</b>： <span class="rock-key">岩</span>=破壊できる盾 / <span class="mtn-key">山</span>=壊せない遮蔽 / <span class="bush-key">森</span>=隠れると敵から見えない / <span class="river-key">川</span>=移動が遅くなる</p>
           <p><b>砦</b>： 自分の<span class="base-key">砦</span>（自陣）に戻ると体力が回復。砦には<b>耐久ゲージ</b>があり、敵に壊されると負け。</p>
-          <p><b>クラス特殊（C / 🎯）</b>： 偵察兵=煙幕（隠れる）／工兵=自動砲台／突撃兵=ダッシュ。山岳兵=段差を登れる。</p>
-          <p><b>マップ</b>： 画面よりかなり広く、<b>カメラが自分を追って</b>スクロールする。段差は山岳兵だけ越えられる近道。</p>
-          <p><b>スマホ</b>： 左スティックで<b>移動した方向に自動で攻撃</b>が出ます（動かせば撃つ）。🔒ロックオンで近くの敵に自動照準。右側ドラッグで好きな向きに手動照準も可。下のボタンで 撃つ／爆弾／特殊／武器。</p>
+          <p><b>クラス特殊（C / 🎯）</b>： 工兵=自動砲台（最大2）／突撃兵=ダッシュ／動物使い=動物を捕獲（最大2）。山岳海兵=段差を登れて水上も速い。</p>
+          <p><b>マップ</b>： 画面よりかなり広く、<b>カメラが自分を追って</b>スクロールする。段差は山岳海兵だけ越えられる近道。</p>
+          <p><b>スマホ</b>： 左スティックで<b>移動した方向に自動で攻撃</b>が出ます（動かせば撃つ）。🔒ロックオンで近くの敵に自動照準。右側ドラッグで好きな向きに手動照準も可。下のボタンで 爆弾／特殊／武器／ロック。</p>
         </div>
         <button id="startBtn" class="btn">ゲーム開始</button>
       </div>
@@ -95,23 +95,23 @@
     </div>
   </div>
 
-  <script src="js/vector.js?v=15"></script>
-  <script src="js/config.js?v=15"></script>
-  <script src="js/classes.js?v=15"></script>
-  <script src="js/assets.js?v=15"></script>
-  <script src="js/audio.js?v=15"></script>
-  <script src="js/input.js?v=15"></script>
-  <script src="js/map.js?v=15"></script>
-  <script src="js/weapons.js?v=15"></script>
-  <script src="js/chest.js?v=15"></script>
-  <script src="js/beast.js?v=15"></script>
-  <script src="js/abilities.js?v=15"></script>
-  <script src="js/entities.js?v=15"></script>
-  <script src="js/ai.js?v=15"></script>
-  <script src="js/overlay.js?v=15"></script>
-  <script src="js/game.js?v=15"></script>
-  <script src="js/ui.js?v=15"></script>
-  <script src="js/main.js?v=15"></script>
-  <script src="js/help.js?v=15"></script>
+  <script src="js/vector.js?v=16"></script>
+  <script src="js/config.js?v=16"></script>
+  <script src="js/classes.js?v=16"></script>
+  <script src="js/assets.js?v=16"></script>
+  <script src="js/audio.js?v=16"></script>
+  <script src="js/input.js?v=16"></script>
+  <script src="js/map.js?v=16"></script>
+  <script src="js/weapons.js?v=16"></script>
+  <script src="js/chest.js?v=16"></script>
+  <script src="js/beast.js?v=16"></script>
+  <script src="js/abilities.js?v=16"></script>
+  <script src="js/entities.js?v=16"></script>
+  <script src="js/ai.js?v=16"></script>
+  <script src="js/overlay.js?v=16"></script>
+  <script src="js/game.js?v=16"></script>
+  <script src="js/ui.js?v=16"></script>
+  <script src="js/main.js?v=16"></script>
+  <script src="js/help.js?v=16"></script>
 </body>
 </html>
