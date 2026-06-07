@@ -97,6 +97,9 @@ body.touch .hud-row { gap: 8px; font-size: 14px; }
   cursor: pointer;
 }
 .icon-btn:hover { background: rgba(0,0,0,0.6); }
+/* タッチ端末でのみ出すUI（コントローラ大きさトグル等）。 */
+.touch-only { display: none; }
+body.touch .touch-only { display: inline-block; }
 
 /* Overlays */
 .overlay {
@@ -178,12 +181,14 @@ body.touch .touch-controls {
   inset: 0;
   pointer-events: none;
 }
+/* 親指スティック土台。左右対称で大きめ（掴みやすさ＝当たり判定の広さ重視）。
+   画面端から余白をとり、指で隠れない位置（下＝親指の自然な位置）に置く。 */
 .joystick {
   position: absolute;
-  left: 16px;
-  bottom: 96px;          /* sit above the bottom button row */
-  width: 116px;
-  height: 116px;
+  left: 20px;
+  bottom: 24px;          /* 画面下端寄り＝親指で届きやすい */
+  width: 150px;          /* 116 → 150px：大きく＝掴める領域も広い */
+  height: 150px;
   border-radius: 50%;
   background: rgba(255,255,255,0.08);
   border: 2px solid rgba(255,255,255,0.2);
@@ -194,23 +199,34 @@ body.touch .touch-controls {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 52px;
-  height: 52px;
-  margin: -26px 0 0 -26px;
+  width: 66px;           /* 52 → 66px：ノブも大きく */
+  height: 66px;
+  margin: -33px 0 0 -33px;
   border-radius: 50%;
   background: rgba(47,123,255,0.6);
   border: 2px solid rgba(255,255,255,0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 800;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0,0,0,0.7);
 }
-/* 右の攻撃スティック（倒した方向に照準＋射撃）。移動スティックの鏡像で赤系。 */
-.aimpad { left: auto; right: 16px; background: rgba(255,80,80,0.10); border-color: rgba(255,120,120,0.35); }
-.aimpad .knob { background: rgba(255,77,77,0.65); }
+/* 右の攻撃スティック（倒した方向に照準＋射撃）。移動スティックと同じ大きさ・見た目で
+   左右対称に配置（左下＝移動、右下＝攻撃）。赤系で区別する。 */
+.aimpad {
+  left: auto;
+  right: 20px;
+  bottom: 24px;
+  background: rgba(255,80,80,0.12);
+  border-color: rgba(255,120,120,0.4);
+}
+.aimpad .knob { background: rgba(255,77,77,0.7); }
+
+/* 任意の「コントローラ大きさ：大」モード（body.big-controls）。さらにひと回り拡大。 */
+body.big-controls .joystick { width: 196px; height: 196px; }
+body.big-controls .knob { width: 86px; height: 86px; margin: -43px 0 0 -43px; font-size: 32px; }
 .action-buttons {
   position: absolute;
   left: 0;
@@ -368,6 +384,36 @@ body.touch .control-bar { bottom: auto; top: 92px; font-size: 12px; }
 .char-card b { font-size: 16px; }
 .char-card .cdesc { font-size: 12px; color: #cdd6e2; }
 .char-card .cstat { font-size: 11px; color: #8fa0b4; }
+
+/* AI difficulty selector (char-select + LAN lobby) */
+.difficulty-select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 4px 0 14px;
+  flex-wrap: wrap;
+}
+.diff-label { font-size: 13px; font-weight: 700; color: #aab6c6; }
+.diff-buttons { display: inline-flex; gap: 8px; }
+.diff-btn {
+  padding: 7px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.05);
+  color: #cdd6e2;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.diff-btn:hover:not(:disabled) { background: rgba(255,255,255,0.12); }
+.diff-btn:disabled { opacity: 0.5; cursor: default; }
+.diff-btn.active {
+  background: linear-gradient(90deg, var(--blue), #4f9bff);
+  border-color: #6fe0ff;
+  color: #fff;
+}
 
 .hidden { display: none !important; }
 

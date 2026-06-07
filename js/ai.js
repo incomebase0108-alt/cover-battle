@@ -56,6 +56,54 @@ class AIController {
     this.unstickAng = 0;
     // Throttle weapon switching so bots don't thrash (each switch reloads).
     this.weaponTimer = 0;
+    // --- difficulty model (driven by self.aiSkill 0..1) ---------------------
+    // A local clock accumulated from dt (works in tests, which step dt by hand,
+    // and on the LAN server). aimSince marks when the current target was first
+    // acquired (reaction delay); lastFireMs throttles bursts so weak AI fires in
+    // slow, dodgeable bursts rather than a constant beam.
+    this.clock = 0;
+    this.aimSince = 0;
+    this.lastTarget = null;
+    this.lastFireMs = -1e9;
+  }
+
+  // The skill coefficient that governs this unit's shooting (0 = weak, 1 =
+  // strong). Falls back to the legacy `skill` when aiSkill isn't set (tests).
+  aiSkillOf(self) {
+    return (self.aiSkill != null) ? self.aiSkill : self.skill;
+  }
+
+  // Distance at which the AI is willing to open fire. Weaker AI must close in
+  // before it starts shooting (so it's less of a long-range hitscan threat).
+  engageRange(self) {
+    const sk = this.aiSkillOf(self);
+    return CONFIG.unit.range * (0.6 + 0.4 * sk);
+  }
+
+  // Centralised AI trigger. Applies the difficulty model on top of the weapon's
+  // own fire cooldown:
+  //   • reaction delay  — hold fire for a beat after acquiring a target
+  //   • burst & rest    — enforce a minimum gap between AI shots
+  //   • aim error       — bend each shot by a skill/distance based random offset
+  // Returns true when a round was actually loosed. Every shooting state routes
+  // through here so the chosen difficulty is felt everywhere.
+  aiTryShoot(self, game, target) {
+    if (self.reloading || self.ammo <= 0 || self.cooldown > 0) return false;
+    const sk = this.aiSkillOf(self);
+    // Reset the reaction timer whenever the engaged target changes.
+    if (target !== this.lastTarget) { this.lastTarget = target; this.aimSince = this.clock; }
+    const reactionMs = 150 + (1 - sk) * 450;
+    if (this.clock - this.aimSince < reactionMs) return false;
+    const fireGap = 180 + (1 - sk) * 420;
+    if (this.clock - this.lastFireMs < fireGap) return false;
+    if (target) {
+      const dist = V.dist(self.x, self.y, target.x, target.y);
+      const aimError = (1 - sk) * 0.28 + (dist / 2000) * (1 - sk);
+      self.aim += (Math.random() * 2 - 1) * aimError;
+    }
+    self.tryShoot(game);
+    this.lastFireMs = this.clock;
+    return true;
   }
 
   // Pick the best weapon for the current engagement distance, with a cooldown.
@@ -414,6 +462,7 @@ class AIController {
   // ---- main loop ----------------------------------------------------------
 
   update(self, dt, game) {
+    this.clock += dt; // advance the local clock (reaction delay + fire-gap timing)
     // Progress made since last frame (used for anti-stuck below).
     const prog = this.lastX === null ? 99 : V.dist(self.x, self.y, this.lastX, this.lastY);
     this.lastX = self.x;
@@ -433,8 +482,8 @@ class AIController {
       this.moveTo(self, home.x, home.y, game);
       const t = this.findTarget(self, game);
       if (t && !game.map.blockedBetween(self.x, self.y, t.x, t.y) &&
-          !self.reloading && self.ammo > 0 && Math.random() < self.skill * 0.5) {
-        this.aimAt(self, t.x, t.y); self.tryShoot(game);
+          V.dist(self.x, self.y, t.x, t.y) <= this.engageRange(self)) {
+        this.aimAt(self, t.x, t.y); this.aiTryShoot(self, game, t);
       }
       return;
     }
@@ -481,7 +530,7 @@ class AIController {
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff < 0.8 || V.dist(self.x, self.y, gx, gy) < 95) {
           this.aimAt(self, gx, gy);
-          if (!self.reloading && self.ammo > 0 && Math.random() < 0.7) self.tryShoot(game);
+          this.aiTryShoot(self, game, gate);
           this.moveTo(self, gx, gy, game);
           return;
         }
@@ -496,7 +545,7 @@ class AIController {
       if (V.dist(self.x, self.y, beast.x, beast.y) < 90) {
         this.moveTo(self, self.x + (self.x - beast.x), self.y + (self.y - beast.y), game);
       }
-      if (!self.reloading && self.ammo > 0 && Math.random() < 0.6) self.tryShoot(game);
+      this.aiTryShoot(self, game, beast);
       return;
     }
 
@@ -564,8 +613,8 @@ class AIController {
         if (target) {
           this.aimAt(self, target.x, target.y);
           if (!game.map.blockedBetween(self.x, self.y, target.x, target.y) &&
-              !self.reloading && self.ammo > 0 && Math.random() < self.skill * 0.5) {
-            self.tryShoot(game);
+              V.dist(self.x, self.y, target.x, target.y) <= this.engageRange(self)) {
+            this.aiTryShoot(self, game, target);
           }
         }
         return;
@@ -590,11 +639,12 @@ class AIController {
     }
   }
 
-  // Update self.aim toward a point with skill-based error (1 = perfect).
+  // Aim straight at a point. Tracking is precise; the miss-chance now lives in
+  // aiTryShoot, which bends each individual shot by a skill/distance aim error
+  // (so between shots the unit faces its target cleanly).
   aimAt(self, x, y) {
     const baseAngle = Math.atan2(y - self.y, x - self.x);
-    const spread = (1 - self.skill) * 0.5;
-    self.aim = baseAngle + V.randRange(-spread, spread);
+    self.aim = baseAngle;
     return baseAngle;
   }
 
@@ -634,9 +684,7 @@ class AIController {
       const d = V.dist(self.x, self.y, target.x, target.y);
       this.aimAt(self, target.x, target.y);
       const hasLOS = !game.map.blockedBetween(self.x, self.y, target.x, target.y);
-      if (hasLOS && d <= CONFIG.unit.range && !self.reloading && self.ammo > 0) {
-        if (Math.random() < self.skill * 0.4) self.tryShoot(game);
-      }
+      if (hasLOS && d <= this.engageRange(self)) this.aiTryShoot(self, game, target);
     }
 
     this.moveTo(self, dest.x, dest.y, game);
@@ -670,9 +718,7 @@ class AIController {
     // Only shoot if we actually have a clear line and ammo (true peek & shoot).
     const d = V.dist(self.x, self.y, target.x, target.y);
     const hasLOS = !game.map.blockedBetween(self.x, self.y, target.x, target.y);
-    if (hasLOS && d <= CONFIG.unit.range && !self.reloading && self.ammo > 0) {
-      if (Math.random() < self.skill * 0.7) self.tryShoot(game);
-    }
+    if (hasLOS && d <= this.engageRange(self)) this.aiTryShoot(self, game, target);
   }
 
   // ENGAGE: hold a comfortable range, strafe, and shoot when on target. Advance
@@ -708,9 +754,8 @@ class AIController {
       const len = Math.hypot(mx, my);
       if (len > 0) self.move(mx / len, my / len, game);
 
-      if (!self.reloading && self.ammo > 0 && Math.random() < self.skill * 0.7) {
-        self.tryShoot(game);
-      }
+      // Weaker AI only opens fire once it has closed inside its engage range.
+      if (d <= this.engageRange(self)) this.aiTryShoot(self, game, target);
     } else {
       // No clear shot: advance toward the target to find an angle.
       this.moveTo(self, target.x, target.y, game);
@@ -757,9 +802,7 @@ class AIController {
       } else {
         self.move(-Math.cos(baseAngle), -Math.sin(baseAngle), game); // back off a touch
       }
-      if (!self.reloading && self.ammo > 0 && Math.random() < self.skill * 0.7) {
-        self.tryShoot(game);
-      }
+      this.aiTryShoot(self, game, fort);
     } else {
       self.move(Math.cos(baseAngle), Math.sin(baseAngle), game);
     }

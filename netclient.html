@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cover Battle — LAN対戦</title>
-  <link rel="stylesheet" href="css/style.css?v=24" />
+  <link rel="stylesheet" href="css/style.css?v=25" />
 </head>
 <body>
   <div id="app">
@@ -12,6 +12,7 @@
 
     <div class="hud" style="pointer-events:none;">
       <div class="hud-row" style="justify-content:flex-end;">
+        <button id="btnCtrlSize" class="icon-btn touch-only" style="pointer-events:auto;" title="コントローラの大きさ">🕹️標準</button>
         <button id="muteBtn" class="icon-btn" style="pointer-events:auto;">🔊</button>
       </div>
     </div>
@@ -39,6 +40,10 @@
           <div class="lobby-col"><h3 class="blue">青チーム</h3><div id="blueSlots" class="slot-list"></div></div>
           <div class="lobby-col"><h3 class="red">赤チーム</h3><div id="redSlots" class="slot-list"></div></div>
         </div>
+        <div id="diffSelect" class="difficulty-select">
+          <span class="diff-label">AI難易度</span>
+          <div id="diffButtons" class="diff-buttons"></div>
+        </div>
         <p id="startNote" class="subtitle">上でスロット（キャラ）を選んでください。</p>
         <button id="startMatchBtn" class="btn hidden">ゲーム開始</button>
         <p class="subtitle" style="font-size:12px;">操作：左「移」で移動 ・ 右「攻」を倒した方向に照準＋射撃 ・ 爆弾💣 ・ 特殊🎯 ・ 武器🔫</p>
@@ -46,16 +51,16 @@
     </div>
   </div>
 
-  <script src="js/vector.js?v=24"></script>
-  <script src="js/config.js?v=24"></script>
-  <script src="js/classes.js?v=24"></script>
-  <script src="js/assets.js?v=24"></script>
-  <script src="js/audio.js?v=24"></script>
-  <script src="js/weapons.js?v=24"></script>
-  <script src="js/input.js?v=24"></script>
-  <script src="js/map.js?v=24"></script>
-  <script src="js/net/render.js?v=24"></script>
-  <script src="js/net/client.js?v=24"></script>
-  <script src="js/help.js?v=24"></script>
+  <script src="js/vector.js?v=25"></script>
+  <script src="js/config.js?v=25"></script>
+  <script src="js/classes.js?v=25"></script>
+  <script src="js/assets.js?v=25"></script>
+  <script src="js/audio.js?v=25"></script>
+  <script src="js/weapons.js?v=25"></script>
+  <script src="js/input.js?v=25"></script>
+  <script src="js/map.js?v=25"></script>
+  <script src="js/net/render.js?v=25"></script>
+  <script src="js/net/client.js?v=25"></script>
+  <script src="js/help.js?v=25"></script>
 </body>
 </html>

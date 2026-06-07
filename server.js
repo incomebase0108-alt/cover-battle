@@ -39,9 +39,12 @@ let game;
 let stage = 0;
 let started = false; // 試合が開始済みか（待機ロビー中は false）
 let hostId = null;   // 最初に接続した人がホスト（開始ボタンを押せる）
+let difficulty = (sb.CONFIG && sb.CONFIG.difficulty) || "easy"; // AI難易度（ホストが選ぶ。既定はやさしい）
 
 function newMatch(idx) {
   stage = ((idx % sb.STAGES.length) + sb.STAGES.length) % sb.STAGES.length;
+  // 選択中の難易度を反映してから出撃させる（敵チームの skill に乗算される）。
+  if (sb.CONFIG) sb.CONFIG.difficulty = difficulty;
   game = new sb.Game(makeCanvas(), {
     onEnd: (win) => {
       started = false; // 試合終了 → 待機ロビーに戻る（ホストが次を開始する）
@@ -68,7 +71,7 @@ let nextId = 1;
 function send(ws, obj) { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
 function broadcast(obj) { const s = JSON.stringify(obj); for (const ws of clients.keys()) if (ws.readyState === WebSocket.OPEN) ws.send(s); }
 function broadcastStatic() { broadcast({ type: "static", ...game.serializeStatic() }); broadcastLobby(); }
-function broadcastLobby() { broadcast({ type: "lobby", roster: game.rosterState(), started, host: hostId }); }
+function broadcastLobby() { broadcast({ type: "lobby", roster: game.rosterState(), started, host: hostId, diff: difficulty }); }
 
 wss.on("connection", (ws) => {
   const c = { id: nextId++, name: "", team: null, slot: null, unitIndex: -1 };
@@ -76,7 +79,7 @@ wss.on("connection", (ws) => {
   if (hostId === null) hostId = c.id; // 最初の接続者をホストに
   send(ws, { type: "hello", id: c.id });
   send(ws, { type: "static", ...game.serializeStatic() });
-  send(ws, { type: "lobby", roster: game.rosterState(), started, host: hostId });
+  send(ws, { type: "lobby", roster: game.rosterState(), started, host: hostId, diff: difficulty });
 
   ws.on("message", (raw) => {
     let m;
@@ -93,6 +96,15 @@ wss.on("connection", (ws) => {
         broadcastLobby();
       } else {
         send(ws, { type: "slotTaken" });
+      }
+    } else if (m.type === "difficulty") {
+      // ホストだけが、待機ロビー中に AI 難易度（やさしい/ふつう/つよい）を変更できる。
+      const valid = sb.DIFFICULTY_ORDER && sb.DIFFICULTY_ORDER.indexOf(m.level) >= 0;
+      if (c.id === hostId && !started && valid) {
+        difficulty = m.level;
+        if (sb.CONFIG) sb.CONFIG.difficulty = difficulty;
+        if (game && game.applyDifficultyToAi) game.applyDifficultyToAi(); // 待機中のAIにも即反映
+        broadcastLobby();
       }
     } else if (m.type === "start") {
       // ホストだけが「新しい試合を最初から」開始できる。

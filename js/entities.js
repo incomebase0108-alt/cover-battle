@@ -318,6 +318,8 @@ class Unit {
     this.regenAccum = 0;     // accumulator for partial regenerated rounds
     this.muzzleFlash = 0;    // ms remaining on the muzzle-flash effect
     this.skill = 0.7; // AI accuracy/decision quality, overridden per spawn
+    this.aiSkill = null; // difficulty coefficient 0..1 (null = use `skill`); set per AI spawn
+    this.damageMul = 1;  // bullet damage multiplier (weak AI < 1; players stay 1)
     this.ai = null;   // assigned for non-player units
     this.controller = null; // "net" when a remote player drives this unit (LAN MP)
     this.netInput = null;   // latest input from that remote player
@@ -544,7 +546,7 @@ class Unit {
     const spread = w.spread ?? 0;
     const wSpeedMul = w.bulletSpeedMul ?? 1;
     const wRangeMul = w.rangeMul ?? 1;
-    const damage = this.damageVal();
+    const damage = this.damageVal() * (this.damageMul || 1);
     const speed = CONFIG.bullet.speed * wSpeedMul * this.bulletSpeedMul;
     const life = CONFIG.bullet.life * wRangeMul * this.rangeMul;
 

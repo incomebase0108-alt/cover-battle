@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v24 スマホのロックオン線を撤去";
+  const BUILD = "v25 AI難易度(やさしい既定)＋スマホのスティック拡大";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
@@ -46,6 +46,7 @@
     cycle: document.getElementById("btnCycle"),
     weapon: document.getElementById("btnWeapon"),
     ability: document.getElementById("btnAbility"),
+    ctrlSize: document.getElementById("btnCtrlSize"),
   });
 
   // Mute / unmute BGM + SFX.
@@ -80,10 +81,31 @@
     game.start();
   }
 
+  // Build the AI-difficulty selector (easy/normal/hard). The chosen level is
+  // stored on CONFIG.difficulty and read when a stage spawns the enemy team, so
+  // it applies to the whole run (and every retried/advanced stage).
+  function buildDifficulty() {
+    const box = document.getElementById("diffButtons");
+    if (!box || typeof DIFFICULTY_ORDER === "undefined") return;
+    box.innerHTML = "";
+    for (const key of DIFFICULTY_ORDER) {
+      const btn = document.createElement("button");
+      btn.className = "diff-btn" + (CONFIG.difficulty === key ? " active" : "");
+      btn.textContent = (typeof DIFFICULTY_LABEL !== "undefined" && DIFFICULTY_LABEL[key]) || key;
+      btn.addEventListener("click", () => {
+        CONFIG.difficulty = key;
+        Sound.start();
+        for (const b of box.children) b.classList.toggle("active", b === btn);
+      });
+      box.appendChild(btn);
+    }
+  }
+
   // Build the character-select grid (6 blue slots; slot also picks the weapon).
   function showCharSelect() {
     Sound.start();
     UI.showStart(false);
+    buildDifficulty();
     const grid = document.getElementById("charGrid");
     grid.innerHTML = "";
     const n = CONFIG.teamSize || 6;

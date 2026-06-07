@@ -26,6 +26,7 @@
     bomb: document.getElementById("btnBomb"),
     weapon: document.getElementById("btnWeapon"),
     ability: document.getElementById("btnAbility"),
+    ctrlSize: document.getElementById("btnCtrlSize"),
   });
   Assets.load();
 
@@ -33,6 +34,7 @@
     ws: null, stage: 0, map: null, snap: null,
     myIndex: -1, myTeam: 0, joined: false,
     myId: null, host: null, started: false,
+    difficulty: "normal", // AI難易度（ホストが選ぶ。全員に共有される）
     cam: { x: 0, y: 0 },
   };
 
@@ -75,7 +77,9 @@
       bannerT = 0; banner = ""; // 新しい試合が始まったら勝敗表示を消す
     } else if (m.type === "lobby") {
       Net.host = m.host; Net.started = !!m.started;
+      if (m.diff) Net.difficulty = m.diff;
       renderLobby(m.roster);
+      renderDifficulty();
       // 試合中はロビーを隠す。待機中は表示する。
       document.getElementById("lobby").classList.toggle("hidden", Net.started);
     } else if (m.type === "you") {
@@ -137,6 +141,30 @@
       else if (isHost) note.textContent = "全員そろったら「ゲーム開始」を押してください。";
       else note.textContent = "ホストの開始を待っています…";
     }
+  }
+
+  // AI難易度セレクタ。全員に現在の難易度を見せ、変更できるのはホストのみ
+  // （他の人のボタンは無効表示）。クリックでサーバーへ難易度変更を要求する。
+  function renderDifficulty() {
+    const box = document.getElementById("diffButtons");
+    if (!box || typeof DIFFICULTY_ORDER === "undefined") return;
+    const isHost = Net.myId != null && Net.myId === Net.host;
+    box.innerHTML = "";
+    for (const key of DIFFICULTY_ORDER) {
+      const btn = document.createElement("button");
+      btn.className = "diff-btn" + (Net.difficulty === key ? " active" : "");
+      btn.textContent = (typeof DIFFICULTY_LABEL !== "undefined" && DIFFICULTY_LABEL[key]) || key;
+      btn.disabled = !isHost || Net.started;
+      btn.addEventListener("click", () => {
+        if (!Net.ws || Net.ws.readyState !== 1) return;
+        Net.ws.send(JSON.stringify({ type: "difficulty", level: key }));
+        Sound.start();
+      });
+      box.appendChild(btn);
+    }
+    // ホスト以外には「ホストが設定」と分かるよう、ラベルを補足する。
+    const sel = document.getElementById("diffSelect");
+    if (sel) sel.classList.toggle("not-host", !isHost);
   }
 
   let banner = "";

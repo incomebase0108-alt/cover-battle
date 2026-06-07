@@ -76,19 +76,21 @@ class Game {
       else u.setWeapon(loadout[i % loadout.length]);
       if (!u.isPlayer) {
         u.ai = new AIController();
-        u.skill = 0.7;
+        this.applyAiSkill(u);
       }
       this.units.push(u);
     });
 
-    // Red team: all AI, skill scales with the stage.
+    // Red team: all AI. Strength is set by the chosen difficulty (applyAiSkill),
+    // not the stage, so the lobby/char-select selector fully controls how hard
+    // the enemies play.
     redSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "red");
       u.name = "赤" + (i + 1);
       if (classKey(i)) u.applyClass(classKey(i));
       else u.setWeapon(loadout[(i + 1) % loadout.length]);
       u.ai = new AIController();
-      u.skill = stage.enemySkill;
+      this.applyAiSkill(u);
       this.units.push(u);
     });
 
@@ -96,6 +98,26 @@ class Game {
 
     this._updateCamera(); // centre on the player before the first frame
     this._syncHud();
+  }
+
+  // Set a unit's AI strength from the active difficulty (or an explicit level).
+  // aiSkill (0..1) drives accuracy / reaction time / fire rate / engage range in
+  // ai.js; `skill` mirrors it so the existing tactical thresholds scale too; and
+  // damageMul softens a weak AI's bullets so "やさしい" really is easier.
+  applyAiSkill(u, level) {
+    const sk = (typeof aiSkillFor === "function") ? aiSkillFor(level || CONFIG.difficulty) : 0.6;
+    u.aiSkill = sk;
+    u.skill = sk;
+    u.damageMul = 0.7 + 0.3 * sk;
+  }
+
+  // Re-apply the active difficulty to every AI-controlled unit. Lets a host
+  // change difficulty in the lobby and have it take effect on the live roster
+  // (empty/abandoned slots are AI), not just on the next match.
+  applyDifficultyToAi() {
+    for (const u of this.units) {
+      if (u.ai && !u.isPlayer && u.controller !== "net") this.applyAiSkill(u);
+    }
   }
 
   // Build CONFIG.teamSize spawn points for a team: use the stage's authored
@@ -137,6 +159,7 @@ class Game {
     unit.controller = null;
     unit.netInput = null;
     if (!unit.ai) unit.ai = new AIController(); // hand the slot back to the AI
+    this.applyAiSkill(unit); // the AI plays at the current difficulty
   }
 
   // Lobby view: which team/slot pairs are taken by humans.

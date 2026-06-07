@@ -103,7 +103,7 @@ const Input = {
     if (els.aimStick) {
       const astick = els.aimStick;
       const aknob = els.aimKnob;
-      const aMaxR = 46;
+      const aMaxR = 62; // 攻撃スティックは大きいのでノブの可動域も広げる（掴みやすさ重視）
       let aid = null;
       const aSetKnob = (x, y) => { if (aknob) aknob.style.transform = `translate(${x}px, ${y}px)`; };
       const aMove = (e) => {
@@ -153,6 +153,27 @@ const Input = {
     hold(els.cycle, () => { this.cycleQueued = true; });
     hold(els.weapon, () => { this.weaponCycleQueued = true; });
     hold(els.ability, () => { this.abilityQueued = true; });
+
+    // 任意：コントローラ大きさトグル（標準／大）。body.big-controls をCSSが拾って拡大。
+    // 選択は localStorage に保存し、次回も維持する。
+    if (els.ctrlSize) this.initCtrlSize(els.ctrlSize);
+  },
+
+  // Wire a button that toggles the larger on-screen controls (body.big-controls),
+  // persisting the choice. Safe to call on any device; only matters on touch.
+  initCtrlSize(btn) {
+    let big = false;
+    try { big = localStorage.getItem("cb_bigControls") === "1"; } catch (e) {}
+    const apply = () => {
+      if (document.body) document.body.classList.toggle("big-controls", big);
+      btn.textContent = big ? "🕹️大" : "🕹️標準";
+    };
+    apply();
+    btn.addEventListener("click", () => {
+      big = !big;
+      try { localStorage.setItem("cb_bigControls", big ? "1" : "0"); } catch (e) {}
+      apply();
+    });
   },
 
   // Right-side aim stick: drag anywhere on the right portion of the canvas to
@@ -178,7 +199,8 @@ const Input = {
           const dx = t.clientX - ox;
           const dy = t.clientY - oy;
           const len = Math.hypot(dx, dy);
-          if (len > 6) { this.aimStick.dx = dx / len; this.aimStick.dy = dy / len; }
+          // 小さなデッドゾーン：少しでも倒したら即座に照準確定（撃ちやすさ優先）。
+          if (len > 2) { this.aimStick.dx = dx / len; this.aimStick.dy = dy / len; }
           e.preventDefault();
         }
       }

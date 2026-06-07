@@ -17,6 +17,15 @@ const CONFIG = {
   // Units per team (the engine supports any number; stages auto-generate spawns).
   teamSize: 6,
 
+  // Selectable AI difficulty. A single coefficient `aiSkill` (0 = weak … 1 =
+  // strong) expresses how good the AI is: it drives aim accuracy, reaction time,
+  // fire rate, the distance it engages from and its bullet damage (see ai.js).
+  // `difficulty` names the active level; `aiSkill` maps each level to a value.
+  // LAN and single-player both expose a selector; the default is "easy" because
+  // the full-skill AI was too strong.
+  difficulty: "easy",
+  aiSkill: { easy: 0.35, normal: 0.6, hard: 0.85 },
+
   // Forest radii are multiplied by this at load so woods feel bigger/denser.
   forestScale: 1.6,
 
@@ -110,6 +119,20 @@ const CONFIG = {
     bulletDamage: 10,  // damage a bullet does to a fort core
   },
 };
+
+// Difficulty levels in order, with the Japanese labels shown on the selector
+// (やさしい / ふつう / つよい). The numeric strength of each lives in
+// CONFIG.aiSkill above.
+const DIFFICULTY_ORDER = ["easy", "normal", "hard"];
+const DIFFICULTY_LABEL = { easy: "やさしい", normal: "ふつう", hard: "つよい" };
+
+// Resolve the aiSkill coefficient for a difficulty level (falls back to the
+// "normal" value, then 0.6, if the table or level is missing).
+function aiSkillFor(level) {
+  const tbl = CONFIG.aiSkill || {};
+  if (tbl[level] != null) return tbl[level];
+  return tbl.normal != null ? tbl.normal : 0.6;
+}
 
 // Weighted random item type for rock drops.
 const ITEM_TYPES = ["heal", "speed", "bullet", "range", "bomb"];
