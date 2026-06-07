@@ -108,7 +108,9 @@
       col.innerHTML = "";
       roster[team].forEach((slot, i) => {
         const c = (typeof CLASSES !== "undefined") ? CLASSES[i % CLASSES.length] : null;
-        const cl = c ? `${c.badge}${c.label}` : "";
+        // ラベルだけを使う（badge はラベル先頭の漢字と同じなので連結すると「突突撃兵」
+        // のように重なってしまう）。
+        const cl = c ? c.label : "";
         const btn = document.createElement("button");
         btn.className = "slot-btn " + team + (slot.human ? " taken" : "");
         if (c) btn.style.borderLeftColor = c.accent;

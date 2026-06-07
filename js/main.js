@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v25 AI難易度(やさしい既定)＋スマホのスティック拡大";
+  const BUILD = "v26 ロビーのクラス名重複＆スロット名残り(Player)を修正";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

@@ -71,7 +71,7 @@ class Game {
 
     blueSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "blue", !this.serverMode && i === pIdx);
-      u.name = "青" + (i + 1);
+      u.name = u.defaultName = "青" + (i + 1);
       if (classKey(i)) u.applyClass(classKey(i)); // class sets stats + weapon + look
       else u.setWeapon(loadout[i % loadout.length]);
       if (!u.isPlayer) {
@@ -86,7 +86,7 @@ class Game {
     // the enemies play.
     redSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "red");
-      u.name = "赤" + (i + 1);
+      u.name = u.defaultName = "赤" + (i + 1);
       if (classKey(i)) u.applyClass(classKey(i));
       else u.setWeapon(loadout[(i + 1) % loadout.length]);
       u.ai = new AIController();
@@ -158,6 +158,10 @@ class Game {
     if (!unit) return;
     unit.controller = null;
     unit.netInput = null;
+    // Restore the slot's default name (青N/赤N) so a player who taps through
+    // several slots doesn't leave a trail of abandoned slots still labelled with
+    // their name ("Player") — only the slot they currently hold shows as human.
+    if (unit.defaultName) unit.name = unit.defaultName;
     if (!unit.ai) unit.ai = new AIController(); // hand the slot back to the AI
     this.applyAiSkill(unit); // the AI plays at the current difficulty
   }
