@@ -12,6 +12,7 @@ const UI = {
     this.el.lockState = document.getElementById("lockState");
     this.el.blueFortBar = document.getElementById("blueFortBar");
     this.el.redFortBar = document.getElementById("redFortBar");
+    this.el.fortWarning = document.getElementById("fortWarning");
     this.el.overlay = document.getElementById("overlay");
     this.el.resultOverlay = document.getElementById("resultOverlay");
     this.el.resultTitle = document.getElementById("resultTitle");
@@ -50,6 +51,9 @@ const UI = {
     }
     if (this.el.redFortBar && state.redFort != null) {
       this.el.redFortBar.style.width = Math.max(0, state.redFort * 100) + "%";
+    }
+    if (this.el.fortWarning) {
+      this.el.fortWarning.classList.toggle("hidden", !state.fortAlert);
     }
   },
 

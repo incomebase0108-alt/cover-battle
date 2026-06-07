@@ -54,6 +54,13 @@ class Bullet {
       }
     }
 
+    // Defuse enemy dynamite by shooting it.
+    if (game.dynamites) {
+      for (const d of game.dynamites) {
+        if (d.hitBy(this)) { this.dead = true; return; }
+      }
+    }
+
     // Hit the first enemy unit it touches.
     for (const u of game.units) {
       if (!u.alive || u.team === this.team) continue;
@@ -200,6 +207,99 @@ class Bomb {
   }
 }
 
+// Dynamite: a powerful, slow fort-buster. It can be shot (by the enemy) and
+// defused before its 3s fuse runs out.
+class Dynamite {
+  constructor(x, y, owner) {
+    this.x = x;
+    this.y = y;
+    this.owner = owner;
+    this.team = owner ? owner.team : null;
+    this.fuse = CONFIG.dynamite.fuse;
+    this.hp = CONFIG.dynamite.hp;
+    this.exploded = false;
+    this.defused = false;
+    this.flash = 0;
+    this.dead = false;
+  }
+
+  // Enemy bullets defuse it. Returns true if this bullet hit the dynamite.
+  hitBy(bullet) {
+    if (this.exploded || this.dead) return false;
+    if (bullet.team === this.team) return false; // your own fire won't defuse it
+    if (V.dist(bullet.x, bullet.y, this.x, this.y) > 12 + bullet.radius) return false;
+    this.hp -= bullet.damage;
+    if (this.hp <= 0) { this.defused = true; this.dead = true; }
+    return true;
+  }
+
+  update(dt, game) {
+    if (!this.exploded) {
+      this.fuse -= dt;
+      if (this.fuse <= 0) this.detonate(game);
+    } else {
+      this.flash -= dt;
+      if (this.flash <= 0) this.dead = true;
+    }
+  }
+
+  detonate(game) {
+    this.exploded = true;
+    this.flash = CONFIG.dynamite.flashTime;
+    if (this.owner) this.owner.activeDynamite = Math.max(0, this.owner.activeDynamite - 1);
+    if (game.sound) game.sound.explosion();
+    const R = CONFIG.dynamite.radius;
+    for (const u of game.units) {
+      if (!u.alive) continue;
+      if (V.dist(this.x, this.y, u.x, u.y) <= R + u.radius) u.takeDamage(CONFIG.dynamite.unitDamage);
+    }
+    const broken = game.map.damageRocksInRadius(this.x, this.y, R, CONFIG.dynamite.rockDamage);
+    for (const rock of broken) game.dropFromRock(rock);
+    for (const b of game.map.bases) {
+      if (b.hp > 0 && V.dist(this.x, this.y, b.x, b.y) <= R + b.coreR) {
+        b.hp = Math.max(0, b.hp - CONFIG.dynamite.fortDamage);
+      }
+    }
+  }
+
+  draw(ctx) {
+    if (!this.exploded) {
+      const t = 1 - this.fuse / CONFIG.dynamite.fuse;
+      // Red dynamite bundle.
+      ctx.fillStyle = "#b8281f";
+      ctx.fillRect(this.x - 9, this.y - 6, 18, 12);
+      ctx.strokeStyle = "rgba(0,0,0,0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(this.x - 9, this.y - 6, 18, 12);
+      ctx.fillStyle = "#e8d2a0";
+      ctx.fillRect(this.x - 9, this.y - 2, 18, 4);
+      // Blinking fuse spark that speeds up near detonation.
+      const blink = Math.sin(t * (8 + t * 40)) > 0;
+      if (blink) {
+        ctx.fillStyle = "#ffd34a";
+        ctx.beginPath(); ctx.arc(this.x + 9, this.y - 9, 3.5, 0, Math.PI * 2); ctx.fill();
+      }
+      // HP pips (how close to being defused).
+      const pct = Math.max(0, this.hp / CONFIG.dynamite.hp);
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(this.x - 10, this.y - 14, 20, 3);
+      ctx.fillStyle = "#ff7a5a";
+      ctx.fillRect(this.x - 10, this.y - 14, 20 * pct, 3);
+    } else {
+      const a = this.flash / CONFIG.dynamite.flashTime;
+      ctx.save();
+      ctx.globalAlpha = a;
+      const grad = ctx.createRadialGradient(this.x, this.y, 6, this.x, this.y, CONFIG.dynamite.radius);
+      grad.addColorStop(0, "#fff6c0");
+      grad.addColorStop(0.45, "#ff7a2c");
+      grad.addColorStop(1, "rgba(255,60,30,0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(this.x, this.y, CONFIG.dynamite.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
 class Unit {
   constructor(x, y, team, isPlayer = false) {
     this.x = x;
@@ -229,6 +329,7 @@ class Unit {
     this.rangeMul = 1;
     this.maxBombs = 1;
     this.activeBombs = 0;
+    this.activeDynamite = 0; // at most 1 live dynamite per unit
 
     // Lock-on aiming (player only).
     this.lockMode = false;
@@ -339,6 +440,12 @@ class Unit {
     game.bombs.push(new Bomb(this.x, this.y, this));
   }
 
+  placeDynamite(game) {
+    if (this.activeDynamite >= 1) return; // one live stick at a time
+    this.activeDynamite++;
+    game.dynamites.push(new Dynamite(this.x, this.y, this));
+  }
+
   update(dt, game) {
     if (!this.alive) return;
     if (this.cooldown > 0) this.cooldown -= dt;
@@ -408,6 +515,7 @@ class Unit {
 
     if (Input.shooting) this.tryShoot(game);
     if (Input.consumeBomb()) this.placeBomb(game);
+    if (Input.consumeDynamite()) this.placeDynamite(game);
   }
 
   // Aim toward the mouse, converting screen coords to world via the camera.
@@ -439,6 +547,12 @@ class Unit {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.aim);
 
+    const sprite = typeof Assets !== "undefined" && Assets.ready("soldier_" + this.team)
+      ? Assets.get("soldier_" + this.team) : null;
+    if (sprite) {
+      const s = r * 5.2; // sprite faces +X, matching aim
+      ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
+    } else {
     // Legs (two boots splayed behind, hinting a running stance).
     ctx.fillStyle = "#2a2f3a";
     ctx.beginPath(); ctx.ellipse(-r * 0.2, -r * 0.5, r * 0.5, r * 0.24, -0.5, 0, Math.PI * 2); ctx.fill();
@@ -491,6 +605,7 @@ class Unit {
     ctx.beginPath();
     ctx.arc(r * 0.2, 0, r * 0.56, -0.9, 0.9); // brim toward the front
     ctx.fill();
+    } // end vector-art fallback
 
     // Muzzle flash when a shot was just fired.
     if (this.muzzleFlash > 0) {

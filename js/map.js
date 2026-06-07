@@ -191,18 +191,25 @@ class GameMap {
       // Fort core structure (the destructible target).
       if (b.hp > 0) {
         const cr = b.coreR;
-        const cg = ctx.createRadialGradient(b.x - cr * 0.3, b.y - cr * 0.3, cr * 0.2, b.x, b.y, cr);
-        cg.addColorStop(0, b.team === "blue" ? "#3a6bd6" : "#d64a4a");
-        cg.addColorStop(1, b.team === "blue" ? "#1d2f6b" : "#6b1d1d");
-        ctx.fillStyle = cg;
-        ctx.fillRect(b.x - cr, b.y - cr, cr * 2, cr * 2);
-        ctx.strokeStyle = "rgba(0,0,0,0.5)";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(b.x - cr, b.y - cr, cr * 2, cr * 2);
-        // Battlements (top edge notches).
-        ctx.fillStyle = b.team === "blue" ? "#2f7bff" : "#ff4d4d";
-        for (let i = -1; i <= 1; i++) {
-          ctx.fillRect(b.x + i * cr * 0.66 - cr * 0.18, b.y - cr - 6, cr * 0.36, 8);
+        const fimg = typeof Assets !== "undefined" && Assets.ready("fort_" + b.team)
+          ? Assets.get("fort_" + b.team) : null;
+        if (fimg) {
+          const s = cr * 4.8;
+          ctx.drawImage(fimg, b.x - s / 2, b.y - s / 2, s, s);
+        } else {
+          const cg = ctx.createRadialGradient(b.x - cr * 0.3, b.y - cr * 0.3, cr * 0.2, b.x, b.y, cr);
+          cg.addColorStop(0, b.team === "blue" ? "#3a6bd6" : "#d64a4a");
+          cg.addColorStop(1, b.team === "blue" ? "#1d2f6b" : "#6b1d1d");
+          ctx.fillStyle = cg;
+          ctx.fillRect(b.x - cr, b.y - cr, cr * 2, cr * 2);
+          ctx.strokeStyle = "rgba(0,0,0,0.5)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(b.x - cr, b.y - cr, cr * 2, cr * 2);
+          // Battlements (top edge notches).
+          ctx.fillStyle = b.team === "blue" ? "#2f7bff" : "#ff4d4d";
+          for (let i = -1; i <= 1; i++) {
+            ctx.fillRect(b.x + i * cr * 0.66 - cr * 0.18, b.y - cr - 6, cr * 0.36, 8);
+          }
         }
         // Durability gauge above the fort.
         const gw = cr * 2.4;

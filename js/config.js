@@ -7,7 +7,7 @@ const CONFIG = {
   // The whole battlefield is larger than the screen; the camera scrolls to
   // follow the player. Stages are authored in a 960x600 design space and
   // scaled up to fill this world at load (see GameMap).
-  world: { width: 1536, height: 960 },
+  world: { width: 1920, height: 1200 },
 
   // The engine already supports any number of units per team (it just reads
   // the spawn arrays below). This is the planned cap for future multiplayer
@@ -48,6 +48,19 @@ const CONFIG = {
     damage: 70,        // damage to units in the blast
     rockDamage: 200,   // bombs flatten rocks
     flashTime: 320,    // ms the explosion is drawn
+  },
+
+  // Dynamite: a powerful fort-buster. Set it, and 3s later it blows with a big
+  // blast (especially vs forts). It has HP, so the ENEMY can shoot it to defuse
+  // it before it detonates.
+  dynamite: {
+    fuse: 3000,
+    radius: 130,
+    unitDamage: 95,
+    rockDamage: 400,
+    fortDamage: 320,   // the whole point — wreck forts fast
+    hp: 30,            // shoot it (enemy bullets) to defuse before it blows
+    flashTime: 420,
   },
 
   // Item pickups dropped by broken rocks. duration 0 = instant/permanent.

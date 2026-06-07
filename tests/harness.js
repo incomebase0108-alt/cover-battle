@@ -96,6 +96,7 @@ function loadGame() {
     "Bullet",
     "Item",
     "Bomb",
+    "Dynamite",
     "Unit",
     "AIController",
     "Game",

@@ -12,7 +12,10 @@ class Game {
     this.bullets = [];
     this.items = [];
     this.bombs = [];
+    this.dynamites = [];
     this.map = null;
+    this.blueFortAlert = 0; // ms remaining on the "fort under attack" warning
+    this._prevBlueFort = null;
     this.lastTime = 0;
     this._loop = this._loop.bind(this);
   }
@@ -25,6 +28,9 @@ class Game {
     this.bullets = [];
     this.items = [];
     this.bombs = [];
+    this.dynamites = [];
+    this.blueFortAlert = 0;
+    this._prevBlueFort = null;
 
     // Blue team: first unit is the player, rest are AI allies.
     this.map.blueSpawns.forEach((s, i) => {
@@ -93,22 +99,36 @@ class Game {
     for (const u of this.units) u.update(dt, this);
     for (const b of this.bullets) b.update(dt, this);
     for (const b of this.bombs) b.update(dt, this);
+    for (const d of this.dynamites) d.update(dt, this);
     for (const it of this.items) it.update(dt);
 
     this._handlePickups();
 
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.bombs = this.bombs.filter((b) => !b.dead);
+    this.dynamites = this.dynamites.filter((d) => !d.dead);
     this.items = this.items.filter((it) => !it.dead);
 
     this._updateCamera();
-    this._syncHud();
 
     // Win/lose: wipe out the enemy team OR destroy their fort.
     const blue = this.aliveCount("blue");
     const red = this.aliveCount("red");
     const blueFort = this.map.baseOf("blue").hp;
     const redFort = this.map.baseOf("red").hp;
+
+    // "Fort under attack" warning: trigger when our fort loses HP, or when an
+    // enemy bomb/dynamite is set near it.
+    if (this.blueFortAlert > 0) this.blueFortAlert -= dt;
+    if (this._prevBlueFort != null && blueFort < this._prevBlueFort - 0.01) {
+      this.blueFortAlert = 1500;
+    } else if (this._enemyThreatNearBlueFort()) {
+      this.blueFortAlert = Math.max(this.blueFortAlert, 600);
+    }
+    this._prevBlueFort = blueFort;
+
+    this._syncHud();
+
     if (red === 0 || redFort <= 0) {
       this._end(true);
     } else if (blue === 0 || blueFort <= 0) {
@@ -140,6 +160,20 @@ class Game {
   // The fort belonging to the opposing team (used by the AI to assault it).
   enemyBaseOf(unit) {
     return this.map.bases.find((b) => b.team !== unit.team);
+  }
+
+  // Is there a live enemy bomb/dynamite set close to the player's fort?
+  _enemyThreatNearBlueFort() {
+    const b = this.map.baseOf("blue");
+    const near = b.coreR + 150;
+    for (const d of this.dynamites) {
+      if (!d.exploded && d.team === "red" && V.dist(d.x, d.y, b.x, b.y) <= near) return true;
+    }
+    for (const bo of this.bombs) {
+      if (!bo.exploded && bo.owner && bo.owner.team === "red" &&
+          V.dist(bo.x, bo.y, b.x, b.y) <= near) return true;
+    }
+    return false;
   }
 
   _handlePickups() {
@@ -184,6 +218,7 @@ class Game {
       red: this.aliveCount("red"),
       blueFort: this.map.baseOf("blue").hp / this.map.baseOf("blue").maxHp,
       redFort: this.map.baseOf("red").hp / this.map.baseOf("red").maxHp,
+      fortAlert: this.blueFortAlert > 0,
       player: p ? {
         alive: p.alive,
         ammo: p.ammo,
@@ -220,8 +255,9 @@ class Game {
       }
     }
     this.map.drawSolids(ctx);
-    // Bombs/explosions on top so the blast reads clearly over everything.
+    // Bombs/dynamite/explosions on top so blasts read clearly over everything.
     for (const b of this.bombs) b.draw(ctx);
+    for (const d of this.dynamites) d.draw(ctx);
     this._drawLockOn(ctx);
     ctx.restore();
   }

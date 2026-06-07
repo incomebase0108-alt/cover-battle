@@ -3,6 +3,7 @@
   const canvas = document.getElementById("game");
   Input.init(canvas);
   UI.init();
+  Assets.load(); // Blender-rendered sprites (falls back to canvas art if absent)
 
   // Hook up on-screen mobile controls.
   Input.initTouch({
@@ -13,6 +14,7 @@
     lock: document.getElementById("btnLock"),
     cycle: document.getElementById("btnCycle"),
     weapon: document.getElementById("btnWeapon"),
+    dynamite: document.getElementById("btnDynamite"),
   });
 
   // Mute / unmute BGM + SFX.
