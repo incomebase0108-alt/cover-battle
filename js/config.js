@@ -47,7 +47,9 @@ const CONFIG = {
   },
   itemRadius: 11,
 
-  // Forest concealment: a hidden unit can only be targeted from this close.
+  // Forest concealment: a unit hidden in a forest is invisible/untargetable
+  // until an opposing unit comes within this distance (in px). Raise it to make
+  // forests less safe, lower it to make ambushes stronger.
   forestDetectRange: 110,
 };
 

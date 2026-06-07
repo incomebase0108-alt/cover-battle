@@ -164,11 +164,31 @@ class Game {
     for (const it of this.items) it.draw(ctx);
     for (const b of this.bullets) b.draw(ctx);
     for (const u of this.units) {
-      if (this.unitVisibleToPlayer(u)) u.draw(ctx, this);
+      if (!this.unitVisibleToPlayer(u)) continue;
+      u.draw(ctx, this);
+      // Mark an enemy that is only visible because they were spotted in a forest.
+      if (u.alive && u.team !== this.playerTeam && this.map.inForest(u.x, u.y)) {
+        this._drawSpotted(ctx, u);
+      }
     }
     this.map.drawRocks(ctx);
     // Bombs/explosions on top so the blast reads clearly over everything.
     for (const b of this.bombs) b.draw(ctx);
+  }
+
+  // "!" alert over a forest-hidden enemy the moment they're spotted.
+  _drawSpotted(ctx, u) {
+    const x = u.x;
+    const y = u.y - u.radius - 20;
+    ctx.fillStyle = "#ffd24a";
+    ctx.strokeStyle = "rgba(0,0,0,0.6)";
+    ctx.lineWidth = 3;
+    ctx.font = "bold 16px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.strokeText("!", x, y);
+    ctx.fillText("!", x, y);
+    ctx.textAlign = "left";
   }
 
   _drawWreck(ctx, u) {
