@@ -380,16 +380,16 @@ class Game {
     let redFort = this.map.baseOf("red").hp;
 
     // Anti-stall escalation: reset the idle timer whenever something meaningful
-    // changes (a death or fort damage). If it stays idle too long, the AI rushes;
-    // if it stays idle even longer, a latched "storm" drains both forts so the
-    // match is guaranteed to end (this only bites when nothing else is happening).
+    // changes (a death or fort damage). If it stays idle too long the AI RUSHES
+    // (no HP drain — just makes the CPU aggressive to break the deadlock).
+    // 砦の自動ドレインは「誰も攻撃していないのに砦が減る」誤体験を生むため、
+    // アイドル発動を廃止。試合終了の保証は3分経過のサドンデスのみに限定する。
     const sig = blue + "|" + red + "|" + Math.round(blueFort) + "|" + Math.round(redFort);
     if (!this.stormActive && sig !== this._eventSig) { this._eventSig = sig; this.idleMs = 0; }
     else this.idleMs += dt;
-    // Hard cap: even with revive/rescue loops keeping things "eventful", force
-    // sudden death after a few minutes so a match always ends.
+    // Hard cap: force sudden death only after 3 minutes so a match always ends.
     this.elapsedMs += dt;
-    if (this.idleMs > 18000 || this.elapsedMs > 180000) this.stormActive = true;
+    if (this.elapsedMs > 180000) this.stormActive = true;
     this.rushMode = this.idleMs > 12000 || this.stormActive;
     if (this.stormActive) {
       const drain = 45 * dt / 1000;
@@ -402,11 +402,12 @@ class Game {
     }
 
     // "Fort under attack" warning: trigger when our fort loses HP, or when an
-    // enemy bomb/dynamite is set near it.
+    // enemy bomb/dynamite is set near it. サドンデス(storm)のドレインは攻撃では
+    // ないので、storm中はHP減少による警告を出さない(誤警告の防止)。
     if (this.blueFortAlert > 0) this.blueFortAlert -= dt;
-    if (this._prevBlueFort != null && blueFort < this._prevBlueFort - 0.01) {
+    if (!this.stormActive && this._prevBlueFort != null && blueFort < this._prevBlueFort - 0.01) {
       this.blueFortAlert = 1500;
-    } else if (this._enemyThreatNearBlueFort()) {
+    } else if (!this.stormActive && this._enemyThreatNearBlueFort()) {
       this.blueFortAlert = Math.max(this.blueFortAlert, 600);
     }
     this._prevBlueFort = blueFort;
