@@ -10,6 +10,7 @@ class Game {
     this.serverMode = false;  // true on the LAN server: no local player, humans attach over the net
     this.cam = { x: 0, y: 0 }; // top-left of the visible viewport in world space
     this.running = false;
+    this.over = false; // 試合終了フラグ（終了処理を一度だけ＆終了後は更新停止）
     this.units = [];
     this.bullets = [];
     this.items = [];
@@ -53,6 +54,7 @@ class Game {
     this.idleMs = 0;
     this.elapsedMs = 0;
     this._eventSig = null;
+    this.over = false; // 新しいステージ＝未終了に戻す
 
     // Spread starting weapons across each AI squad so fights feel varied (the
     // AI also switches weapon by range at runtime — see ai.js).
@@ -161,6 +163,7 @@ class Game {
         t: u.team === "blue" ? 0 : 1, h: Math.round(u.hp), al: u.alive ? 1 : 0,
         n: u.name, w: u.weaponKey, mv: u.movingTimer > 0 ? 1 : 0,
         cl: u.cls, mh: u.maxHp, dn: u.downed ? 1 : 0,
+        am: u.ammo, mg: u.magSizeVal(), rl: u.reloading ? 1 : 0,
       })),
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),
@@ -346,6 +349,7 @@ class Game {
   }
 
   _update(dt) {
+    if (this.over) return; // 試合終了後は一切更新しない（サーバーの多重終了/多重再戦を防ぐ）
     for (const u of this.units) u.update(dt, this);
     for (const b of this.bullets) b.update(dt, this);
     for (const b of this.bombs) b.update(dt, this);
@@ -482,6 +486,8 @@ class Game {
   }
 
   _end(win) {
+    if (this.over) return; // 終了処理は一度だけ
+    this.over = true;
     this.running = false;
     const hasNext = this.stageIndex + 1 < STAGES.length;
     if (this.callbacks.onEnd) this.callbacks.onEnd(win, hasNext, this.stageIndex);

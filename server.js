@@ -112,12 +112,21 @@ wss.on("connection", (ws) => {
 });
 
 // --- authoritative loop -----------------------------------------------------
+// 物理更新は ~60Hz（単独プレイと同じ速度）。移動量が1更新あたり固定なので、
+// ここを30Hzにするとゲーム全体が半速になる（＝「LANだと遅い」の原因）。
+// スナップショット送信は ~30Hz に間引いて帯域を節約する。
 newMatch(0);
-const TICK = 33; // ~30 Hz
+const STEP = 16;       // physics step ≈60Hz（matches single-player）
+const SNAP_EVERY = 33; // broadcast ≈30Hz
+let sinceSnap = 0;
 setInterval(() => {
-  game._update(TICK);
-  broadcast({ type: "snap", s: game.serialize() });
-}, TICK);
+  game._update(STEP);
+  sinceSnap += STEP;
+  if (sinceSnap >= SNAP_EVERY) {
+    sinceSnap = 0;
+    broadcast({ type: "snap", s: game.serialize() });
+  }
+}, STEP);
 
 server.listen(PORT, () => {
   console.log(`Cover Battle LAN server on http://localhost:${PORT}/netclient.html`);

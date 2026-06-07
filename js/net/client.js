@@ -52,6 +52,7 @@
     if (m.type === "static") {
       Net.stage = m.stage;
       Net.map = new GameMap(STAGES[m.stage]);
+      bannerT = 0; banner = ""; // 新しい試合が始まったら勝敗表示を消す
     } else if (m.type === "lobby") {
       renderLobby(m.roster);
     } else if (m.type === "you") {
@@ -125,6 +126,51 @@
 
   // --- render loop ----------------------------------------------------------
   const ctx = canvas.getContext("2d");
+
+  // 画面上部に弾数・HP・人数・砦ゲージを表示（単独プレイのHUD相当を簡易版で）。
+  function drawHud(ctx, snap, myIndex) {
+    const pad = 14;
+    ctx.save();
+    ctx.textBaseline = "top";
+    // 残り人数（青/赤）。
+    ctx.font = "bold 16px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#9cc2ff"; ctx.fillText("青 " + (snap.al ? snap.al.b : "-"), pad, pad);
+    ctx.fillStyle = "#ff9c9c"; ctx.fillText("赤 " + (snap.al ? snap.al.r : "-"), pad + 64, pad);
+    // 砦ゲージ（青/赤）。
+    if (snap.ft) {
+      const bw = 90, bh = 8, y = pad + 24;
+      const bar = (x, frac, col) => {
+        ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(x, y, bw, bh);
+        ctx.fillStyle = col; ctx.fillRect(x, y, bw * Math.max(0, frac), bh);
+      };
+      ctx.font = "bold 11px system-ui, sans-serif";
+      ctx.fillStyle = "#9cc2ff"; ctx.fillText("🏰青", pad, y - 12); bar(pad + 30, snap.ft.b, "#2f7bff");
+      ctx.fillStyle = "#ff9c9c"; ctx.fillText("🏰赤", pad + 140, y - 12); bar(pad + 170, snap.ft.r, "#ff4d4d");
+    }
+    // 自分の弾数・武器・HP。
+    const me = snap.u[myIndex];
+    if (me) {
+      const wlabel = (typeof WEAPONS !== "undefined" && WEAPONS[me.w]) ? WEAPONS[me.w].label : (me.w || "");
+      ctx.textAlign = "left";
+      ctx.font = "bold 20px system-ui, sans-serif";
+      if (me.rl) { ctx.fillStyle = "#ffd34a"; ctx.fillText("リロード中…", pad, pad + 48); }
+      else {
+        ctx.fillStyle = (me.am <= 3) ? "#ff7a7a" : "#ffffff";
+        ctx.fillText("弾 " + me.am + "/" + me.mg, pad, pad + 48);
+      }
+      ctx.fillStyle = "#cfe3ff"; ctx.font = "bold 13px system-ui, sans-serif";
+      ctx.fillText(wlabel, pad, pad + 74);
+      // HPバー。
+      const hw = 120, hh = 7, hy = pad + 94;
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(pad, hy, hw, hh);
+      const frac = me.mh ? Math.max(0, me.h / me.mh) : 0;
+      ctx.fillStyle = frac > 0.4 ? "#62e08a" : "#ff5a5a";
+      ctx.fillRect(pad, hy, hw * frac, hh);
+    }
+    ctx.restore();
+  }
+
   function frame(now) {
     if (Net.joined && Net.snap && Net.map) {
       const me = Net.snap.u[Net.myIndex];
@@ -133,6 +179,7 @@
         Net.cam.y = V.clamp(me.y - CONFIG.height / 2, 0, CONFIG.world.height - CONFIG.height);
       }
       NetRender.draw(ctx, Net.snap, Net.map, Net.myIndex, Net.cam);
+      drawHud(ctx, Net.snap, Net.myIndex);
       if (bannerT > 0) {
         bannerT -= 16;
         ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, CONFIG.height / 2 - 30, CONFIG.width, 60);
