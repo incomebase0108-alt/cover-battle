@@ -360,6 +360,8 @@ class Unit {
     this.muzzleFlash = 0;    // ms remaining on the muzzle-flash effect
     this.skill = 0.7; // AI accuracy/decision quality, overridden per spawn
     this.ai = null;   // assigned for non-player units
+    this.controller = null; // "net" when a remote player drives this unit (LAN MP)
+    this.netInput = null;   // latest input from that remote player
 
     // Buff multipliers (raised by item pickups).
     this.speedMul = 1;
@@ -577,11 +579,27 @@ class Unit {
       this.hp = Math.min(CONFIG.unit.maxHp, this.hp + CONFIG.base.regenPerSec * dt / 1000);
     }
 
-    if (this.isPlayer) {
+    if (this.controller === "net") {
+      this.updateFromNet(game);
+    } else if (this.isPlayer) {
       this.updatePlayer(game);
     } else if (this.ai) {
       this.ai.update(this, dt, game);
     }
+  }
+
+  // Drive this unit from a remote player's input (LAN multiplayer). The client
+  // sends a normalised move vector + an absolute world aim angle.
+  updateFromNet(game) {
+    const n = this.netInput;
+    if (!n) return;
+    if (n.mx || n.my) this.move(n.mx, n.my, game);
+    if (typeof n.aim === "number") this.aim = n.aim;
+    if (n.slot > 0 && WEAPON_ORDER[n.slot - 1]) this.setWeapon(WEAPON_ORDER[n.slot - 1]);
+    if (n.cycleW) { this.cycleWeapon(1); n.cycleW = false; }
+    if (n.shoot) this.tryShoot(game);
+    if (n.bomb) { this.placeBomb(game); n.bomb = false; }
+    if (n.dyn) { this.placeDynamite(game); n.dyn = false; }
   }
 
   updatePlayer(game) {

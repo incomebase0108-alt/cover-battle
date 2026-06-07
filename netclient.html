@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Cover Battle — LAN対戦</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" width="960" height="600"></canvas>
+
+    <div class="hud" style="pointer-events:none;">
+      <div class="hud-row" style="justify-content:flex-end;">
+        <button id="muteBtn" class="icon-btn" style="pointer-events:auto;">🔊</button>
+      </div>
+    </div>
+
+    <!-- Mobile touch controls -->
+    <div id="touchControls" class="touch-controls">
+      <div id="joystick" class="joystick"><div id="knob" class="knob"></div></div>
+      <div class="action-buttons">
+        <button id="btnWeapon" class="act weapon">🔫</button>
+        <button id="btnDynamite" class="act dynamite">🧨</button>
+        <button id="btnBomb" class="act bomb">💣</button>
+        <button id="btnFire" class="act fire">撃</button>
+      </div>
+    </div>
+
+    <!-- Lobby / character select -->
+    <div id="lobby" class="overlay">
+      <div class="panel">
+        <h1>LAN対戦</h1>
+        <p class="subtitle">同じWi-Fiの全員で参加。空きスロットはAIが操作します。</p>
+        <p><input id="nameInput" placeholder="名前" maxlength="12"
+             style="padding:8px 12px;border-radius:8px;border:1px solid #345;background:#0d1117;color:#fff;font-size:16px;" /></p>
+        <p id="netStatus" class="subtitle">サーバーに接続中…</p>
+        <div class="lobby-cols">
+          <div class="lobby-col"><h3 class="blue">青チーム</h3><div id="blueSlots" class="slot-list"></div></div>
+          <div class="lobby-col"><h3 class="red">赤チーム</h3><div id="redSlots" class="slot-list"></div></div>
+        </div>
+        <p class="subtitle" style="font-size:12px;">操作：移動 WASD/スティック ・ 照準 マウス（スマホは自動） ・ 射撃 クリック/撃 ・ 爆弾E/💣 ・ ダイナマイトX/🧨 ・ 武器 1-4/F/🔫</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/vector.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/assets.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/weapons.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/net/render.js"></script>
+  <script src="js/net/client.js"></script>
+</body>
+</html>

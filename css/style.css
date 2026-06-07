@@ -231,6 +231,23 @@ body.touch .touch-controls {
 #resultTitle.win { background: linear-gradient(90deg, #4f9bff, #6fe0ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
 #resultTitle.lose { background: linear-gradient(90deg, var(--red), #ff8a8a); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
+/* LAN lobby */
+.lobby-cols { display: flex; gap: 18px; justify-content: center; margin: 10px 0; }
+.lobby-col { flex: 1; max-width: 220px; }
+.lobby-col h3 { margin: 6px 0; }
+.lobby-col h3.blue { color: #9cc2ff; }
+.lobby-col h3.red { color: #ff9c9c; }
+.slot-list { display: flex; flex-direction: column; gap: 6px; }
+.slot-btn {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; border-radius: 8px; cursor: pointer; color: #e8edf4;
+  border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
+}
+.slot-btn.blue { border-left: 4px solid #2f7bff; }
+.slot-btn.red { border-left: 4px solid #ff4d4d; }
+.slot-btn.taken { opacity: 0.5; }
+.slot-btn span { font-size: 12px; color: #aab6c6; }
+
 /* Character select */
 .char-grid {
   display: grid;

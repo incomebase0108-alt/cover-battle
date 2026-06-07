@@ -7,6 +7,7 @@ class Game {
     this.stageIndex = 0;
     this.playerTeam = "blue"; // the human side; the enemy can't see this side in forests
     this.playerIndex = 0;     // which blue slot the human controls (character select)
+    this.serverMode = false;  // true on the LAN server: no local player, humans attach over the net
     this.cam = { x: 0, y: 0 }; // top-left of the visible viewport in world space
     this.running = false;
     this.units = [];
@@ -56,9 +57,11 @@ class Game {
     const redSpawns = this._teamSpawns(this.map.redSpawns);
     const pIdx = V.clamp(this.playerIndex, 0, blueSpawns.length - 1);
 
-    // Blue team: the chosen slot is the human player; the rest are AI allies.
+    // Blue team: the chosen slot is the human player (single-player only); the
+    // rest are AI allies. On the LAN server nobody is a local player — humans
+    // attach to slots over the network.
     blueSpawns.forEach((s, i) => {
-      const u = new Unit(s.x, s.y, "blue", i === pIdx);
+      const u = new Unit(s.x, s.y, "blue", !this.serverMode && i === pIdx);
       u.name = "青" + (i + 1);
       u.setWeapon(loadout[i % loadout.length]); // slot also picks your weapon
       if (!u.isPlayer) {
@@ -104,6 +107,61 @@ class Game {
       i++;
     }
     return pts.slice(0, n);
+  }
+
+  // --- LAN multiplayer helpers --------------------------------------------
+
+  // Hand a unit to a remote player (server side). Returns the unit, or null.
+  assignControl(team, slot) {
+    const list = this.units.filter((u) => u.team === team);
+    const u = list[slot];
+    if (!u || u.controller === "net") return null;
+    u.controller = "net";
+    u.netInput = { mx: 0, my: 0, aim: u.aim, shoot: false };
+    return u;
+  }
+
+  releaseControl(unit) {
+    if (!unit) return;
+    unit.controller = null;
+    unit.netInput = null;
+    if (!unit.ai) unit.ai = new AIController(); // hand the slot back to the AI
+  }
+
+  // Lobby view: which team/slot pairs are taken by humans.
+  rosterState() {
+    const roster = { blue: [], red: [] };
+    for (const team of ["blue", "red"]) {
+      const list = this.units.filter((u) => u.team === team);
+      roster[team] = list.map((u) => ({ name: u.name, human: u.controller === "net", alive: u.alive }));
+    }
+    return roster;
+  }
+
+  // Stage/world data sent once to a client so it can rebuild terrain.
+  serializeStatic() {
+    return { stage: this.stageIndex, world: CONFIG.world };
+  }
+
+  // Compact per-tick snapshot broadcast to all clients.
+  serialize() {
+    const half = (h, max) => Math.max(0, h / max);
+    return {
+      u: this.units.map((u, i) => ({
+        i, x: Math.round(u.x), y: Math.round(u.y), a: +u.aim.toFixed(2),
+        t: u.team === "blue" ? 0 : 1, h: Math.round(u.hp), al: u.alive ? 1 : 0,
+        n: u.name, w: u.weaponKey, mv: u.movingTimer > 0 ? 1 : 0,
+      })),
+      b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0 })),
+      bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),
+      d: this.dynamites.map((d) => ({ x: Math.round(d.x), y: Math.round(d.y), e: d.exploded ? 1 : 0, fl: Math.round(d.flash) })),
+      c: this.chests.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.opened ? 1 : 0 })),
+      be: this.beasts.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), a: +b.aim.toFixed(2), ty: b.type, h: half(b.hp, b.maxHp) })),
+      cp: this.capturePoints.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.owner, p: c.progress / CONFIG.capture.captureTime, cb: c.capBy })),
+      ft: { b: half(this.map.baseOf("blue").hp, this.map.baseOf("blue").maxHp), r: half(this.map.baseOf("red").hp, this.map.baseOf("red").maxHp) },
+      al: { b: this.aliveCount("blue"), r: this.aliveCount("red") },
+      rush: this.rushMode ? 1 : 0,
+    };
   }
 
   // Mid-field objectives: one neutral control point + treasure chests at

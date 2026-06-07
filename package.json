@@ -1,0 +1,12 @@
+{
+  "name": "cover-battle",
+  "version": "1.0.0",
+  "description": "岩と森に隠れて戦う 4/6 vs 6 のブラウザ対戦ゲーム",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/run.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
