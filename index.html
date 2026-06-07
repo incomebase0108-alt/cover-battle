@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cover Battle — 岩と森の4vs4バトル</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" width="960" height="600"></canvas>
+
+    <!-- HUD -->
+    <div id="hud" class="hud hidden">
+      <div class="hud-row">
+        <span id="stageLabel">STAGE 1</span>
+        <span class="team-count blue">青 <b id="blueCount">4</b></span>
+        <span class="team-count red">赤 <b id="redCount">4</b></span>
+      </div>
+    </div>
+
+    <!-- Overlay menus -->
+    <div id="overlay" class="overlay">
+      <div class="panel">
+        <h1>COVER BATTLE</h1>
+        <p class="subtitle">岩と森に隠れて戦う 4 vs 4 バトル</p>
+        <div class="how">
+          <p><b>操作</b>： 移動 = WASD / 矢印キー ・ 照準 = マウス ・ 射撃 = 左クリック / スペース ・ 爆弾設置 = E キー</p>
+          <p><b>勝利条件</b>： 赤チームを全滅させるとステージクリア。味方が全滅すると敗北。</p>
+          <p><b>地形</b>： <span class="rock-key">岩</span>は弾と移動を遮る盾。撃ち続けると<b>破壊</b>でき、壊すと<b>アイテム</b>が出ることも。<span class="bush-key">森</span>に入ると敵に狙われにくくなる。</p>
+          <p><b>アイテム</b>： 回復 / 移動速度UP / 弾速UP / 飛距離UP / 爆弾＋。拾うと強化される。</p>
+          <p><b>爆弾</b>： ボンバーマン風。設置すると時間差で爆発し、岩も敵も巻き込む（味方や自分も巻き込むので注意！）。</p>
+        </div>
+        <button id="startBtn" class="btn">ゲーム開始</button>
+      </div>
+    </div>
+
+    <div id="resultOverlay" class="overlay hidden">
+      <div class="panel">
+        <h1 id="resultTitle">STAGE CLEAR</h1>
+        <p id="resultText" class="subtitle"></p>
+        <button id="nextBtn" class="btn">次へ</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/vector.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
