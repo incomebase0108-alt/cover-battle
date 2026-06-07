@@ -89,16 +89,18 @@ const WEAPONS = {
     pierce: true,
   },
   rockbuster: {
-    label: "大筒",         // 城/岩を砕く大砲（宝箱）
-    damage: 18,
-    fireCooldown: 650,
-    magSize: 6,
-    reloadTime: 3000,
+    label: "大筒",         // 城/岩を砕く大砲（宝箱）。大きな砲丸が飛び、着弾で周囲に衝撃。
+    damage: 72,            // 一撃が非常に重い
+    fireCooldown: 850,
+    magSize: 3,
+    reloadTime: 3400,
     pellets: 1,
-    spread: 0.02,
-    bulletSpeedMul: 1.1,
-    rangeMul: 1.0,
+    spread: 0.01,
+    bulletSpeedMul: 0.92,  // 重い砲丸＝やや遅い
+    rangeMul: 1.1,
     breakRock: true,
+    ball: true,            // 大きな丸い砲丸として描画＆当たり判定を大きく
+    splash: 78,            // 着弾点からこの半径内の敵にも衝撃ダメージ
   },
 };
 

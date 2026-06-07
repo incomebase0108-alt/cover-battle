@@ -216,6 +216,20 @@ s.test("仲間の浪人は敵砦に到達するとコアを攻撃する", (t) =>
   t.lessThan(redBase.hp, hp0, "敵砦コアにダメージが入る");
 });
 
+s.test("大筒は大きな砲丸で、直撃＋着弾点周囲にも衝撃が及ぶ", (t) => {
+  const { sb, game } = newGame(0);
+  game.beasts = []; game.map.rocks = []; game.map.mountains = []; // 障害物を除いて検証
+  const direct = new sb.Unit(1800, 1125, "red");
+  const nearby = new sb.Unit(1800, 1155, "red"); // 直撃点の近く（splash圏内）
+  game.units = [direct, nearby];
+  const ball = new sb.Bullet(1800, 1125, 1, 0, "blue", { damage: 72, speed: 0, life: 1000, ball: true, splash: 78 });
+  t.greaterThan(ball.radius, sb.CONFIG.bullet.radius, "砲丸は通常弾より大きい");
+  game.bullets = [ball];
+  ball.update(16, game);
+  t.lessThan(direct.hp, direct.maxHp, "直撃した敵がダメージ");
+  t.lessThan(nearby.hp, nearby.maxHp, "周囲の敵にも衝撃ダメージ");
+});
+
 s.test("山城決戦ステージが読み込め、地形が揃っている", (t) => {
   const sb = loadGame();
   const idx = sb.STAGES.findIndex((st) => st.name === "山城決戦");

@@ -28,6 +28,9 @@ class Bullet {
     this.pierce = !!opts.pierce;       // pass through units (piercing rifle)
     this.breakRock = !!opts.breakRock; // extra rock damage (flamethrower / rockbuster)
     this.fire = !!opts.fire;           // render as a flame particle
+    this.ball = !!opts.ball;           // 大筒の砲丸：大きく描画＆判定を広げる
+    if (this.ball) this.radius = opts.ballRadius || 13;
+    this.splash = opts.splash || 0;    // 着弾時に周囲へ及ぼす衝撃の半径(px)
     this.maxLife = this.life;
     this._hit = this.pierce ? [] : null; // units already hit, so pierce hits each once
     this.dead = false;
@@ -120,6 +123,7 @@ class Bullet {
           if (this._hit.indexOf(u) === -1) { u.takeDamage(this.damage); this._hit.push(u); }
         } else {
           u.takeDamage(this.damage);
+          if (this.splash) this._splash(game, u);
           this.dead = true;
           return;
         }
@@ -127,7 +131,34 @@ class Bullet {
     }
   }
 
+  // 砲丸の着弾衝撃：着弾点の周囲 splash 半径内の敵にも、近いほど大きいダメージ。
+  _splash(game, hit) {
+    const r = this.splash;
+    for (const u of game.units) {
+      if (!u.alive || u.team === this.team || u === hit) continue;
+      const d = V.dist(this.x, this.y, u.x, u.y);
+      if (d <= r) u.takeDamage(this.damage * 0.5 * (1 - d / r));
+    }
+    for (const b of (game.beasts || [])) {
+      if (b.dead || !b.takeDamage || (b.team && b.team === this.team)) continue;
+      const d = V.dist(this.x, this.y, b.x, b.y);
+      if (d <= r) b.takeDamage(this.damage * 0.5 * (1 - d / r));
+    }
+  }
+
   draw(ctx) {
+    if (this.ball) {
+      // 大きな鉄の砲丸。
+      ctx.save();
+      ctx.fillStyle = "#2a2d33";
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.35)"; // ハイライト
+      ctx.beginPath(); ctx.arc(this.x - this.radius * 0.32, this.y - this.radius * 0.32, this.radius * 0.34, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      return;
+    }
     if (this.fire) {
       // Flame particle: grows then fades as it travels, orange->yellow core.
       const t = V.clamp(1 - this.life / this.maxLife, 0, 1); // 0 fresh -> 1 spent
@@ -580,6 +611,7 @@ class Unit {
       const by = this.y + dy * (this.radius + 6);
       game.bullets.push(new Bullet(bx, by, dx, dy, this.team, {
         damage, speed, life, pierce: w.pierce, breakRock: w.breakRock || w.fire, fire: w.fire,
+        ball: w.ball, splash: w.splash,
       }));
     }
 

@@ -143,6 +143,17 @@ const NetRender = {
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, 12, 0, Math.PI * 2); ctx.fill(); ctx.restore();
       return;
     }
+    if (b.bl) {
+      // 大筒の砲丸（大きな鉄球）。
+      const rr = b.br || 13;
+      ctx.fillStyle = "#2a2d33";
+      ctx.beginPath(); ctx.arc(b.x, b.y, rr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.beginPath(); ctx.arc(b.x - rr * 0.32, b.y - rr * 0.32, rr * 0.34, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(b.x, b.y, rr, 0, Math.PI * 2); ctx.stroke();
+      return;
+    }
     ctx.fillStyle = b.t === 0 ? "#bcd6ff" : "#ffd2c2";
     ctx.beginPath(); ctx.arc(b.x, b.y, CONFIG.bullet.radius, 0, Math.PI * 2); ctx.fill();
   },

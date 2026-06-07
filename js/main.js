@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v33 仲間になった浪人は味方として敵砦へ進軍＋攻城（回復はせず退かない）";
+  const BUILD = "v34 大筒を強化：大きな砲丸が飛び、直撃＋着弾点周囲に衝撃（一撃が重い宝箱武器）";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
