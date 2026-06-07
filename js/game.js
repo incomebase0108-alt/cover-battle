@@ -45,9 +45,11 @@ class Game {
     // Spread starting weapons across each AI squad so fights feel varied (the
     // AI also switches weapon by range at runtime — see ai.js).
     const loadout = ["rifle", "sniper", "shotgun", "smg"];
+    const blueSpawns = this._teamSpawns(this.map.blueSpawns);
+    const redSpawns = this._teamSpawns(this.map.redSpawns);
 
     // Blue team: first unit is the player, rest are AI allies.
-    this.map.blueSpawns.forEach((s, i) => {
+    blueSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "blue", i === 0);
       if (!u.isPlayer) {
         u.ai = new AIController();
@@ -58,7 +60,7 @@ class Game {
     });
 
     // Red team: all AI, skill scales with the stage.
-    this.map.redSpawns.forEach((s, i) => {
+    redSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "red");
       u.ai = new AIController();
       u.skill = stage.enemySkill;
@@ -68,6 +70,28 @@ class Game {
 
     this._updateCamera(); // centre on the player before the first frame
     this._syncHud();
+  }
+
+  // Build CONFIG.teamSize spawn points for a team: use the stage's authored
+  // spawns, then generate extra ones fanned out around their centroid (pushed
+  // clear of obstacles) so we can field 6-a-side without hand-authoring them.
+  _teamSpawns(spawns) {
+    const n = CONFIG.teamSize || spawns.length;
+    const pts = spawns.map((s) => ({ x: s.x, y: s.y }));
+    let cx = 0;
+    let cy = 0;
+    for (const s of spawns) { cx += s.x; cy += s.y; }
+    cx /= spawns.length; cy /= spawns.length;
+    let i = pts.length;
+    while (pts.length < n) {
+      const ang = i * 2.3999; // golden angle -> even fan
+      const rad = 50 + 24 * i;
+      const p = this.map.resolveCollision(
+        cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad, CONFIG.unit.radius);
+      pts.push(p);
+      i++;
+    }
+    return pts.slice(0, n);
   }
 
   start() {

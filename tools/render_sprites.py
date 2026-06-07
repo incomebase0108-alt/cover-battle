@@ -140,6 +140,18 @@ def build_soldier(color, dark):
 
 
 def build_fort(color, dark):
+    # Rocky hill the fort stands on ("砦は山の上").
+    hill = mat("hill", (0.42, 0.40, 0.36), rough=0.95)
+    bpy.ops.mesh.primitive_cone_add(radius1=3.0, radius2=2.0, depth=0.9, location=(0, 0, -0.2), vertices=9)
+    h = bpy.context.active_object
+    h.data.materials.append(hill)
+    bpy.ops.object.shade_smooth()
+    snow = mat("snow", (0.92, 0.95, 1.0), rough=0.6)
+    bpy.ops.mesh.primitive_cone_add(radius1=2.05, radius2=1.7, depth=0.05, location=(0, 0, 0.27), vertices=9)
+    sc = bpy.context.active_object
+    sc.data.materials.append(snow)
+    bpy.ops.object.shade_smooth()
+
     wall = mat("wall", STONE, rough=0.85)
     wall_d = mat("wall_d", STONE_D, rough=0.9)
     roof = mat("roof", color, rough=0.5)
@@ -178,7 +190,7 @@ def main():
         render(os.path.join(OUT, f"soldier_{name}.png"), 192)
     for name, col, drk in (("blue", BLUE, DARK_BLUE), ("red", RED, DARK_RED)):
         clear()
-        setup_scene(ortho=6.2, cam_z=12.0)
+        setup_scene(ortho=7.4, cam_z=12.0)
         build_fort(col, drk)
         render(os.path.join(OUT, f"fort_{name}.png"), 256)
 

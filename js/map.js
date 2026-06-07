@@ -24,7 +24,7 @@ class GameMap {
       hp: CONFIG.rock.hp, maxHp: CONFIG.rock.hp,
     }));
     this.mountains = (stage.mountains || []).map((m) => ({ x: m.x * sx, y: m.y * sy, r: m.r }));
-    this.forests = stage.forests.map((f) => ({ x: f.x * sx, y: f.y * sy, r: f.r }));
+    this.forests = stage.forests.map((f) => ({ x: f.x * sx, y: f.y * sy, r: f.r * (CONFIG.forestScale || 1) }));
     this.rivers = (stage.rivers || []).map((r) => ({
       x: r.x * sx, y: r.y * sy, w: r.w * sx, h: r.h * sy,
     }));
@@ -187,6 +187,17 @@ class GameMap {
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
+
+      // Rocky hill/mound the fort sits on ("砦は山の上"). Purely visual + passable
+      // so units can still reach the fort to attack it.
+      const mr = b.coreR * 2.3;
+      const mg = ctx.createRadialGradient(b.x - mr * 0.3, b.y - mr * 0.35, mr * 0.2, b.x, b.y, mr);
+      mg.addColorStop(0, "#8f8c86");
+      mg.addColorStop(1, "rgba(60,56,50,0.85)");
+      ctx.fillStyle = mg;
+      ctx.beginPath(); ctx.arc(b.x, b.y, mr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(245,248,255,0.5)"; // faint snow ring around the peak
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.coreR * 1.25, 0, Math.PI * 2); ctx.fill();
 
       // Fort core structure (the destructible target).
       if (b.hp > 0) {

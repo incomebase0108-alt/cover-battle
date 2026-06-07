@@ -334,6 +334,10 @@ class Unit {
     // Lock-on aiming (player only).
     this.lockMode = false;
     this.lockTarget = null;
+
+    // Walk-cycle animation state (purely cosmetic, see move()/draw()).
+    this.walkPhase = 0;    // advancing sine phase that drives bounce + steps
+    this.movingTimer = 0;  // ms since last real movement; >0 means "walking"
   }
 
   // Current weapon definition (always returns a valid object).
@@ -397,6 +401,15 @@ class Unit {
     }
     this.x = next.x;
     this.y = next.y;
+
+    // Drive the walk cycle from how far we actually moved this step. Tie the
+    // phase to distance (not time) so the step cadence matches real speed, and
+    // mark us as "moving" for a few frames so the legs don't twitch to a halt
+    // the instant a key is released.
+    if (moved > 0.05) {
+      this.walkPhase += moved * 0.45;
+      this.movingTimer = 90; // ms of grace before the walk cycle stops
+    }
     return moved;
   }
 
@@ -473,6 +486,7 @@ class Unit {
     if (!this.alive) return;
     if (this.cooldown > 0) this.cooldown -= dt;
     if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
+    if (this.movingTimer > 0) this.movingTimer -= dt; // walk-cycle grace timer
     this.sinceShot += dt;
 
     if (this.reloading) {
@@ -570,17 +584,38 @@ class Unit {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.aim);
 
+    // --- Walk cycle --------------------------------------------------------
+    // In this rotated frame local +X is "forward" (the aim direction) and the
+    // Y axis runs left/right across the body. We use a single sine of walkPhase
+    // so the two feet stay exactly out of phase (left = sin, right = -sin) and
+    // the body bobs with it. `walking` decays a few frames after the unit stops
+    // (movingTimer) so the cycle settles smoothly instead of snapping shut.
+    const walking = this.movingTimer > 0;
+    const swing = walking ? Math.sin(this.walkPhase) : 0;
+    const stepX = swing * r * 0.45;          // feet slide fore/aft along aim
+    const bob = walking ? Math.abs(Math.sin(this.walkPhase)) * r * 0.12 : 0; // 1-2px bob
+
+    // Feet drawn first (under the body, so they read for sprites too). Left and
+    // right boots sit either side of centre and step in opposition.
+    ctx.fillStyle = "#222630";
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.15 + stepX, -r * 0.42, r * 0.42, r * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.15 - stepX,  r * 0.42, r * 0.42, r * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body group: lift everything above the feet by the bob (toward +X reads as
+    // a subtle forward weight-shift in this top-down view). Feet stay grounded.
+    ctx.save();
+    ctx.translate(bob, 0);
+
     const sprite = typeof Assets !== "undefined" && Assets.ready("soldier_" + this.team)
       ? Assets.get("soldier_" + this.team) : null;
     if (sprite) {
       const s = r * 5.2; // sprite faces +X, matching aim
       ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
     } else {
-    // Legs (two boots splayed behind, hinting a running stance).
-    ctx.fillStyle = "#2a2f3a";
-    ctx.beginPath(); ctx.ellipse(-r * 0.2, -r * 0.5, r * 0.5, r * 0.24, -0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-r * 0.2,  r * 0.5, r * 0.5, r * 0.24,  0.5, 0, Math.PI * 2); ctx.fill();
-
     // Backpack.
     ctx.fillStyle = dark;
     ctx.beginPath();
@@ -643,7 +678,8 @@ class Unit {
       ctx.fill();
     }
 
-    ctx.restore();
+    ctx.restore(); // end body group (undo walk bob)
+    ctx.restore(); // end rotated frame
 
     // Player ring marker (screen-space, not rotated).
     if (this.isPlayer) {

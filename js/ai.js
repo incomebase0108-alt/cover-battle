@@ -24,7 +24,11 @@ const STATE = {
   ASSAULT: "ASSAULT",
   ADVANCE: "ADVANCE",
   WANDER: "WANDER",
+  GUARD: "GUARD", // defender role: hold near the home fort and intercept
 };
+
+// Squad roles assigned per unit so a team fights with a plan, not as a blob.
+const ROLES = ["DEFENDER", "ATTACKER", "FLANKER", "ATTACKER", "DEFENDER", "ATTACKER"];
 
 // HP thresholds expressed as a fraction of CONFIG.unit.maxHp.
 const RETREAT_HP_FRAC = 0.4; // drop below this -> break off and heal
@@ -80,6 +84,59 @@ class AIController {
       if (d < bestD) { bestD = d; best = it; }
     }
     return best;
+  }
+
+  // ---- team tactics -------------------------------------------------------
+
+  // Assign a squad role once, based on the unit's slot within its team so each
+  // side fields a mix of defenders / attackers / flankers.
+  assignRole(self, game) {
+    if (self._role) return self._role;
+    const mates = game.units.filter((u) => u.team === self.team);
+    const idx = Math.max(0, mates.indexOf(self));
+    self._role = ROLES[idx % ROLES.length];
+    return self._role;
+  }
+
+  // The team's overall plan, from fort health and head-count. DEFEND when our
+  // fort is hurting/threatened, PUSH when we're ahead, else BALANCED.
+  teamStance(team, game) {
+    const own = game.map.baseOf(team);
+    const foe = game.enemyBaseOf({ team });
+    const ownFrac = own.hp / own.maxHp;
+    const foeFrac = foe.hp / foe.maxHp;
+    const allies = game.units.filter((u) => u.alive && u.team === team).length;
+    const enemies = game.units.filter((u) => u.alive && u.team !== team).length;
+    const threatened = team === "blue" && game.blueFortAlert > 0;
+    if (ownFrac < 0.45 || threatened) return "DEFEND";
+    if (foeFrac < ownFrac - 0.05 || allies > enemies + 1) return "PUSH";
+    return "BALANCED";
+  }
+
+  // Nearest living enemy within `range` of a point (for fort defence).
+  nearestEnemyNear(self, game, x, y, range) {
+    let best = null;
+    let bestD = range;
+    for (const u of game.units) {
+      if (!u.alive || u.team === self.team) continue;
+      const d = V.dist(x, y, u.x, u.y);
+      if (d < bestD) { bestD = d; best = u; }
+    }
+    return best;
+  }
+
+  // GUARD behaviour: intercept intruders near the home fort, else hold a ring
+  // between the fort and the battlefield, facing the enemy side.
+  doGuard(self, dt, game) {
+    const home = game.map.baseOf(self.team);
+    const intruder = this.nearestEnemyNear(self, game, home.x, home.y, home.r + 260);
+    if (intruder) return this.doEngage(self, dt, game, intruder);
+    // Hold a guard post on the enemy-facing side of the fort.
+    const toCenter = Math.atan2(CONFIG.world.height / 2 - home.y, CONFIG.world.width / 2 - home.x);
+    const gx = home.x + Math.cos(toCenter) * (home.r + 70);
+    const gy = home.y + Math.sin(toCenter) * (home.r + 70);
+    if (V.dist(self.x, self.y, gx, gy) > 30) this.moveTo(self, gx, gy, game);
+    self.aim = toCenter;
   }
 
   // ---- decision helpers (kept side-effect free for testing) ---------------
@@ -285,13 +342,41 @@ class AIController {
       const fort = game.enemyBaseOf(self);
       if (fort && fort.hp > 0) state = STATE.ASSAULT;
     }
+
+    // Squad tactics: bias behaviour by role + the team's current plan (skipped
+    // while retreating or rushing, which take priority).
+    if (!game.rushMode && !this.shouldRetreat(self)) {
+      const role = this.assignRole(self, game);
+      const stance = this.teamStance(self.team, game);
+      const home = game.map.baseOf(self.team);
+      const dTgt = target ? V.dist(self.x, self.y, target.x, target.y) : Infinity;
+      if (role === "DEFENDER" && stance !== "PUSH") {
+        const intruder = this.nearestEnemyNear(self, game, home.x, home.y, home.r + 260);
+        // Intercept a threat to home; otherwise return only when not busy fighting.
+        if (intruder) state = STATE.GUARD;
+        else if (!target && V.dist(self.x, self.y, home.x, home.y) > home.r + 200) {
+          state = STATE.GUARD;
+        }
+      } else if (role === "FLANKER" && stance !== "DEFEND" && dTgt > 220 &&
+                 (state === STATE.ENGAGE || state === STATE.WANDER)) {
+        const forest = this.nearestForest(self, game);
+        if (forest && !game.map.inForest(self.x, self.y)) state = STATE.HIDE;
+      } else if (role === "ATTACKER" && stance === "PUSH") {
+        const fort = game.enemyBaseOf(self);
+        if (fort && fort.hp > 0 &&
+            (!target || V.dist(self.x, self.y, target.x, target.y) > 260)) {
+          state = STATE.ASSAULT;
+        }
+      }
+    }
     this.state = state;
 
     // Anti-stuck: while travelling (not deliberately holding or healing at base),
     // a unit that has barely moved for ~0.9s breaks into a random walk so it can
     // never wedge and stall the match when the player isn't around.
     const travelling = state === STATE.RETREAT || state === STATE.ADVANCE ||
-      state === STATE.ASSAULT || state === STATE.WANDER || state === STATE.HIDE;
+      state === STATE.ASSAULT || state === STATE.WANDER || state === STATE.HIDE ||
+      state === STATE.GUARD;
     if (travelling && !game.map.inBase(self.x, self.y, self.team)) {
       if (prog < 0.35) this.stuckMs += dt; else this.stuckMs = 0;
       if (this.stuckMs > 900) {
@@ -332,6 +417,7 @@ class AIController {
         return this.wander(self, dt, game);
       }
       case STATE.ENGAGE:  return this.doEngage(self, dt, game, target);
+      case STATE.GUARD:   return this.doGuard(self, dt, game);
       case STATE.WANDER:
       default:
         if (target) return this.doAdvance(self, dt, game, target);

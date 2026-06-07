@@ -7,7 +7,13 @@ const CONFIG = {
   // The whole battlefield is larger than the screen; the camera scrolls to
   // follow the player. Stages are authored in a 960x600 design space and
   // scaled up to fill this world at load (see GameMap).
-  world: { width: 1920, height: 1200 },
+  world: { width: 2400, height: 1500 },
+
+  // Units per team (the engine supports any number; stages auto-generate spawns).
+  teamSize: 6,
+
+  // Forest radii are multiplied by this at load so woods feel bigger/denser.
+  forestScale: 1.6,
 
   // The engine already supports any number of units per team (it just reads
   // the spawn arrays below). This is the planned cap for future multiplayer
