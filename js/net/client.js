@@ -11,6 +11,7 @@
   window.addEventListener("resize", setViewport);
   window.addEventListener("orientationchange", setViewport);
   Input.init(canvas);
+  Input.initAim(canvas);
   Input.initTouch({
     joystick: document.getElementById("joystick"),
     knob: document.getElementById("knob"),
@@ -95,15 +96,14 @@
     const { dx, dy } = Input.moveVector();
     let aim;
     if (Input.isTouch) {
-      // Auto-aim the nearest visible enemy on touch.
-      let best = null; let bd = Infinity;
-      for (const u of Net.snap.u) {
-        if (!u.al || u.t === Net.myTeam) continue;
-        if (!NetRender.visible(u, Net.snap, Net.map, Net.myTeam)) continue;
-        const d = V.dist(me.x, me.y, u.x, u.y);
-        if (d < bd) { bd = d; best = u; }
+      // Manual aim stick (right-side drag); otherwise face movement / keep aim.
+      if (Input.aimStick && Input.aimStick.active) {
+        aim = Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
+      } else if (dx !== 0 || dy !== 0) {
+        aim = Math.atan2(dy, dx);
+      } else {
+        aim = me.a;
       }
-      aim = best ? Math.atan2(best.y - me.y, best.x - me.x) : me.a;
     } else {
       aim = Math.atan2(Input.mouseY + Net.cam.y - me.y, Input.mouseX + Net.cam.x - me.x);
     }

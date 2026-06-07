@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v8 スマホ自動照準/ボタン下段";
+  const BUILD = "v10 手動エイム(右ドラッグ)";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
@@ -24,6 +24,7 @@
   window.addEventListener("orientationchange", setViewport);
 
   Input.init(canvas);
+  Input.initAim(canvas); // manual aim stick (touch)
   UI.init();
   Assets.load(); // Blender-rendered sprites (falls back to canvas art if absent)
 

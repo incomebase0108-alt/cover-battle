@@ -1,10 +1,11 @@
 // Combat units (player + AI), bullets, dropped items, and bombs.
 
-// Damage any gates near a blast (used by bombs/dynamite).
-function damageGatesInRadius(game, x, y, radius, amount) {
+// Damage gates near a blast (bombs/dynamite). Never harms the blast owner's
+// own gates.
+function damageGatesInRadius(game, x, y, radius, amount, ownerTeam) {
   if (!game.map.gates) return;
   for (const g of game.map.gates) {
-    if (g.hp <= 0) continue;
+    if (g.hp <= 0 || g.team === ownerTeam) continue;
     const cx = g.x + g.w / 2;
     const cy = g.y + g.h / 2;
     if (V.dist(x, y, cx, cy) <= radius + Math.max(g.w, g.h) / 2) {
@@ -248,13 +249,15 @@ class Bomb {
     );
     for (const rock of broken) game.dropFromRock(rock);
 
-    // Forts in the blast take heavy damage (either team's).
+    // Enemy forts in the blast take heavy damage — never your own fort.
+    const ownTeam = this.owner ? this.owner.team : null;
     for (const b of game.map.bases) {
+      if (b.team === ownTeam) continue;
       if (b.hp > 0 && V.dist(this.x, this.y, b.x, b.y) <= CONFIG.bomb.radius + b.coreR) {
         b.hp = Math.max(0, b.hp - CONFIG.bomb.damage * 2);
       }
     }
-    damageGatesInRadius(game, this.x, this.y, CONFIG.bomb.radius, CONFIG.bomb.damage * 2);
+    damageGatesInRadius(game, this.x, this.y, CONFIG.bomb.radius, CONFIG.bomb.damage * 2, ownTeam);
   }
 
   draw(ctx) {
@@ -335,12 +338,14 @@ class Dynamite {
     }
     const broken = game.map.damageRocksInRadius(this.x, this.y, R, CONFIG.dynamite.rockDamage);
     for (const rock of broken) game.dropFromRock(rock);
+    const ownTeam = this.owner ? this.owner.team : null;
     for (const b of game.map.bases) {
+      if (b.team === ownTeam) continue;
       if (b.hp > 0 && V.dist(this.x, this.y, b.x, b.y) <= R + b.coreR) {
         b.hp = Math.max(0, b.hp - CONFIG.dynamite.fortDamage);
       }
     }
-    damageGatesInRadius(game, this.x, this.y, R, CONFIG.dynamite.fortDamage);
+    damageGatesInRadius(game, this.x, this.y, R, CONFIG.dynamite.fortDamage, ownTeam);
   }
 
   draw(ctx) {
@@ -740,10 +745,9 @@ class Unit {
     // Aiming. On touch there's no mouse, so auto-aim the nearest visible enemy
     // (fall back to the movement direction). On desktop, lock-on or the mouse.
     if (Input.isTouch) {
-      const tgt = game.nearestVisibleEnemy(this);
-      if (tgt) {
-        this.lockTarget = tgt;
-        this.aim = Math.atan2(tgt.y - this.y, tgt.x - this.x);
+      // Manual aim stick (right-side drag). When not aiming, face movement.
+      if (Input.aimStick && Input.aimStick.active) {
+        this.aim = Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
       } else if (dx !== 0 || dy !== 0) {
         this.aim = Math.atan2(dy, dx);
       }

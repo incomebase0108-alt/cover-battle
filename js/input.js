@@ -14,6 +14,8 @@ const Input = {
 
   isTouch: false,
   touch: { active: false, dx: 0, dy: 0 },
+  // Right-side aim stick (manual aiming on touch): direction + whether active.
+  aimStick: { active: false, dx: 1, dy: 0 },
 
   init(canvas) {
     window.addEventListener("keydown", (e) => {
@@ -110,6 +112,45 @@ const Input = {
     hold(els.weapon, () => { this.weaponCycleQueued = true; });
     hold(els.dynamite, () => { this.dynamiteQueued = true; });
     hold(els.ability, () => { this.abilityQueued = true; });
+  },
+
+  // Right-side aim stick: drag anywhere on the right portion of the canvas to
+  // aim, and it fires while held (twin-stick style). Left side stays for the
+  // move joystick + bottom buttons (those are separate elements).
+  initAim(canvas) {
+    let id = null;
+    let ox = 0;
+    let oy = 0;
+    const start = (e) => {
+      for (const t of e.changedTouches) {
+        if (id === null && t.clientX > window.innerWidth * 0.4) {
+          id = t.identifier; ox = t.clientX; oy = t.clientY;
+          this.aimStick.active = true; this.shooting = true;
+          this.isTouch = true;
+        }
+      }
+      if (id !== null) e.preventDefault();
+    };
+    const move = (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === id) {
+          const dx = t.clientX - ox;
+          const dy = t.clientY - oy;
+          const len = Math.hypot(dx, dy);
+          if (len > 6) { this.aimStick.dx = dx / len; this.aimStick.dy = dy / len; }
+          e.preventDefault();
+        }
+      }
+    };
+    const end = (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === id) { id = null; this.aimStick.active = false; this.shooting = false; }
+      }
+    };
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", end);
+    canvas.addEventListener("touchcancel", end);
   },
 
   moveVector() {
