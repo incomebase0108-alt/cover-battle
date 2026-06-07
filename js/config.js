@@ -1,7 +1,13 @@
 // Tunable constants and stage definitions.
 const CONFIG = {
+  // Viewport (canvas) size — the visible window into the world.
   width: 960,
   height: 600,
+
+  // The whole battlefield is larger than the screen; the camera scrolls to
+  // follow the player. Stages are authored in a 960x600 design space and
+  // scaled up to fill this world at load (see GameMap).
+  world: { width: 1536, height: 960 },
 
   // The engine already supports any number of units per team (it just reads
   // the spawn arrays below). This is the planned cap for future multiplayer
@@ -16,6 +22,11 @@ const CONFIG = {
     magSize: 10,       // rounds per magazine before a reload is forced
     reloadTime: 3000,  // ms to reload an empty magazine (can't fire meanwhile)
     range: 360,        // how far a unit can see/shoot
+    // Passive ammo recovery: stop firing for `ammoRegenDelay` ms and rounds
+    // trickle back one per `ammoRegenInterval` ms. Emptying the magazine still
+    // forces the full reload above — so spraying is punished, tapping rewarded.
+    ammoRegenDelay: 800,
+    ammoRegenInterval: 320,
   },
 
   bullet: {
@@ -57,10 +68,15 @@ const CONFIG = {
   // Movement speed multiplier while wading through a river.
   riverSpeedMul: 0.5,
 
-  // Home base/fort: standing in your own base slowly regenerates HP.
+  // Home base/fort: standing in your own base slowly regenerates HP. The fort
+  // also has a destructible core — destroy the enemy's fort to win, lose yours
+  // and you're defeated.
   base: {
-    radius: 95,
+    radius: 95,        // healing-zone radius
     regenPerSec: 16,
+    coreRadius: 30,    // the damageable structure at the centre
+    hp: 600,           // fort durability
+    bulletDamage: 10,  // damage a bullet does to a fort core
   },
 };
 

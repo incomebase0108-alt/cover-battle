@@ -6,6 +6,7 @@ class Game {
     this.callbacks = callbacks || {};
     this.stageIndex = 0;
     this.playerTeam = "blue"; // the human side; the enemy can't see this side in forests
+    this.cam = { x: 0, y: 0 }; // top-left of the visible viewport in world space
     this.running = false;
     this.units = [];
     this.bullets = [];
@@ -26,7 +27,7 @@ class Game {
     this.bombs = [];
 
     // Blue team: first unit is the player, rest are AI allies.
-    stage.blueSpawns.forEach((s, i) => {
+    this.map.blueSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "blue", i === 0);
       if (!u.isPlayer) {
         u.ai = new AIController();
@@ -36,13 +37,14 @@ class Game {
     });
 
     // Red team: all AI, skill scales with the stage.
-    stage.redSpawns.forEach((s) => {
+    this.map.redSpawns.forEach((s) => {
       const u = new Unit(s.x, s.y, "red");
       u.ai = new AIController();
       u.skill = stage.enemySkill;
       this.units.push(u);
     });
 
+    this._updateCamera(); // centre on the player before the first frame
     this._syncHud();
   }
 
@@ -99,15 +101,45 @@ class Game {
     this.bombs = this.bombs.filter((b) => !b.dead);
     this.items = this.items.filter((it) => !it.dead);
 
+    this._updateCamera();
     this._syncHud();
 
+    // Win/lose: wipe out the enemy team OR destroy their fort.
     const blue = this.aliveCount("blue");
     const red = this.aliveCount("red");
-    if (red === 0) {
+    const blueFort = this.map.baseOf("blue").hp;
+    const redFort = this.map.baseOf("red").hp;
+    if (red === 0 || redFort <= 0) {
       this._end(true);
-    } else if (blue === 0) {
+    } else if (blue === 0 || blueFort <= 0) {
       this._end(false);
     }
+  }
+
+  // Centre the camera on the player (or the blue centroid if the player died),
+  // clamped so it never shows outside the world.
+  _updateCamera() {
+    let fx;
+    let fy;
+    const p = this.units.find((u) => u.isPlayer && u.alive);
+    if (p) {
+      fx = p.x; fy = p.y;
+    } else {
+      const blues = this.units.filter((u) => u.team === "blue" && u.alive);
+      if (blues.length) {
+        fx = blues.reduce((s, u) => s + u.x, 0) / blues.length;
+        fy = blues.reduce((s, u) => s + u.y, 0) / blues.length;
+      } else {
+        fx = this.cam.x + CONFIG.width / 2; fy = this.cam.y + CONFIG.height / 2;
+      }
+    }
+    this.cam.x = V.clamp(fx - CONFIG.width / 2, 0, CONFIG.world.width - CONFIG.width);
+    this.cam.y = V.clamp(fy - CONFIG.height / 2, 0, CONFIG.world.height - CONFIG.height);
+  }
+
+  // The fort belonging to the opposing team (used by the AI to assault it).
+  enemyBaseOf(unit) {
+    return this.map.bases.find((b) => b.team !== unit.team);
   }
 
   _handlePickups() {
@@ -150,6 +182,8 @@ class Game {
       stage: STAGES[this.stageIndex].name,
       blue: this.aliveCount("blue"),
       red: this.aliveCount("red"),
+      blueFort: this.map.baseOf("blue").hp / this.map.baseOf("blue").maxHp,
+      redFort: this.map.baseOf("red").hp / this.map.baseOf("red").maxHp,
       player: p ? {
         alive: p.alive,
         ammo: p.ammo,
@@ -166,6 +200,9 @@ class Game {
 
   _render() {
     const ctx = this.ctx;
+    ctx.clearRect(0, 0, CONFIG.width, CONFIG.height);
+    ctx.save();
+    ctx.translate(-Math.round(this.cam.x), -Math.round(this.cam.y));
     this.map.draw(ctx);
 
     // Dead units first (faint markers), then bullets, then live units, then rocks on top.
@@ -186,6 +223,7 @@ class Game {
     // Bombs/explosions on top so the blast reads clearly over everything.
     for (const b of this.bombs) b.draw(ctx);
     this._drawLockOn(ctx);
+    ctx.restore();
   }
 
   // Reticle over the player's locked-on target.

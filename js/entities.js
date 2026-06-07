@@ -20,8 +20,8 @@ class Bullet {
     this.life -= dt;
 
     if (this.life <= 0 ||
-        this.x < 0 || this.x > CONFIG.width ||
-        this.y < 0 || this.y > CONFIG.height) {
+        this.x < 0 || this.x > CONFIG.world.width ||
+        this.y < 0 || this.y > CONFIG.world.height) {
       this.dead = true;
       return;
     }
@@ -32,6 +32,16 @@ class Bullet {
         this.dead = true;
         return;
       }
+    }
+
+    // Enemy fort core takes damage; your own fort blocks your bullets harmlessly.
+    const core = game.map.baseCoreAt(this.x, this.y);
+    if (core) {
+      if (core.team !== this.team) {
+        core.hp = Math.max(0, core.hp - CONFIG.base.bulletDamage);
+      }
+      this.dead = true;
+      return;
     }
 
     // Rocks stop bullets and take damage (and may drop an item when broken).
@@ -151,6 +161,13 @@ class Bomb {
       this.x, this.y, CONFIG.bomb.radius, CONFIG.bomb.rockDamage
     );
     for (const rock of broken) game.dropFromRock(rock);
+
+    // Forts in the blast take heavy damage (either team's).
+    for (const b of game.map.bases) {
+      if (b.hp > 0 && V.dist(this.x, this.y, b.x, b.y) <= CONFIG.bomb.radius + b.coreR) {
+        b.hp = Math.max(0, b.hp - CONFIG.bomb.damage * 2);
+      }
+    }
   }
 
   draw(ctx) {
@@ -200,6 +217,9 @@ class Unit {
     this.ammo = this.weapon().magSize ?? CONFIG.unit.magSize; // rounds left
     this.reloading = false;
     this.reloadTimer = 0;
+    this.sinceShot = 99999;  // ms since last shot (drives passive ammo regen)
+    this.regenAccum = 0;     // accumulator for partial regenerated rounds
+    this.muzzleFlash = 0;    // ms remaining on the muzzle-flash effect
     this.skill = 0.7; // AI accuracy/decision quality, overridden per spawn
     this.ai = null;   // assigned for non-player units
 
@@ -275,6 +295,9 @@ class Unit {
     const w = this.weapon();
     this.cooldown = this.fireCooldownVal();
     this.ammo--; // one trigger pull = one round, even for multi-pellet weapons
+    this.sinceShot = 0;
+    this.regenAccum = 0;
+    this.muzzleFlash = 70;
 
     const pellets = w.pellets ?? 1;
     const spread = w.spread ?? 0;
@@ -319,11 +342,22 @@ class Unit {
   update(dt, game) {
     if (!this.alive) return;
     if (this.cooldown > 0) this.cooldown -= dt;
+    if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
+    this.sinceShot += dt;
+
     if (this.reloading) {
       this.reloadTimer -= dt;
       if (this.reloadTimer <= 0) {
         this.reloading = false;
         this.ammo = this.magSizeVal();
+      }
+    } else if (this.ammo < this.magSizeVal() && this.sinceShot >= CONFIG.unit.ammoRegenDelay) {
+      // Passive ammo recovery while holding fire.
+      this.regenAccum += dt;
+      const interval = CONFIG.unit.ammoRegenInterval;
+      while (this.regenAccum >= interval && this.ammo < this.magSizeVal()) {
+        this.regenAccum -= interval;
+        this.ammo++;
       }
     }
 
@@ -366,14 +400,20 @@ class Unit {
       if (this.lockTarget) {
         this.aim = Math.atan2(this.lockTarget.y - this.y, this.lockTarget.x - this.x);
       } else {
-        this.aim = Math.atan2(Input.mouseY - this.y, Input.mouseX - this.x);
+        this.aimAtMouse(game);
       }
     } else {
-      this.aim = Math.atan2(Input.mouseY - this.y, Input.mouseX - this.x);
+      this.aimAtMouse(game);
     }
 
     if (Input.shooting) this.tryShoot(game);
     if (Input.consumeBomb()) this.placeBomb(game);
+  }
+
+  // Aim toward the mouse, converting screen coords to world via the camera.
+  aimAtMouse(game) {
+    const cam = game.cam || { x: 0, y: 0 };
+    this.aim = Math.atan2(Input.mouseY + cam.y - this.y, Input.mouseX + cam.x - this.x);
   }
 
   draw(ctx, game) {
@@ -392,39 +432,78 @@ class Unit {
     ctx.ellipse(this.x, this.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    const light = this.team === "blue" ? "#9cc2ff" : "#ffb3b3";
+
     // Draw the soldier oriented toward the aim direction.
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.aim);
 
+    // Legs (two boots splayed behind, hinting a running stance).
+    ctx.fillStyle = "#2a2f3a";
+    ctx.beginPath(); ctx.ellipse(-r * 0.2, -r * 0.5, r * 0.5, r * 0.24, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-r * 0.2,  r * 0.5, r * 0.5, r * 0.24,  0.5, 0, Math.PI * 2); ctx.fill();
+
     // Backpack.
     ctx.fillStyle = dark;
     ctx.beginPath();
-    ctx.arc(-r * 0.5, 0, r * 0.5, 0, Math.PI * 2);
+    ctx.arc(-r * 0.55, 0, r * 0.48, 0, Math.PI * 2);
     ctx.fill();
 
-    // Shoulders / torso (uniform).
+    // Torso / vest (uniform) with a webbing stripe.
     ctx.fillStyle = uniform;
     ctx.beginPath();
-    ctx.ellipse(0, 0, r * 0.95, r * 0.8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, r * 0.98, r * 0.82, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = dark;
     ctx.lineWidth = 2;
     ctx.stroke();
+    ctx.fillStyle = "rgba(0,0,0,0.22)"; // chest webbing
+    ctx.fillRect(-r * 0.1, -r * 0.7, r * 0.22, r * 1.4);
 
-    // Rifle (held forward).
+    // Arms reaching to the rifle.
+    ctx.strokeStyle = uniform;
+    ctx.lineWidth = r * 0.34;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(r * 0.1, -r * 0.45); ctx.lineTo(r * 0.7, -r * 0.1);
+    ctx.moveTo(r * 0.1,  r * 0.45); ctx.lineTo(r * 0.7,  r * 0.1);
+    ctx.stroke();
+    ctx.lineCap = "butt";
+
+    // Rifle (held forward): stock, body, barrel.
+    ctx.fillStyle = "#23262e";
+    ctx.fillRect(-r * 0.25, -r * 0.13, r * 0.55, r * 0.46); // stock/grip
     ctx.fillStyle = "#15181f";
-    ctx.fillRect(r * 0.1, -r * 0.18, r * 1.25, r * 0.28); // barrel
-    ctx.fillRect(-r * 0.15, -r * 0.12, r * 0.4, r * 0.45); // stock/grip
+    ctx.fillRect(r * 0.1, -r * 0.15, r * 1.4, r * 0.22);    // body + barrel
+    ctx.fillStyle = "#3a3f4a";
+    ctx.fillRect(r * 0.55, -r * 0.05, r * 0.45, r * 0.12);  // sight rail
 
-    // Helmet (top-down dome).
-    const hg = ctx.createRadialGradient(-r * 0.1, -r * 0.1, r * 0.1, 0, 0, r * 0.6);
-    hg.addColorStop(0, this.team === "blue" ? "#9cc2ff" : "#ffb3b3");
+    // Helmet with a front brim/visor.
+    const hg = ctx.createRadialGradient(-r * 0.12, -r * 0.12, r * 0.1, 0, 0, r * 0.62);
+    hg.addColorStop(0, light);
     hg.addColorStop(1, dark);
     ctx.fillStyle = hg;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+    ctx.arc(0, 0, r * 0.56, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.arc(r * 0.2, 0, r * 0.56, -0.9, 0.9); // brim toward the front
+    ctx.fill();
+
+    // Muzzle flash when a shot was just fired.
+    if (this.muzzleFlash > 0) {
+      const f = this.muzzleFlash / 70;
+      ctx.fillStyle = `rgba(255,${200 + Math.floor(40 * f)},120,${0.9 * f})`;
+      ctx.beginPath();
+      ctx.moveTo(r * 1.5, 0);
+      ctx.lineTo(r * 1.5 + r * 0.7 * f, -r * 0.28 * f);
+      ctx.lineTo(r * 1.9 + r * 0.9 * f, 0);
+      ctx.lineTo(r * 1.5 + r * 0.7 * f, r * 0.28 * f);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     ctx.restore();
 

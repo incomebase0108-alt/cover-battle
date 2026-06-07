@@ -12,20 +12,52 @@ function centroid(points) {
 // Forests conceal whoever stands inside them. Rivers are passable but slow you.
 class GameMap {
   constructor(stage) {
-    this.rocks = stage.rocks.map((r) => ({
-      ...r,
-      hp: CONFIG.rock.hp,
-      maxHp: CONFIG.rock.hp,
-    }));
-    this.mountains = (stage.mountains || []).map((m) => ({ ...m }));
-    this.forests = stage.forests.map((f) => ({ ...f }));
-    this.rivers = (stage.rivers || []).map((r) => ({ ...r }));
+    // Stages are authored in the 960x600 design space; scale positions up to
+    // fill the larger world. Obstacle radii are left unscaled so the bigger
+    // world simply has more open room to manoeuvre.
+    const sx = CONFIG.world.width / CONFIG.width;
+    const sy = CONFIG.world.height / CONFIG.height;
+    const sp = (p) => ({ x: p.x * sx, y: p.y * sy });
 
-    // Home bases: a healing zone centred on each team's spawn cluster.
+    this.rocks = stage.rocks.map((r) => ({
+      x: r.x * sx, y: r.y * sy, r: r.r,
+      hp: CONFIG.rock.hp, maxHp: CONFIG.rock.hp,
+    }));
+    this.mountains = (stage.mountains || []).map((m) => ({ x: m.x * sx, y: m.y * sy, r: m.r }));
+    this.forests = stage.forests.map((f) => ({ x: f.x * sx, y: f.y * sy, r: f.r }));
+    this.rivers = (stage.rivers || []).map((r) => ({
+      x: r.x * sx, y: r.y * sy, w: r.w * sx, h: r.h * sy,
+    }));
+
+    this.blueSpawns = stage.blueSpawns.map(sp);
+    this.redSpawns = stage.redSpawns.map(sp);
+
+    // Home bases: a healing zone + a destructible fort core, centred on each
+    // team's spawn cluster.
+    const mkBase = (team, spawns) => ({
+      team,
+      ...centroid(spawns),
+      r: CONFIG.base.radius,
+      coreR: CONFIG.base.coreRadius,
+      hp: CONFIG.base.hp,
+      maxHp: CONFIG.base.hp,
+    });
     this.bases = [
-      { team: "blue", ...centroid(stage.blueSpawns), r: CONFIG.base.radius },
-      { team: "red", ...centroid(stage.redSpawns), r: CONFIG.base.radius },
+      mkBase("blue", this.blueSpawns),
+      mkBase("red", this.redSpawns),
     ];
+  }
+
+  baseOf(team) {
+    return this.bases.find((b) => b.team === team);
+  }
+
+  // The fort core hit by a point, if any (for bullet/bomb fort damage).
+  baseCoreAt(x, y) {
+    for (const b of this.bases) {
+      if (b.hp > 0 && V.dist(x, y, b.x, b.y) <= b.coreR) return b;
+    }
+    return null;
   }
 
   inBase(x, y, team) {
@@ -63,9 +95,19 @@ class GameMap {
         nx += min; // degenerate: nudge sideways
       }
     }
-    // Keep inside the arena bounds.
-    nx = V.clamp(nx, radius, CONFIG.width - radius);
-    ny = V.clamp(ny, radius, CONFIG.height - radius);
+    // Fort cores are solid too — you can't walk through the structure.
+    for (const b of this.bases) {
+      if (b.hp <= 0) continue;
+      const d = V.dist(nx, ny, b.x, b.y);
+      const min = b.coreR + radius;
+      if (d < min && d > 0) {
+        nx += ((nx - b.x) / d) * (min - d);
+        ny += ((ny - b.y) / d) * (min - d);
+      }
+    }
+    // Keep inside the world bounds.
+    nx = V.clamp(nx, radius, CONFIG.world.width - radius);
+    ny = V.clamp(ny, radius, CONFIG.world.height - radius);
     return { x: nx, y: ny };
   }
 
@@ -98,16 +140,18 @@ class GameMap {
   }
 
   draw(ctx) {
+    const W = CONFIG.world.width;
+    const H = CONFIG.world.height;
     // Ground texture: subtle grass grid.
     ctx.fillStyle = "#33472f";
-    ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+    ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = "rgba(0,0,0,0.06)";
     ctx.lineWidth = 1;
-    for (let gx = 0; gx <= CONFIG.width; gx += 48) {
-      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, CONFIG.height); ctx.stroke();
+    for (let gx = 0; gx <= W; gx += 48) {
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke();
     }
-    for (let gy = 0; gy <= CONFIG.height; gy += 48) {
-      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(CONFIG.width, gy); ctx.stroke();
+    for (let gy = 0; gy <= H; gy += 48) {
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
     }
 
     // Rivers (under everything else).
@@ -143,13 +187,52 @@ class GameMap {
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
-      // Tiny flag + cross to read as a field hospital / fort.
-      ctx.fillStyle = `rgba(${col},0.85)`;
-      ctx.font = "bold 13px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(b.team === "blue" ? "青の砦 +" : "赤の砦 +", b.x, b.y - b.r + 14);
-      ctx.textAlign = "left";
+
+      // Fort core structure (the destructible target).
+      if (b.hp > 0) {
+        const cr = b.coreR;
+        const cg = ctx.createRadialGradient(b.x - cr * 0.3, b.y - cr * 0.3, cr * 0.2, b.x, b.y, cr);
+        cg.addColorStop(0, b.team === "blue" ? "#3a6bd6" : "#d64a4a");
+        cg.addColorStop(1, b.team === "blue" ? "#1d2f6b" : "#6b1d1d");
+        ctx.fillStyle = cg;
+        ctx.fillRect(b.x - cr, b.y - cr, cr * 2, cr * 2);
+        ctx.strokeStyle = "rgba(0,0,0,0.5)";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(b.x - cr, b.y - cr, cr * 2, cr * 2);
+        // Battlements (top edge notches).
+        ctx.fillStyle = b.team === "blue" ? "#2f7bff" : "#ff4d4d";
+        for (let i = -1; i <= 1; i++) {
+          ctx.fillRect(b.x + i * cr * 0.66 - cr * 0.18, b.y - cr - 6, cr * 0.36, 8);
+        }
+        // Durability gauge above the fort.
+        const gw = cr * 2.4;
+        const gx = b.x - gw / 2;
+        const gy = b.y - cr - 20;
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(gx, gy, gw, 7);
+        const pct = b.hp / b.maxHp;
+        ctx.fillStyle = pct > 0.5 ? `rgb(${col})` : pct > 0.25 ? "#ffb347" : "#ff5a5a";
+        ctx.fillRect(gx, gy, gw * pct, 7);
+        ctx.strokeStyle = "rgba(0,0,0,0.6)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(gx, gy, gw, 7);
+        // Label.
+        ctx.fillStyle = `rgba(${col},0.95)`;
+        ctx.font = "bold 12px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(b.team === "blue" ? "青の砦" : "赤の砦", b.x, gy - 8);
+        ctx.textAlign = "left";
+      } else {
+        // Rubble when destroyed.
+        ctx.fillStyle = "rgba(40,35,30,0.7)";
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.arc(b.x + Math.cos(a) * b.coreR * 0.6, b.y + Math.sin(a) * b.coreR * 0.6, 7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
 
     // Forests (drawn under units so units appear "inside" them).

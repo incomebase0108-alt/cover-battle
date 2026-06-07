@@ -64,6 +64,12 @@ canvas {
 .ammo.low b { color: #ff6b6b; }
 .ammo .reloading { color: #ffb347; font-weight: 700; }
 .weapon-name { padding: 2px 10px; border-radius: 999px; background: rgba(0,0,0,0.35); color: #ffe1a6; font-weight: 700; pointer-events: none; }
+.fort-hud { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 2px 10px; border-radius: 999px; background: rgba(0,0,0,0.35); pointer-events: none; }
+.fort-hud.blue { color: #9cc2ff; }
+.fort-hud.red { color: #ff9c9c; }
+.fbar { display: inline-block; width: 90px; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.18); overflow: hidden; }
+.fort-hud.blue .fbar i { display: block; height: 100%; width: 100%; background: #4f9bff; }
+.fort-hud.red .fbar i { display: block; height: 100%; width: 100%; background: #ff5a5a; }
 .lock-state { padding: 2px 10px; border-radius: 999px; background: rgba(0,0,0,0.35); color: #b9c4d2; pointer-events: none; }
 .lock-state.on { color: #ffe14a; background: rgba(120,90,0,0.4); }
 

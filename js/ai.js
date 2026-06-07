@@ -8,6 +8,9 @@ class AIController {
     this.strafeTimer = V.randRange(600, 1400);
     this.repathTimer = 0;
     this.wanderAngle = Math.random() * Math.PI * 2;
+    // ~40% of units are "assaulters" that push the enemy fort when not pinned
+    // by a nearby foe — this makes the destroy-the-fort condition a real threat.
+    this.assaulter = Math.random() < 0.4;
   }
 
   update(self, dt, game) {
@@ -18,6 +21,16 @@ class AIController {
     }
 
     const target = this.findTarget(self, game);
+
+    // Assaulters head for the enemy fort unless an enemy is right on top of them.
+    if (this.assaulter) {
+      const fort = game.enemyBaseOf(self);
+      const nearDist = target ? V.dist(self.x, self.y, target.x, target.y) : Infinity;
+      if (fort && fort.hp > 0 && nearDist > 200) {
+        this.assaultFort(self, dt, game, fort);
+        return;
+      }
+    }
 
     if (!target) {
       this.wander(self, dt, game);
@@ -60,7 +73,8 @@ class AIController {
       const len = Math.hypot(mx, my);
       if (len > 0) self.move(mx / len, my / len, game);
 
-      if (Math.random() < self.skill) self.tryShoot(game);
+      // Fire less eagerly than before so the battlefield isn't a bullet storm.
+      if (Math.random() < self.skill * 0.7) self.tryShoot(game);
     } else {
       // No clear shot: advance toward the target to find an angle.
       const len = Math.hypot(target.x - self.x, target.y - self.y) || 1;
@@ -82,6 +96,21 @@ class AIController {
       }
     }
     return best;
+  }
+
+  // Advance on the enemy fort core and shoot it down.
+  assaultFort(self, dt, game, fort) {
+    const baseAngle = Math.atan2(fort.y - self.y, fort.x - self.x);
+    const d = V.dist(self.x, self.y, fort.x, fort.y);
+    const hasLOS = !game.map.blockedBetween(self.x, self.y, fort.x, fort.y);
+    self.aim = baseAngle;
+    if (hasLOS && d <= CONFIG.unit.range) {
+      // Hold just outside the structure and pour fire into it.
+      if (d > fort.coreR + 80) self.move(Math.cos(baseAngle), Math.sin(baseAngle), game);
+      if (Math.random() < self.skill * 0.7) self.tryShoot(game);
+    } else {
+      self.move(Math.cos(baseAngle), Math.sin(baseAngle), game);
+    }
   }
 
   nearestRock(self, game) {
