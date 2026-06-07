@@ -153,10 +153,10 @@ body.touch .touch-controls {
 }
 .joystick {
   position: absolute;
-  left: 4%;
-  bottom: 6%;
-  width: 120px;
-  height: 120px;
+  left: 16px;
+  bottom: 96px;          /* sit above the bottom button row */
+  width: 116px;
+  height: 116px;
   border-radius: 50%;
   background: rgba(255,255,255,0.08);
   border: 2px solid rgba(255,255,255,0.2);
@@ -176,13 +176,22 @@ body.touch .touch-controls {
 }
 .action-buttons {
   position: absolute;
-  right: 4%;
-  bottom: 5%;
-  display: grid;
-  grid-template-columns: 70px 70px;
-  gap: 12px;
-  pointer-events: auto;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 10px;
+  padding: 0 8px;
+  pointer-events: none;        /* the row itself is non-interactive; buttons re-enable */
 }
+.action-buttons .act { pointer-events: auto; }
+/* Auto-aim handles targeting on touch, so hide the lock/cycle buttons there. */
+body.touch #btnLock, body.touch #btnCycle { display: none; }
+body.touch .act { width: 60px; height: 60px; font-size: 20px; }
+body.touch .act small { font-size: 9px; }
 .act {
   width: 70px;
   height: 70px;

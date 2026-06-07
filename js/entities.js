@@ -737,7 +737,17 @@ class Unit {
       this.lockTarget = game.nextVisibleEnemy(this, this.lockTarget);
     }
 
-    if (this.lockMode) {
+    // Aiming. On touch there's no mouse, so auto-aim the nearest visible enemy
+    // (fall back to the movement direction). On desktop, lock-on or the mouse.
+    if (Input.isTouch) {
+      const tgt = game.nearestVisibleEnemy(this);
+      if (tgt) {
+        this.lockTarget = tgt;
+        this.aim = Math.atan2(tgt.y - this.y, tgt.x - this.x);
+      } else if (dx !== 0 || dy !== 0) {
+        this.aim = Math.atan2(dy, dx);
+      }
+    } else if (this.lockMode) {
       // Keep a valid target, then aim straight at it.
       if (!this.lockTarget || !this.lockTarget.alive ||
           !game.unitVisibleToPlayer(this.lockTarget)) {
