@@ -20,18 +20,29 @@ html, body {
 
 #app {
   position: relative;
-  width: 960px;
-  max-width: 100vw;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;        /* fill the screen, accounting for mobile browser bars */
+  max-width: 1280px;
+  max-height: 880px;
 }
 
 canvas {
   display: block;
   width: 100%;
+  height: 100%;
   background: #2b3b2b;
   border-radius: 10px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
   cursor: crosshair;
 }
+/* On phones, go truly full-screen (no rounded letterbox). */
+body.touch #app { max-width: none; max-height: none; }
+body.touch canvas { border-radius: 0; }
+/* The verbose control bar is desktop-only; phones use the labelled buttons + ? help. */
+body.touch .control-bar { display: none; }
+body.touch .hud { font-size: 13px; left: 8px; right: 8px; }
+body.touch .hud-row { gap: 8px; font-size: 14px; }
 
 /* HUD */
 .hud {
@@ -177,13 +188,19 @@ body.touch .touch-controls {
   height: 70px;
   border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.35);
-  font-size: 24px;
+  font-size: 23px;
   font-weight: 700;
   color: #fff;
   background: rgba(0,0,0,0.4);
   touch-action: none;
   user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
+.act small { font-size: 10px; font-weight: 800; margin-top: 2px; }
 .act.fire { background: rgba(255,77,77,0.55); font-size: 22px; }
 .act.bomb { background: rgba(255,138,90,0.5); }
 .act.lock { background: rgba(255,225,74,0.4); }

@@ -15,8 +15,8 @@ class GameMap {
     // Stages are authored in the 960x600 design space; scale positions up to
     // fill the larger world. Obstacle radii are left unscaled so the bigger
     // world simply has more open room to manoeuvre.
-    const sx = CONFIG.world.width / CONFIG.width;
-    const sy = CONFIG.world.height / CONFIG.height;
+    const sx = CONFIG.world.width / CONFIG.design.width;
+    const sy = CONFIG.world.height / CONFIG.design.height;
     const sp = (p) => ({ x: p.x * sx, y: p.y * sy });
 
     this.rocks = stage.rocks.map((r) => ({
@@ -57,6 +57,69 @@ class GameMap {
       mkBase("blue", this.blueSpawns),
       mkBase("red", this.redSpawns),
     ];
+
+    // Fortify each fort: an indestructible front wall (facing mid-field) with
+    // TWO destructible gates (top & bottom). Allies pass the gates freely; the
+    // enemy must destroy a gate to get through.
+    this.walls = [];   // {x,y,w,h} solid for everyone
+    this.gates = [];   // {x,y,w,h,team,hp,maxHp}
+    for (const b of this.bases) {
+      const dir = b.team === "blue" ? 1 : -1;
+      const fx = b.x + dir * (b.coreR + 70);  // front-wall x
+      const wth = 26;                          // wall thickness
+      const wx = fx - wth / 2;
+      // Segments down the front face: pillar / GATE / pillar / GATE / pillar.
+      const segs = [
+        { y0: b.y - 170, y1: b.y - 110, gate: false },
+        { y0: b.y - 110, y1: b.y - 40, gate: true },
+        { y0: b.y - 40, y1: b.y + 40, gate: false },
+        { y0: b.y + 40, y1: b.y + 110, gate: true },
+        { y0: b.y + 110, y1: b.y + 170, gate: false },
+      ];
+      for (const s of segs) {
+        const rect = { x: wx, y: s.y0, w: wth, h: s.y1 - s.y0 };
+        if (s.gate) {
+          this.gates.push({ ...rect, team: b.team, hp: CONFIG.gate.hp, maxHp: CONFIG.gate.hp });
+        } else {
+          this.walls.push(rect);
+        }
+      }
+    }
+  }
+
+  // Rect helpers --------------------------------------------------------------
+  _pointInRect(x, y, r, pad) {
+    pad = pad || 0;
+    return x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad;
+  }
+  // Push a circle (x,y,radius) out of rect r along the least-penetration axis.
+  _pushOutRect(nx, ny, radius, r) {
+    const minX = r.x - radius, maxX = r.x + r.w + radius;
+    const minY = r.y - radius, maxY = r.y + r.h + radius;
+    if (nx <= minX || nx >= maxX || ny <= minY || ny >= maxY) return null;
+    const dl = nx - minX, dr = maxX - nx, dt = ny - minY, db = maxY - ny;
+    const m = Math.min(dl, dr, dt, db);
+    if (m === dl) return { x: minX, y: ny };
+    if (m === dr) return { x: maxX, y: ny };
+    if (m === dt) return { x: nx, y: minY };
+    return { x: nx, y: maxY };
+  }
+
+  // A wall the point is inside (bullets stop on walls).
+  wallAt(x, y) {
+    for (const w of this.walls) if (this._pointInRect(x, y, 0)) {
+      if (x >= w.x && x <= w.x + w.w && y >= w.y && y <= w.y + w.h) return w;
+    }
+    return null;
+  }
+
+  // The enemy gate (relative to `team`) the point sits in, if any.
+  enemyGateAt(x, y, team) {
+    for (const g of this.gates) {
+      if (g.hp > 0 && g.team !== team &&
+          x >= g.x && x <= g.x + g.w && y >= g.y && y <= g.y + g.h) return g;
+    }
+    return null;
   }
 
   baseOf(team) {
@@ -100,9 +163,20 @@ class GameMap {
 
   // Push a unit-sized circle out of any solid obstacle it overlaps. Non-climbers
   // are also blocked by ledges (climbers pass through them for a shortcut).
-  resolveCollision(x, y, radius, canClimb) {
+  resolveCollision(x, y, radius, canClimb, team) {
     let nx = x;
     let ny = y;
+    // Indestructible fort walls block everyone.
+    for (const w of this.walls) {
+      const out = this._pushOutRect(nx, ny, radius, w);
+      if (out) { nx = out.x; ny = out.y; }
+    }
+    // Gates block the OPPOSING team until destroyed; allies pass freely.
+    for (const g of this.gates) {
+      if (g.hp <= 0 || g.team === team) continue;
+      const out = this._pushOutRect(nx, ny, radius, g);
+      if (out) { nx = out.x; ny = out.y; }
+    }
     for (const o of this.solids()) {
       const d = V.dist(nx, ny, o.x, o.y);
       const min = o.r + radius;
@@ -407,6 +481,47 @@ class GameMap {
   drawSolids(ctx) {
     for (const rock of this.rocks) this._drawRock(ctx, rock);
     for (const m of this.mountains) this._drawMountain(ctx, m);
+    for (const w of this.walls) this._drawWall(ctx, w);
+    for (const g of this.gates) this._drawGate(ctx, g);
+  }
+
+  _drawWall(ctx, w) {
+    const grad = ctx.createLinearGradient(w.x, w.y, w.x + w.w, w.y);
+    grad.addColorStop(0, "#7c756a");
+    grad.addColorStop(1, "#4f493f");
+    ctx.fillStyle = grad;
+    ctx.fillRect(w.x, w.y, w.w, w.h);
+    ctx.strokeStyle = "rgba(0,0,0,0.45)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(w.x, w.y, w.w, w.h);
+  }
+
+  _drawGate(ctx, g) {
+    const col = g.team === "blue" ? "#2f7bff" : "#ff4d4d";
+    if (g.hp <= 0) {
+      // Broken gate: faint rubble posts, passage open.
+      ctx.fillStyle = "rgba(60,50,40,0.5)";
+      ctx.fillRect(g.x, g.y, g.w, 6);
+      ctx.fillRect(g.x, g.y + g.h - 6, g.w, 6);
+      return;
+    }
+    ctx.fillStyle = "#6b4a2a"; // wooden gate
+    ctx.fillRect(g.x, g.y, g.w, g.h);
+    ctx.strokeStyle = col; // team trim
+    ctx.lineWidth = 3;
+    ctx.strokeRect(g.x, g.y, g.w, g.h);
+    // Plank lines.
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.lineWidth = 1;
+    for (let yy = g.y + 10; yy < g.y + g.h; yy += 12) {
+      ctx.beginPath(); ctx.moveTo(g.x, yy); ctx.lineTo(g.x + g.w, yy); ctx.stroke();
+    }
+    // Durability bar beside the gate.
+    const pct = g.hp / g.maxHp;
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(g.x - 6, g.y, 4, g.h);
+    ctx.fillStyle = pct > 0.5 ? col : pct > 0.25 ? "#ffb347" : "#ff5a5a";
+    ctx.fillRect(g.x - 6, g.y + g.h * (1 - pct), 4, g.h * pct);
   }
 
   _drawRock(ctx, rock) {

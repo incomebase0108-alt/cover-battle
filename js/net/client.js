@@ -1,6 +1,15 @@
 // LAN client: connect to the server, pick a slot, send input, render snapshots.
 (function () {
   const canvas = document.getElementById("game");
+  function setViewport() {
+    const app = document.getElementById("app");
+    const w = Math.round(app.clientWidth);
+    const h = Math.round(app.clientHeight);
+    if (w > 0 && h > 0) { canvas.width = w; canvas.height = h; CONFIG.width = w; CONFIG.height = h; }
+  }
+  setViewport();
+  window.addEventListener("resize", setViewport);
+  window.addEventListener("orientationchange", setViewport);
   Input.init(canvas);
   Input.initTouch({
     joystick: document.getElementById("joystick"),

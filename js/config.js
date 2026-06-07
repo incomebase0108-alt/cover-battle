@@ -1,8 +1,13 @@
 // Tunable constants and stage definitions.
 const CONFIG = {
-  // Viewport (canvas) size — the visible window into the world.
+  // Viewport (canvas) size — the visible window into the world. On the web this
+  // is overwritten at runtime to match the device screen (see main.js).
   width: 960,
   height: 600,
+
+  // Fixed authoring space for stages. World scaling uses THIS (not the viewport)
+  // so terrain is identical on every device and the LAN server/client agree.
+  design: { width: 960, height: 600 },
 
   // The whole battlefield is larger than the screen; the camera scrolls to
   // follow the player. Stages are authored in a 960x600 design space and
@@ -94,6 +99,14 @@ const CONFIG = {
   capture: {
     radius: 80,         // how close you must be to contest/capture
     captureTime: 3500,  // ms of uncontested presence to flip it
+  },
+
+  // Fortress gates (城門): destructible barriers at the top & bottom of each
+  // fort's front wall. Allies pass freely; the enemy must destroy a gate to get
+  // through. Walls around them are indestructible.
+  gate: {
+    hp: 260,
+    bulletDamage: 10,
   },
 
   // Home base/fort: standing in your own base slowly regenerates HP. The fort

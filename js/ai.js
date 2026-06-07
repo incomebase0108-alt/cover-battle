@@ -143,6 +143,19 @@ class AIController {
     return best;
   }
 
+  // Nearest standing enemy gate within `range` (center distance), or null.
+  nearestEnemyGate(self, game, range) {
+    if (!game.map.gates) return null;
+    let best = null;
+    let bd = range;
+    for (const g of game.map.gates) {
+      if (g.hp <= 0 || g.team === self.team) continue;
+      const d = V.dist(self.x, self.y, g.x + g.w / 2, g.y + g.h / 2);
+      if (d < bd) { bd = d; best = g; }
+    }
+    return best;
+  }
+
   // Nearest living wild beast within `range`, or null.
   nearestBeast(self, game, range) {
     if (!game.beasts) return null;
@@ -406,6 +419,25 @@ class AIController {
         if (cls.ability === "turret" && d < CONFIG.unit.range && Math.random() < 0.012) self.useAbility(game);
         else if (cls.ability === "smoke" && d < 280 && Math.random() < 0.02) self.useAbility(game);
         else if (cls.ability === "dash" && (d > 280 || this.shouldRetreat(self)) && Math.random() < 0.03) self.useAbility(game);
+      }
+    }
+
+    // Break an enemy gate that's blocking the way to our objective.
+    if (target) {
+      const gate = this.nearestEnemyGate(self, game, 175);
+      if (gate) {
+        const gx = gate.x + gate.w / 2;
+        const gy = gate.y + gate.h / 2;
+        const ag = Math.atan2(gy - self.y, gx - self.x);
+        const at = Math.atan2(target.y - self.y, target.x - self.x);
+        let diff = Math.abs(ag - at);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff < 0.8 || V.dist(self.x, self.y, gx, gy) < 95) {
+          this.aimAt(self, gx, gy);
+          if (!self.reloading && self.ammo > 0 && Math.random() < 0.7) self.tryShoot(game);
+          this.moveTo(self, gx, gy, game);
+          return;
+        }
       }
     }
 

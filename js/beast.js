@@ -2,8 +2,8 @@
 // indiscriminately. They can be shot down (by either team), and drop an item
 // when killed — a shared environmental threat that adds risk to the battlefield.
 const BEAST_TYPES = {
-  tiger: { hp: 120, radius: 18, speed: 2.7, damage: 13, sense: 250, attackRange: 8, attackCd: 650, body: "#d98a2b", dark: "#7a4a12" },
-  bear:  { hp: 210, radius: 23, speed: 1.9, damage: 24, sense: 210, attackRange: 10, attackCd: 1000, body: "#6b4a32", dark: "#3a2718" },
+  tiger: { hp: 140, radius: 23, speed: 2.7, damage: 15, sense: 260, attackRange: 10, attackCd: 650, body: "#e07c1e", dark: "#5a3408" },
+  bear:  { hp: 240, radius: 30, speed: 1.9, damage: 26, sense: 220, attackRange: 12, attackCd: 1000, body: "#5e3d24", dark: "#2a1a0e" },
 };
 
 class Beast {
@@ -93,27 +93,65 @@ class Beast {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.aim);
-    // Body.
-    const bob = Math.sin(this.walkPhase) * r * 0.08;
+    // Slight lunge/breathe so the beast feels alive and threatening.
+    const lunge = 1 + Math.sin(this.walkPhase) * 0.06;
+
+    // Tail.
+    ctx.strokeStyle = t.body;
+    ctx.lineWidth = r * 0.22;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-r * 1.1, 0);
+    ctx.quadraticCurveTo(-r * 1.7, Math.sin(this.walkPhase) * r * 0.5, -r * 2.0, r * 0.3);
+    ctx.stroke();
+    // Four legs with claws.
+    ctx.strokeStyle = t.dark;
+    ctx.lineWidth = r * 0.26;
+    for (const [lx, ly] of [[0.45, 0.78], [0.45, -0.78], [-0.55, 0.8], [-0.55, -0.8]]) {
+      const sw = Math.sin(this.walkPhase + (lx > 0 ? 0 : Math.PI)) * r * 0.22;
+      ctx.beginPath();
+      ctx.moveTo(lx * r, ly * r * 0.7);
+      ctx.lineTo(lx * r + sw, ly * r);
+      ctx.stroke();
+      ctx.fillStyle = "#efeae0"; // claws
+      ctx.beginPath(); ctx.arc(lx * r + sw, ly * r, r * 0.1, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.lineCap = "butt";
+
+    // Body (bigger, fiercer).
     ctx.fillStyle = this.flash > 0 ? "#ff5a3c" : t.body;
-    ctx.beginPath(); ctx.ellipse(bob, 0, r * 1.15, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = t.dark; ctx.lineWidth = 2; ctx.stroke();
-    // Tiger stripes / bear shading.
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3 * lunge, r * 0.92, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = t.dark; ctx.lineWidth = 2.5; ctx.stroke();
+    // Tiger stripes / bear back fur.
     ctx.fillStyle = t.dark;
     if (this.type === "tiger") {
-      for (let i = -1; i <= 1; i++) ctx.fillRect(i * r * 0.4, -r * 0.7, r * 0.12, r * 1.4);
+      for (let i = -2; i <= 2; i++) {
+        ctx.save(); ctx.translate(i * r * 0.32, 0); ctx.rotate(0.15);
+        ctx.fillRect(-r * 0.06, -r * 0.82, r * 0.12, r * 1.64); ctx.restore();
+      }
+    } else {
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath(); ctx.ellipse(-r * 0.2, 0, r * 0.9, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
     }
-    // Head + ears.
+    // Head.
     ctx.fillStyle = t.body;
-    ctx.beginPath(); ctx.arc(r * 0.95, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = t.dark; ctx.stroke();
+    ctx.beginPath(); ctx.arc(r * 1.15, 0, r * 0.62, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = t.dark; ctx.lineWidth = 2.5; ctx.stroke();
+    // Ears.
     ctx.fillStyle = t.dark;
-    ctx.beginPath(); ctx.arc(r * 0.75, -r * 0.45, r * 0.16, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(r * 0.75, r * 0.45, r * 0.16, 0, Math.PI * 2); ctx.fill();
-    // Eyes.
-    ctx.fillStyle = "#ffe14a";
-    ctx.beginPath(); ctx.arc(r * 1.15, -r * 0.18, r * 0.08, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(r * 1.15, r * 0.18, r * 0.08, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.95, -r * 0.5, r * 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.95, r * 0.5, r * 0.2, 0, Math.PI * 2); ctx.fill();
+    // Snout + fangs.
+    ctx.fillStyle = this.type === "tiger" ? "#f6e6c8" : "#caa98a";
+    ctx.beginPath(); ctx.arc(r * 1.6, 0, r * 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.moveTo(r * 1.7, -r * 0.16); ctx.lineTo(r * 1.95, -r * 0.05); ctx.lineTo(r * 1.7, r * 0.02); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(r * 1.7, r * 0.16); ctx.lineTo(r * 1.95, r * 0.05); ctx.lineTo(r * 1.7, -r * 0.02); ctx.fill();
+    // Glowing eyes.
+    ctx.fillStyle = "#ff3b2f";
+    ctx.beginPath(); ctx.arc(r * 1.3, -r * 0.22, r * 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 1.3, r * 0.22, r * 0.1, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
 
     // Team ring when tamed.

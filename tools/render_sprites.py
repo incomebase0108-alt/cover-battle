@@ -196,6 +196,50 @@ CLASS_ACCENTS = {
 }
 
 
+def build_beast(kind):
+    # Menacing top-down predator: bulky body, big head, ears, fangs, paws, tail.
+    if kind == "tiger":
+        body = mat("body", (0.85, 0.45, 0.10), rough=0.55)
+        dark = mat("bdark", (0.12, 0.07, 0.03), rough=0.6)
+        belly = mat("belly", (0.96, 0.85, 0.7), rough=0.6)
+    else:  # bear
+        body = mat("body", (0.32, 0.20, 0.12), rough=0.7)
+        dark = mat("bdark", (0.12, 0.07, 0.04), rough=0.7)
+        belly = mat("belly", (0.45, 0.32, 0.22), rough=0.7)
+    claw = mat("claw", (0.95, 0.95, 0.92), rough=0.3)
+    eye = mat("eye", (1.0, 0.85, 0.1), rough=0.2)
+
+    sc = 1.0 if kind == "tiger" else 1.18
+    # Tail.
+    cyl((-1.5 * sc, 0, 0.3), 0.12, 1.2 * sc, body, rot=(0, math.radians(90), math.radians(20)))
+    # Haunches + body.
+    sphere((-0.7 * sc, 0, 0.45), 0.78 * sc, body)
+    sphere((0.15 * sc, 0, 0.5), 0.85 * sc, body)
+    # Belly highlight.
+    sphere((-0.3 * sc, 0, 0.2), 0.5 * sc, belly)
+    # Four paws with claws.
+    for px, py in ((0.6, 0.7), (0.6, -0.7), (-0.7, 0.7), (-0.7, -0.7)):
+        cyl((px * sc, py * sc, 0.18), 0.2 * sc, 0.3, dark)
+        for cxo in (-0.12, 0, 0.12):
+            cube(((px + 0.22) * sc, (py + cxo) * sc, 0.18), (0.12, 0.06, 0.12), claw)
+    # Head.
+    sphere((1.15 * sc, 0, 0.6), 0.62 * sc, body)
+    # Ears.
+    sphere((0.95 * sc, 0.45 * sc, 0.95), 0.2 * sc, body)
+    sphere((0.95 * sc, -0.45 * sc, 0.95), 0.2 * sc, body)
+    # Snout + fangs.
+    sphere((1.7 * sc, 0, 0.5), 0.3 * sc, belly)
+    cube((1.95 * sc, 0.12 * sc, 0.4), (0.16, 0.06, 0.18), claw)
+    cube((1.95 * sc, -0.12 * sc, 0.4), (0.16, 0.06, 0.18), claw)
+    # Glowing eyes.
+    sphere((1.5 * sc, 0.22 * sc, 0.85), 0.1 * sc, eye)
+    sphere((1.5 * sc, -0.22 * sc, 0.85), 0.1 * sc, eye)
+    # Tiger stripes.
+    if kind == "tiger":
+        for i in range(-2, 3):
+            cube((0.15 * sc + i * 0.32 * sc, 0, 0.95), (0.1, 1.5 * sc, 0.05), dark)
+
+
 def main():
     teams = (("blue", BLUE, DARK_BLUE), ("red", RED, DARK_RED))
     # Plain team soldier (fallback if a class sprite is missing).

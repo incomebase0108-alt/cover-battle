@@ -19,6 +19,11 @@ const NetRender = {
     // Sync destructible fort HP so destroyed forts show as rubble.
     map.baseOf("blue").hp = snap.ft.b * map.baseOf("blue").maxHp;
     map.baseOf("red").hp = snap.ft.r * map.baseOf("red").maxHp;
+    if (snap.ga && map.gates) {
+      for (let i = 0; i < map.gates.length && i < snap.ga.length; i++) {
+        map.gates[i].hp = snap.ga[i] * map.gates[i].maxHp;
+      }
+    }
 
     ctx.clearRect(0, 0, CONFIG.width, CONFIG.height);
     ctx.save();
@@ -138,16 +143,19 @@ const NetRender = {
 
   _beasts(ctx, snap) {
     for (const b of snap.be) {
-      const col = b.ty === "bear" ? "#6b4a32" : "#d98a2b";
-      const r = b.ty === "bear" ? 23 : 18;
+      const col = b.ty === "bear" ? "#5e3d24" : "#e07c1e";
+      const dk = b.ty === "bear" ? "#2a1a0e" : "#5a3408";
+      const r = b.ty === "bear" ? 30 : 23;
       ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.a);
       ctx.fillStyle = col;
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.15, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3, r * 0.92, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = dk; ctx.lineWidth = 2.5; ctx.stroke();
+      if (b.ty === "tiger") { ctx.fillStyle = dk; for (let i = -2; i <= 2; i++) ctx.fillRect(i * r * 0.32 - r * 0.06, -r * 0.8, r * 0.12, r * 1.6); }
       ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(r * 0.95, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ffe14a";
-      ctx.beginPath(); ctx.arc(r * 1.15, -r * 0.18, r * 0.08, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(r * 1.15, r * 0.18, r * 0.08, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r * 1.15, 0, r * 0.62, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#ff3b2f";
+      ctx.beginPath(); ctx.arc(r * 1.3, -r * 0.22, r * 0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r * 1.3, r * 0.22, r * 0.1, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       if (b.tm) {
         ctx.strokeStyle = b.tm === "blue" ? "#5ad6ff" : "#ff6b6b"; ctx.lineWidth = 2.5;

@@ -1,5 +1,18 @@
 // Combat units (player + AI), bullets, dropped items, and bombs.
 
+// Damage any gates near a blast (used by bombs/dynamite).
+function damageGatesInRadius(game, x, y, radius, amount) {
+  if (!game.map.gates) return;
+  for (const g of game.map.gates) {
+    if (g.hp <= 0) continue;
+    const cx = g.x + g.w / 2;
+    const cy = g.y + g.h / 2;
+    if (V.dist(x, y, cx, cy) <= radius + Math.max(g.w, g.h) / 2) {
+      g.hp = Math.max(0, g.hp - amount);
+    }
+  }
+}
+
 class Bullet {
   constructor(x, y, dx, dy, team, opts) {
     this.x = x;
@@ -34,6 +47,18 @@ class Bullet {
     // Mountains stop bullets but are indestructible.
     for (const m of game.map.mountains) {
       if (V.dist(this.x, this.y, m.x, m.y) <= m.r + this.radius) {
+        this.dead = true;
+        return;
+      }
+    }
+
+    // Indestructible fort walls stop bullets.
+    if (game.map.walls && game.map.wallAt(this.x, this.y)) { this.dead = true; return; }
+    // Enemy gates take damage from your fire; your own gate lets your shots pass.
+    if (game.map.gates) {
+      const gate = game.map.enemyGateAt(this.x, this.y, this.team);
+      if (gate) {
+        gate.hp = Math.max(0, gate.hp - CONFIG.gate.bulletDamage);
         this.dead = true;
         return;
       }
@@ -226,6 +251,7 @@ class Bomb {
         b.hp = Math.max(0, b.hp - CONFIG.bomb.damage * 2);
       }
     }
+    damageGatesInRadius(game, this.x, this.y, CONFIG.bomb.radius, CONFIG.bomb.damage * 2);
   }
 
   draw(ctx) {
@@ -311,6 +337,7 @@ class Dynamite {
         b.hp = Math.max(0, b.hp - CONFIG.dynamite.fortDamage);
       }
     }
+    damageGatesInRadius(game, this.x, this.y, R, CONFIG.dynamite.fortDamage);
   }
 
   draw(ctx) {
@@ -520,7 +547,7 @@ class Unit {
     if (game.map.inRiver(this.x, this.y)) speed *= CONFIG.riverSpeedMul; // wading is slow
     if (game.map.inSand && game.map.inSand(this.x, this.y)) speed *= CONFIG.sandSpeedMul; // trudging through sand
     const tryAt = (dx, dy) =>
-      game.map.resolveCollision(this.x + dx * speed, this.y + dy * speed, this.radius, this.canClimb);
+      game.map.resolveCollision(this.x + dx * speed, this.y + dy * speed, this.radius, this.canClimb, this.team);
 
     let next = tryAt(dirX, dirY);
     let moved = V.dist(this.x, this.y, next.x, next.y);

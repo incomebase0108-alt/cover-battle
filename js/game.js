@@ -172,6 +172,7 @@ class Game {
       sm: this.smokes.map((s) => ({ x: Math.round(s.x), y: Math.round(s.y), r: Math.round(s.r), l: Math.round(s.life) })),
       tr: this.turrets.map((t) => ({ x: Math.round(t.x), y: Math.round(t.y), a: +t.aim.toFixed(2), tm: t.team === "blue" ? 0 : 1, h: half(t.hp, t.maxHp) })),
       cp: this.capturePoints.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.owner, p: c.progress / CONFIG.capture.captureTime, cb: c.capBy })),
+      ga: this.map.gates.map((g) => +(g.hp / g.maxHp).toFixed(2)),
       ft: { b: half(this.map.baseOf("blue").hp, this.map.baseOf("blue").maxHp), r: half(this.map.baseOf("red").hp, this.map.baseOf("red").maxHp) },
       al: { b: this.aliveCount("blue"), r: this.aliveCount("red") },
       rush: this.rushMode ? 1 : 0,
