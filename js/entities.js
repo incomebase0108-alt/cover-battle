@@ -13,6 +13,8 @@ class Bullet {
     this.radius = CONFIG.bullet.radius;
     this.pierce = !!opts.pierce;       // pass through units (piercing rifle)
     this.breakRock = !!opts.breakRock; // extra rock damage (flamethrower / rockbuster)
+    this.fire = !!opts.fire;           // render as a flame particle
+    this.maxLife = this.life;
     this._hit = this.pierce ? [] : null; // units already hit, so pierce hits each once
     this.dead = false;
   }
@@ -91,6 +93,24 @@ class Bullet {
   }
 
   draw(ctx) {
+    if (this.fire) {
+      // Flame particle: grows then fades as it travels, orange->yellow core.
+      const t = V.clamp(1 - this.life / this.maxLife, 0, 1); // 0 fresh -> 1 spent
+      const rad = 6 + t * 12;
+      const a = 1 - t;
+      ctx.save();
+      ctx.globalAlpha = 0.85 * a;
+      const g = ctx.createRadialGradient(this.x, this.y, 1, this.x, this.y, rad);
+      g.addColorStop(0, "#fff2a8");
+      g.addColorStop(0.4, "#ff9b2c");
+      g.addColorStop(1, "rgba(200,40,20,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, rad, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
     ctx.fillStyle = this.team === "blue" ? "#bcd6ff" : "#ffd2c2";
     ctx.shadowColor = this.team === "blue" ? "#2f7bff" : "#ff4d4d";
     ctx.shadowBlur = 8;
@@ -489,7 +509,7 @@ class Unit {
       const bx = this.x + dx * (this.radius + 6);
       const by = this.y + dy * (this.radius + 6);
       game.bullets.push(new Bullet(bx, by, dx, dy, this.team, {
-        damage, speed, life, pierce: w.pierce, breakRock: w.breakRock || w.fire,
+        damage, speed, life, pierce: w.pierce, breakRock: w.breakRock || w.fire, fire: w.fire,
       }));
     }
 

@@ -68,14 +68,14 @@ const WEAPONS = {
   //   breakRock : deals greatly increased damage to rock/cover
   flame: {
     label: "火炎放射器",
-    damage: 7,
-    fireCooldown: 90,
-    magSize: 60,
+    damage: 14,          // strong up close
+    fireCooldown: 55,    // rapid stream
+    magSize: 110,
     reloadTime: 2600,
-    pellets: 1,
-    spread: 0.28,
-    bulletSpeedMul: 0.7,
-    rangeMul: 0.32,
+    pellets: 3,          // a fuller cone of flame
+    spread: 0.42,
+    bulletSpeedMul: 0.6,
+    rangeMul: 0.5,       // short reach, but melts anything near
     fire: true,
     breakRock: true,
   },
