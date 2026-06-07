@@ -666,37 +666,18 @@ class Unit {
       this.lockTarget = game.nextVisibleEnemy(this, this.lockTarget);
     }
 
-    // Aiming. スマホは「移動スティックの向き＝照準」で、動いている間は自動射撃
-    // （方向を押した先に弾が出る）。ロックオン中は対象へ自動照準＆自動射撃。
-    // 右ドラッグの手動エイムも引き続き使える。PCはロックオンかマウス。
+    // Aiming. スマホは完全ツインスティック：攻撃スティックを倒した方向が常に最優先
+    // で照準＆射撃（ロックオンは一切干渉させない）。攻撃スティックを押していない時は
+    // 移動方向を向くだけで撃たない（弾の節約）。PCはロックオンかマウス。
     let autoFire = false;
     if (Input.isTouch) {
       const moving = (dx !== 0 || dy !== 0);
-      const aiming = Input.aimStick && Input.aimStick.active;
-      if (aiming && this.lockMode) {
-        // 攻撃スティックを押している＋ロックオン中：対象へ自動照準（エイム補助）。
-        // 対象がいなければスティックの向きへ撃つ。
-        if (!this.lockTarget || !this.lockTarget.alive ||
-            !game.unitVisibleToPlayer(this.lockTarget)) {
-          this.lockTarget = game.nearestVisibleEnemy(this);
-        }
-        this.aim = this.lockTarget
-          ? Math.atan2(this.lockTarget.y - this.y, this.lockTarget.x - this.x)
-          : Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
-      } else if (aiming) {
-        // 攻撃スティックを倒した方向へ照準（最優先・手動）。
-        this.aim = Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
-      } else if (this.lockMode) {
-        // 攻撃中でなくても、ロックオン中は照準だけ対象へ向けておく（撃たない）。
-        if (!this.lockTarget || !this.lockTarget.alive ||
-            !game.unitVisibleToPlayer(this.lockTarget)) {
-          this.lockTarget = game.nearestVisibleEnemy(this);
-        }
-        if (this.lockTarget) this.aim = Math.atan2(this.lockTarget.y - this.y, this.lockTarget.x - this.x);
+      if (Input.aimStick && Input.aimStick.active) {
+        this.aim = Math.atan2(Input.aimStick.dy, Input.aimStick.dx); // 攻撃スティック＝照準（最優先）
       } else if (moving) {
         this.aim = Math.atan2(dy, dx); // 移動方向を向くだけ（射撃はしない）
       }
-      // 撃つのは「攻撃スティックを倒している間」だけ。自動射撃はしない（弾の節約）。
+      // 撃つのは攻撃スティックを押している間だけ（Input.shooting）。
     } else if (this.lockMode) {
       // Keep a valid target, then aim straight at it.
       if (!this.lockTarget || !this.lockTarget.alive ||
