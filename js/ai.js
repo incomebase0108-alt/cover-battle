@@ -369,6 +369,17 @@ class AIController {
     const focus = this.teamFocus(self, game);
     if (focus) target = focus;
 
+    // Use the class ability situationally.
+    if (self.abilityCd <= 0 && typeof getClass === "function") {
+      const cls = getClass(self.cls);
+      if (cls && cls.ability && target) {
+        const d = V.dist(self.x, self.y, target.x, target.y);
+        if (cls.ability === "turret" && d < CONFIG.unit.range && Math.random() < 0.012) self.useAbility(game);
+        else if (cls.ability === "smoke" && d < 280 && Math.random() < 0.02) self.useAbility(game);
+        else if (cls.ability === "dash" && (d > 280 || this.shouldRetreat(self)) && Math.random() < 0.03) self.useAbility(game);
+      }
+    }
+
     // Self-defence: a nearby wild beast is an immediate threat — shoot it and
     // back off if it's right on top of us.
     const beast = this.nearestBeast(self, game, 200);
@@ -610,8 +621,9 @@ class AIController {
     for (const u of game.units) {
       if (!u.alive || u.team === self.team) continue;
       const d = V.dist(self.x, self.y, u.x, u.y);
-      // Units hiding in a forest are only spotted up close.
-      if (game.map.inForest(u.x, u.y) && d > CONFIG.forestDetectRange) continue;
+      // Units hiding in a forest or smoke are only spotted up close.
+      if ((game.map.inForest(u.x, u.y) || (game.inSmoke && game.inSmoke(u.x, u.y))) &&
+          d > CONFIG.forestDetectRange) continue;
       if (d < bestDist) {
         bestDist = d;
         best = u;

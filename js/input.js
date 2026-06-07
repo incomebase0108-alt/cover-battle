@@ -6,6 +6,7 @@ const Input = {
   shooting: false,
   bombQueued: false,        // edge-triggered, consumed once
   dynamiteQueued: false,    // edge-triggered, consumed once
+  abilityQueued: false,     // edge-triggered, consumed once (class ability)
   lockToggleQueued: false,  // edge-triggered, consumed once
   cycleQueued: false,       // edge-triggered, consumed once
   weaponSlotQueued: 0,      // edge-triggered: 1/2/3/4 to select a weapon, 0=none
@@ -19,6 +20,7 @@ const Input = {
       const k = e.key.toLowerCase();
       if ((k === "e" || k === "q") && !this.keys[k]) this.bombQueued = true;
       if (k === "x" && !this.keys[k]) this.dynamiteQueued = true;
+      if (k === "c" && !this.keys[k]) this.abilityQueued = true;
       if (k === "r" && !this.keys[k]) this.lockToggleQueued = true;
       if (k === "tab" && !this.keys[k]) { this.cycleQueued = true; e.preventDefault(); }
       // Weapon switching: 1-4 select directly, F cycles forward.
@@ -107,6 +109,7 @@ const Input = {
     hold(els.cycle, () => { this.cycleQueued = true; });
     hold(els.weapon, () => { this.weaponCycleQueued = true; });
     hold(els.dynamite, () => { this.dynamiteQueued = true; });
+    hold(els.ability, () => { this.abilityQueued = true; });
   },
 
   moveVector() {
@@ -127,6 +130,7 @@ const Input = {
 
   consumeBomb() { const v = this.bombQueued; this.bombQueued = false; return v; },
   consumeDynamite() { const v = this.dynamiteQueued; this.dynamiteQueued = false; return v; },
+  consumeAbility() { const v = this.abilityQueued; this.abilityQueued = false; return v; },
   consumeLockToggle() { const v = this.lockToggleQueued; this.lockToggleQueued = false; return v; },
   consumeCycle() { const v = this.cycleQueued; this.cycleQueued = false; return v; },
   consumeWeaponSlot() { const v = this.weaponSlotQueued; this.weaponSlotQueued = 0; return v; },

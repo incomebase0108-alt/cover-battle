@@ -26,6 +26,7 @@ const NetRender = {
     map.draw(ctx);
     this._capturePoints(ctx, snap);
     this._chests(ctx, snap);
+    this._turrets(ctx, snap);
     this._beasts(ctx, snap);
     for (const b of snap.b) this._bullet(ctx, b);
     for (const u of snap.u) {
@@ -34,6 +35,7 @@ const NetRender = {
       this._unit(ctx, u, u.i === myIndex);
     }
     map.drawSolids(ctx);
+    if (snap.sm) for (const s of snap.sm) this._smoke(ctx, s);
     for (const d of snap.d) this._blast(ctx, d, "#ff7a2c");
     for (const b of snap.bo) this._blast(ctx, b, "#ff8a3c");
     ctx.restore();
@@ -136,6 +138,31 @@ const NetRender = {
       ctx.restore();
       ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(b.x - r, b.y - r - 10, r * 2, 4);
       ctx.fillStyle = "#caa14a"; ctx.fillRect(b.x - r, b.y - r - 10, r * 2 * b.h, 4);
+    }
+  },
+
+  _smoke(ctx, s) {
+    const a = Math.min(1, s.l / 1000) * 0.7;
+    const g = ctx.createRadialGradient(s.x, s.y, s.r * 0.2, s.x, s.y, s.r);
+    g.addColorStop(0, `rgba(210,210,215,${a})`);
+    g.addColorStop(1, "rgba(180,180,190,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  },
+
+  _turrets(ctx, snap) {
+    if (!snap.tr) return;
+    for (const t of snap.tr) {
+      const col = t.tm === 0 ? "#2f7bff" : "#ff4d4d";
+      ctx.fillStyle = "#3a3f4a";
+      ctx.beginPath(); ctx.arc(t.x, t.y, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(t.x, t.y, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#15181f"; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(t.x, t.y);
+      ctx.lineTo(t.x + Math.cos(t.a) * 18, t.y + Math.sin(t.a) * 18); ctx.stroke();
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(t.x - 12, t.y - 20, 24, 3);
+      ctx.fillStyle = col; ctx.fillRect(t.x - 12, t.y - 20, 24 * t.h, 3);
     }
   },
 

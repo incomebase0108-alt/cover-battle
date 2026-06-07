@@ -117,18 +117,21 @@ def render(path, res):
     print("WROTE", path)
 
 
-def build_soldier(color, dark):
+def build_soldier(color, dark, accent=None):
     uni = mat("uni", color, rough=0.5)
     drk = mat("drk", dark, rough=0.55)
     met = mat("met", METAL, rough=0.35, metal=0.85)
-    helmet = mat("helmet", tuple(c * 0.7 for c in color), rough=0.45)
+    # Helmet tinted to the class accent so ranks read at a glance.
+    helmet = mat("helmet", accent if accent else tuple(c * 0.7 for c in color), rough=0.45)
+    acc = mat("acc", accent if accent else color, rough=0.4)
 
     cube((0.42, 0.22, 0.12), (0.5, 0.22, 0.22), drk)
     cube((0.42, -0.22, 0.12), (0.5, 0.22, 0.22), drk)
     cube((-0.58, 0, 0.4), (0.45, 0.6, 0.55), drk)
     cyl((0, 0, 0.42), 0.62, 0.62, uni)
-    cyl((0.05, 0.55, 0.5), 0.2, 0.32, uni, rot=(math.radians(90), 0, 0))
-    cyl((0.05, -0.55, 0.5), 0.2, 0.32, uni, rot=(math.radians(90), 0, 0))
+    # Accent shoulder pads (class colour).
+    cyl((0.05, 0.55, 0.5), 0.21, 0.34, acc, rot=(math.radians(90), 0, 0))
+    cyl((0.05, -0.55, 0.5), 0.21, 0.34, acc, rot=(math.radians(90), 0, 0))
     cube((0.5, 0.34, 0.55), (0.7, 0.16, 0.18), uni, rot=(0, 0, math.radians(-18)))
     cube((0.5, -0.34, 0.55), (0.7, 0.16, 0.18), uni, rot=(0, 0, math.radians(18)))
     cube((-0.05, 0.0, 0.6), (0.4, 0.16, 0.2), drk)
@@ -182,16 +185,31 @@ def build_fort(color, dark):
     cube((0.26, 0.0, 2.3), (0.46, 0.02, 0.3), flagm)
 
 
+# Class accents (mirror js/classes.js). 0..1 RGB.
+CLASS_ACCENTS = {
+    "scout": (0.49, 0.99, 0.60),
+    "sniper": (0.79, 0.55, 1.0),
+    "heavy": (1.0, 0.70, 0.28),
+    "climber": (0.35, 0.84, 1.0),
+    "engineer": (1.0, 0.54, 0.35),
+    "assault": (1.0, 0.42, 0.42),
+}
+
+
 def main():
-    for name, col, drk in (("blue", BLUE, DARK_BLUE), ("red", RED, DARK_RED)):
-        clear()
-        setup_scene(ortho=3.2)
-        build_soldier(col, drk)
-        render(os.path.join(OUT, f"soldier_{name}.png"), 192)
-    for name, col, drk in (("blue", BLUE, DARK_BLUE), ("red", RED, DARK_RED)):
-        clear()
-        setup_scene(ortho=7.4, cam_z=12.0)
-        build_fort(col, drk)
+    teams = (("blue", BLUE, DARK_BLUE), ("red", RED, DARK_RED))
+    # Plain team soldier (fallback if a class sprite is missing).
+    for name, col, drk in teams:
+        clear(); setup_scene(ortho=3.2); build_soldier(col, drk)
+        render(os.path.join(OUT, f"soldier_{name}.png"), 160)
+    # Per-class soldiers (helmet + shoulders tinted to the class accent).
+    for name, col, drk in teams:
+        for cls, accent in CLASS_ACCENTS.items():
+            clear(); setup_scene(ortho=3.2); build_soldier(col, drk, accent)
+            render(os.path.join(OUT, f"soldier_{name}_{cls}.png"), 160)
+    # Forts.
+    for name, col, drk in teams:
+        clear(); setup_scene(ortho=7.4, cam_z=12.0); build_fort(col, drk)
         render(os.path.join(OUT, f"fort_{name}.png"), 256)
 
 

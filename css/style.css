@@ -190,6 +190,7 @@ body.touch .touch-controls {
 .act.cycle { background: rgba(120,160,255,0.4); }
 .act.weapon { background: rgba(255,180,90,0.4); }
 .act.dynamite { background: rgba(200,40,30,0.5); }
+.act.ability { background: rgba(120,220,160,0.45); }
 
 /* Fort-under-attack warning banner */
 .fort-warning {

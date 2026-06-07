@@ -18,6 +18,8 @@ class Game {
     this.chests = [];
     this.capturePoints = [];
     this.beasts = [];
+    this.smokes = [];
+    this.turrets = [];
     this.map = null;
     this.blueFortAlert = 0; // ms remaining on the "fort under attack" warning
     this._prevBlueFort = null;
@@ -43,6 +45,8 @@ class Game {
     this.chests = [];
     this.capturePoints = [];
     this.beasts = [];
+    this.smokes = [];
+    this.turrets = [];
     this.blueFortAlert = 0;
     this._prevBlueFort = null;
     this.rushMode = false;
@@ -163,6 +167,8 @@ class Game {
       d: this.dynamites.map((d) => ({ x: Math.round(d.x), y: Math.round(d.y), e: d.exploded ? 1 : 0, fl: Math.round(d.flash) })),
       c: this.chests.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.opened ? 1 : 0 })),
       be: this.beasts.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), a: +b.aim.toFixed(2), ty: b.type, h: half(b.hp, b.maxHp) })),
+      sm: this.smokes.map((s) => ({ x: Math.round(s.x), y: Math.round(s.y), r: Math.round(s.r), l: Math.round(s.life) })),
+      tr: this.turrets.map((t) => ({ x: Math.round(t.x), y: Math.round(t.y), a: +t.aim.toFixed(2), tm: t.team === "blue" ? 0 : 1, h: half(t.hp, t.maxHp) })),
       cp: this.capturePoints.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.owner, p: c.progress / CONFIG.capture.captureTime, cb: c.capBy })),
       ft: { b: half(this.map.baseOf("blue").hp, this.map.baseOf("blue").maxHp), r: half(this.map.baseOf("red").hp, this.map.baseOf("red").maxHp) },
       al: { b: this.aliveCount("blue"), r: this.aliveCount("red") },
@@ -274,13 +280,20 @@ class Game {
   // to spot them (matching the AI's own detection rule).
   unitVisibleToPlayer(u) {
     if (u.team === this.playerTeam || u.isPlayer) return true;
-    if (!this.map.inForest(u.x, u.y)) return true;
+    // Concealed by a forest OR a smoke cloud?
+    if (!this.map.inForest(u.x, u.y) && !this.inSmoke(u.x, u.y)) return true;
     for (const a of this.units) {
       if (a.alive && a.team === this.playerTeam &&
           V.dist(a.x, a.y, u.x, u.y) <= CONFIG.forestDetectRange) {
         return true;
       }
     }
+    return false;
+  }
+
+  // Is (x,y) inside any live smoke cloud?
+  inSmoke(x, y) {
+    for (const s of this.smokes) if (s.contains(x, y)) return true;
     return false;
   }
 
@@ -302,6 +315,11 @@ class Game {
     for (const b of this.bombs) b.update(dt, this);
     for (const d of this.dynamites) d.update(dt, this);
     for (const it of this.items) it.update(dt);
+
+    for (const sm of this.smokes) sm.update(dt);
+    for (const tr of this.turrets) tr.update(dt, this);
+    this.smokes = this.smokes.filter((s) => !s.dead);
+    this.turrets = this.turrets.filter((t) => !t.dead);
 
     this._handlePickups();
     this._handleChests(dt);
@@ -470,6 +488,7 @@ class Game {
       if (!u.alive) this._drawWreck(ctx, u);
     }
     for (const c of this.chests) c.draw(ctx);
+    for (const tr of this.turrets) tr.draw(ctx);
     for (const beast of this.beasts) beast.draw(ctx);
     for (const it of this.items) it.draw(ctx);
     for (const b of this.bullets) b.draw(ctx);
@@ -482,6 +501,8 @@ class Game {
       }
     }
     this.map.drawSolids(ctx);
+    // Smoke clouds over units (so they actually hide what's underneath).
+    for (const sm of this.smokes) sm.draw(ctx);
     // Bombs/dynamite/explosions on top so blasts read clearly over everything.
     for (const b of this.bombs) b.draw(ctx);
     for (const d of this.dynamites) d.draw(ctx);

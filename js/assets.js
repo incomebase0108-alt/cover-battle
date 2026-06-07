@@ -11,8 +11,17 @@ const Assets = {
     fort_red: "assets/fort_red.png",
   },
 
+  // Per-class soldier sprites (helmet/shoulders tinted to the class accent).
+  _classKeys: ["scout", "sniper", "heavy", "climber", "engineer", "assault"],
+
   load() {
     if (typeof Image === "undefined") return; // Node / no DOM
+    for (const team of ["blue", "red"]) {
+      for (const cls of this._classKeys) {
+        const k = "soldier_" + team + "_" + cls;
+        this.defs[k] = "assets/" + k + ".png";
+      }
+    }
     for (const key in this.defs) {
       const img = new Image();
       img.onload = () => { this._loaded[key] = true; };

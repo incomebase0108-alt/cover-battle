@@ -76,6 +76,17 @@ class Bullet {
       }
     }
 
+    // Enemy turrets can be shot down.
+    if (game.turrets) {
+      for (const tr of game.turrets) {
+        if (!tr.dead && tr.team !== this.team &&
+            V.dist(this.x, this.y, tr.x, tr.y) <= tr.radius + this.radius) {
+          tr.takeDamage(this.damage);
+          if (!this.pierce) { this.dead = true; return; }
+        }
+      }
+    }
+
     // Hit enemy units. Normal rounds stop on the first hit; piercing rounds
     // pass through, damaging each unit once.
     for (const u of game.units) {
@@ -352,6 +363,8 @@ class Unit {
     this.cls = "assault";
     this.classSpeedMul = 1;
     this.canClimb = false;
+    this.abilityCd = 0;  // ms until the class ability is ready again
+    this.dashMs = 0;     // >0 while an assault dash is active
     this.aim = team === "blue" ? 0 : Math.PI; // facing angle
     this.cooldown = 0;
     // Equipped weapon (see weapons.js). AI + player default to "rifle", which
@@ -401,6 +414,24 @@ class Unit {
     this.hp = this.maxHp;
     if (c.maxBombs) this.maxBombs = c.maxBombs;
     if (c.weapon) { this.baseWeaponKey = c.weapon; this.setWeapon(c.weapon); }
+  }
+
+  // Fire the class active ability (smoke / turret / dash), respecting cooldown.
+  useAbility(game) {
+    if (this.abilityCd > 0) return;
+    const c = (typeof getClass === "function") ? getClass(this.cls) : null;
+    if (!c || !c.ability) return;
+    if (c.ability === "smoke" && typeof Smoke !== "undefined") {
+      game.smokes.push(new Smoke(this.x, this.y));
+    } else if (c.ability === "turret" && typeof Turret !== "undefined") {
+      game.turrets.push(new Turret(this.x, this.y, this.team, this.name));
+    } else if (c.ability === "dash") {
+      this.dashMs = ABILITY.dashMs;
+    } else {
+      return; // unknown / no entity available
+    }
+    this.abilityCd = c.abilityCd || 9000;
+    if (game.sound && game.sound.reload) game.sound.reload();
   }
 
   // Current weapon definition (always returns a valid object).
@@ -457,6 +488,7 @@ class Unit {
   // dirX/dirY are a (roughly) unit vector of intended movement.
   move(dirX, dirY, game) {
     let speed = CONFIG.unit.speed * this.speedMul * this.classSpeedMul;
+    if (this.dashMs > 0) speed *= ABILITY.dashMul; // assault dash burst
     if (game.map.inRiver(this.x, this.y)) speed *= CONFIG.riverSpeedMul; // wading is slow
     if (game.map.inSand && game.map.inSand(this.x, this.y)) speed *= CONFIG.sandSpeedMul; // trudging through sand
     const tryAt = (dx, dy) =>
@@ -562,6 +594,8 @@ class Unit {
     if (this.cooldown > 0) this.cooldown -= dt;
     if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
     if (this.movingTimer > 0) this.movingTimer -= dt; // walk-cycle grace timer
+    if (this.abilityCd > 0) this.abilityCd -= dt;
+    if (this.dashMs > 0) this.dashMs -= dt;
     this.sinceShot += dt;
 
     // Temporary chest weapon reverts to the normal gun when its timer runs out.
@@ -619,6 +653,7 @@ class Unit {
     if (n.shoot) this.tryShoot(game);
     if (n.bomb) { this.placeBomb(game); n.bomb = false; }
     if (n.dyn) { this.placeDynamite(game); n.dyn = false; }
+    if (n.ability) { this.useAbility(game); n.ability = false; }
   }
 
   updatePlayer(game) {
@@ -657,6 +692,7 @@ class Unit {
     if (Input.shooting) this.tryShoot(game);
     if (Input.consumeBomb()) this.placeBomb(game);
     if (Input.consumeDynamite()) this.placeDynamite(game);
+    if (Input.consumeAbility()) this.useAbility(game);
   }
 
   // Aim toward the mouse, converting screen coords to world via the camera.
@@ -714,8 +750,12 @@ class Unit {
     ctx.save();
     ctx.translate(bob, 0);
 
-    const sprite = typeof Assets !== "undefined" && Assets.ready("soldier_" + this.team)
-      ? Assets.get("soldier_" + this.team) : null;
+    let sprite = null;
+    if (typeof Assets !== "undefined") {
+      const ck = "soldier_" + this.team + "_" + this.cls;
+      if (Assets.ready(ck)) sprite = Assets.get(ck);
+      else if (Assets.ready("soldier_" + this.team)) sprite = Assets.get("soldier_" + this.team);
+    }
     if (sprite) {
       const s = r * 5.2; // sprite faces +X, matching aim
       ctx.drawImage(sprite, -s / 2, -s / 2, s, s);

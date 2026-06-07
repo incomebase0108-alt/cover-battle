@@ -15,6 +15,7 @@
     cycle: document.getElementById("btnCycle"),
     weapon: document.getElementById("btnWeapon"),
     dynamite: document.getElementById("btnDynamite"),
+    ability: document.getElementById("btnAbility"),
   });
 
   // Mute / unmute BGM + SFX.

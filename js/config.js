@@ -147,6 +147,9 @@ const STAGES = [
     ],
     mountains: [ { x: 480, y: 70, r: 36 }, { x: 480, y: 530, r: 36 } ],
     rivers: [ { x: 0, y: 275, w: 960, h: 50 } ],
+    // Staggered "banks" (土手) flanking the central rock: climbers cut straight
+    // across toward mid-field; others detour around the open ends of each bank.
+    ledges: [ { x: 380, y: 360, w: 50, h: 170 }, { x: 530, y: 70, w: 50, h: 170 } ],
     blueSpawns: [ { x: 90, y: 200 }, { x: 90, y: 400 }, { x: 160, y: 120 }, { x: 160, y: 480 } ],
     redSpawns:  [ { x: 870, y: 200 }, { x: 870, y: 400 }, { x: 800, y: 120 }, { x: 800, y: 480 } ],
     enemySkill: 0.8,
@@ -164,6 +167,9 @@ const STAGES = [
     ],
     mountains: [ { x: 130, y: 300, r: 34 }, { x: 830, y: 300, r: 34 } ],
     rivers: [ { x: 440, y: 0, w: 80, h: 600 } ],
+    // Diagonal banks (土手) through the woods: a climber slips along the raised
+    // ground for a fast push; regular troops swing around the open ends.
+    ledges: [ { x: 280, y: 195, w: 170, h: 46 }, { x: 510, y: 365, w: 170, h: 46 } ],
     blueSpawns: [ { x: 90, y: 260 }, { x: 90, y: 340 }, { x: 150, y: 220 }, { x: 150, y: 380 } ],
     redSpawns:  [ { x: 870, y: 260 }, { x: 870, y: 340 }, { x: 810, y: 220 }, { x: 810, y: 380 } ],
     enemySkill: 0.95,
@@ -186,6 +192,9 @@ const STAGES = [
       { x: 480, y: 210, r: 40 }, { x: 480, y: 300, r: 40 }, { x: 480, y: 390, r: 40 },
     ],
     rivers: [ { x: 0, y: 280, w: 960, h: 40 } ],
+    // Banks gate the top & bottom lane gaps that bypass the mountain wall:
+    // climbers cross the gap directly, foot troops peel around the open ends.
+    ledges: [ { x: 330, y: 60, w: 130, h: 48 }, { x: 500, y: 492, w: 130, h: 48 } ],
     blueSpawns: [ { x: 90, y: 150 }, { x: 90, y: 450 }, { x: 150, y: 250 }, { x: 150, y: 350 } ],
     redSpawns:  [ { x: 870, y: 150 }, { x: 870, y: 450 }, { x: 810, y: 250 }, { x: 810, y: 350 } ],
     enemySkill: 0.97,
@@ -258,6 +267,14 @@ const STAGES = [
     forests: [ { x: 480, y: 110, r: 56 }, { x: 480, y: 490, r: 56 }, { x: 150, y: 300, r: 48 }, { x: 810, y: 300, r: 48 } ],
     mountains: [ { x: 300, y: 300, r: 30 }, { x: 660, y: 300, r: 30 } ],
     rivers: [ { x: 0, y: 285, w: 960, h: 36 } ],
+    // Central plateau (高台) around the mid rock: three banks with the right
+    // side left open. Climbers scale straight up to the high ground; everyone
+    // else must funnel in through the eastern entrance.
+    ledges: [
+      { x: 410, y: 226, w: 140, h: 46 },
+      { x: 410, y: 328, w: 140, h: 46 },
+      { x: 410, y: 226, w: 46, h: 148 },
+    ],
     blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 290 }, { x: 150, y: 350 } ],
     redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 290 }, { x: 810, y: 350 } ],
     enemySkill: 1.0,
@@ -273,6 +290,10 @@ const STAGES = [
     ],
     rivers: [ { x: 440, y: 0, w: 80, h: 600 } ],
     oases: [ { x: 480, y: 300, r: 54 } ],
+    // The healing oasis sits on a raised redoubt: banks wall it off north & south
+    // while the east/west sides stay open. Climbers vault straight onto the heal
+    // point; foot soldiers must enter from the flanks (across the river lane).
+    ledges: [ { x: 400, y: 206, w: 160, h: 40 }, { x: 400, y: 354, w: 160, h: 40 } ],
     blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 290 }, { x: 150, y: 350 } ],
     redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 290 }, { x: 810, y: 350 } ],
     enemySkill: 1.0,

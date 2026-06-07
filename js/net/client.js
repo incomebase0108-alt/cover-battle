@@ -9,6 +9,7 @@
     bomb: document.getElementById("btnBomb"),
     dynamite: document.getElementById("btnDynamite"),
     weapon: document.getElementById("btnWeapon"),
+    ability: document.getElementById("btnAbility"),
   });
   Assets.load();
 
@@ -102,6 +103,7 @@
       shoot: Input.shooting,
       bomb: Input.consumeBomb(),
       dyn: Input.consumeDynamite(),
+      ability: Input.consumeAbility(),
       slot: Input.consumeWeaponSlot(),
       cycleW: Input.consumeWeaponCycle(),
     }));
