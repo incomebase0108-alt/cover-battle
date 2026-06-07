@@ -597,8 +597,8 @@ class Game {
   // Reticle over the player's locked-on target.
   _drawLockOn(ctx) {
     const player = this.units.find((u) => u.isPlayer && u.alive);
-    // Show the reticle when locked on, or always on touch (auto-aim target).
-    if (!player || (!player.lockMode && !(typeof Input !== "undefined" && Input.isTouch))) return;
+    // ロックオン中だけレティクル＋線を表示（スマホは攻撃スティック式なので出さない）。
+    if (!player || !player.lockMode) return;
     const t = player.lockTarget;
     if (!t || !t.alive || !this.unitVisibleToPlayer(t)) return;
     const r = t.radius + 8;

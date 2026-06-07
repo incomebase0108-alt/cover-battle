@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v23 SOSに倒れた人の名前を表示";
+  const BUILD = "v24 スマホのロックオン線を撤去";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
@@ -77,11 +77,6 @@
     game.sound = Sound;
     game.playerIndex = playerIndex;
     game.loadStage(index);
-    // On touch devices, default to lock-on so aiming is one-button.
-    if (Input.isTouch) {
-      const p = game.units.find((u) => u.isPlayer);
-      if (p) { p.lockMode = true; p.lockTarget = game.nearestVisibleEnemy(p); }
-    }
     game.start();
   }
 
