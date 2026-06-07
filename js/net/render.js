@@ -97,9 +97,17 @@ const NetRender = {
     ctx.fillStyle = "#2a2f3a";
     ctx.beginPath(); ctx.ellipse(u.x, u.y, 16, 10, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    // 倒れた人の名前（誰を助けたいか分かるように）。
+    if (u.n) {
+      ctx.globalAlpha = 1;
+      ctx.font = "bold 12px system-ui, sans-serif";
+      ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)"; ctx.fillStyle = col;
+      ctx.strokeText(u.n, u.x, u.y - 42);
+      ctx.fillText(u.n, u.x, u.y - 42);
+    }
     ctx.globalAlpha = 0.6 + 0.4 * Math.sin(Date.now() * 0.008);
     ctx.fillStyle = "#ffd24a"; ctx.font = "bold 15px system-ui, sans-serif";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText("SOS", u.x, u.y - 26);
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
   },

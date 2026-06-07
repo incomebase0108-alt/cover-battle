@@ -674,13 +674,21 @@ class Game {
     ctx.strokeStyle = col; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.ellipse(u.x, u.y, u.radius * 1.1, u.radius * 0.7, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = 1;
-    // Pulsing SOS bubble.
+    // Pulsing SOS bubble + 倒れた人の名前（誰を助けたいか分かるように）。
     const pulse = 0.6 + 0.4 * Math.sin(Date.now() * 0.008);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if (u.name) {
+      ctx.globalAlpha = 1;
+      ctx.font = "bold 12px system-ui, sans-serif";
+      ctx.lineWidth = 3; ctx.strokeStyle = "rgba(0,0,0,0.75)";
+      ctx.fillStyle = col; // チーム色で誰かを明示
+      ctx.strokeText(u.name, u.x, u.y - u.radius - 28);
+      ctx.fillText(u.name, u.x, u.y - u.radius - 28);
+    }
     ctx.globalAlpha = pulse;
     ctx.fillStyle = "#ffd24a";
     ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 3;
     ctx.font = "bold 15px system-ui, sans-serif";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.strokeText("SOS", u.x, u.y - u.radius - 12);
     ctx.fillText("SOS", u.x, u.y - u.radius - 12);
     ctx.textAlign = "left";
