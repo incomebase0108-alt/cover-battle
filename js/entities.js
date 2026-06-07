@@ -380,13 +380,36 @@ class Unit {
   move(dirX, dirY, game) {
     let speed = CONFIG.unit.speed * this.speedMul;
     if (game.map.inRiver(this.x, this.y)) speed *= CONFIG.riverSpeedMul; // wading is slow
-    const next = game.map.resolveCollision(
-      this.x + dirX * speed,
-      this.y + dirY * speed,
-      this.radius
-    );
+    const tryAt = (dx, dy) =>
+      game.map.resolveCollision(this.x + dx * speed, this.y + dy * speed, this.radius);
+
+    let next = tryAt(dirX, dirY);
+    let moved = V.dist(this.x, this.y, next.x, next.y);
+    // Wedged against an obstacle/corner: slide along whichever single axis makes
+    // the most progress, so units don't get stuck (which could stall the match).
+    if (moved < speed * 0.5) {
+      const ax = tryAt(dirX, 0);
+      const ay = tryAt(0, dirY);
+      const mx = V.dist(this.x, this.y, ax.x, ax.y);
+      const my = V.dist(this.x, this.y, ay.x, ay.y);
+      if (mx >= my && mx > moved) { next = ax; moved = mx; }
+      else if (my > moved) { next = ay; moved = my; }
+    }
     this.x = next.x;
     this.y = next.y;
+    return moved;
+  }
+
+  // Would this item actually benefit me? (Used by pickup + AI item-seeking, so
+  // a full-HP unit leaves a health pack for someone who needs it.)
+  wantsItem(item) {
+    const d = item.def;
+    if (d.heal) return this.hp < CONFIG.unit.maxHp - 1;
+    if (d.speedMul) return this.speedMul < 2.0;
+    if (d.bulletSpeedMul) return this.bulletSpeedMul < 2.2;
+    if (d.rangeMul) return this.rangeMul < 2.2;
+    if (d.bombUp) return this.maxBombs < 3;
+    return true;
   }
 
   tryShoot(game) {

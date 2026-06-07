@@ -16,6 +16,12 @@ class Game {
     this.map = null;
     this.blueFortAlert = 0; // ms remaining on the "fort under attack" warning
     this._prevBlueFort = null;
+    // Anti-stall: if nothing happens (no kill / no fort damage) for a while, the
+    // AI rushes the enemy fort so a match always reaches a conclusion.
+    this.rushMode = false;
+    this.stormActive = false;
+    this.idleMs = 0;
+    this._eventSig = null;
     this.lastTime = 0;
     this._loop = this._loop.bind(this);
   }
@@ -31,6 +37,14 @@ class Game {
     this.dynamites = [];
     this.blueFortAlert = 0;
     this._prevBlueFort = null;
+    this.rushMode = false;
+    this.stormActive = false;
+    this.idleMs = 0;
+    this._eventSig = null;
+
+    // Spread starting weapons across each AI squad so fights feel varied (the
+    // AI also switches weapon by range at runtime — see ai.js).
+    const loadout = ["rifle", "sniper", "shotgun", "smg"];
 
     // Blue team: first unit is the player, rest are AI allies.
     this.map.blueSpawns.forEach((s, i) => {
@@ -38,15 +52,17 @@ class Game {
       if (!u.isPlayer) {
         u.ai = new AIController();
         u.skill = 0.7;
+        u.setWeapon(loadout[i % loadout.length]);
       }
       this.units.push(u);
     });
 
     // Red team: all AI, skill scales with the stage.
-    this.map.redSpawns.forEach((s) => {
+    this.map.redSpawns.forEach((s, i) => {
       const u = new Unit(s.x, s.y, "red");
       u.ai = new AIController();
       u.skill = stage.enemySkill;
+      u.setWeapon(loadout[(i + 1) % loadout.length]);
       this.units.push(u);
     });
 
@@ -114,8 +130,27 @@ class Game {
     // Win/lose: wipe out the enemy team OR destroy their fort.
     const blue = this.aliveCount("blue");
     const red = this.aliveCount("red");
-    const blueFort = this.map.baseOf("blue").hp;
-    const redFort = this.map.baseOf("red").hp;
+    let blueFort = this.map.baseOf("blue").hp;
+    let redFort = this.map.baseOf("red").hp;
+
+    // Anti-stall escalation: reset the idle timer whenever something meaningful
+    // changes (a death or fort damage). If it stays idle too long, the AI rushes;
+    // if it stays idle even longer, a latched "storm" drains both forts so the
+    // match is guaranteed to end (this only bites when nothing else is happening).
+    const sig = blue + "|" + red + "|" + Math.round(blueFort) + "|" + Math.round(redFort);
+    if (!this.stormActive && sig !== this._eventSig) { this._eventSig = sig; this.idleMs = 0; }
+    else this.idleMs += dt;
+    if (this.idleMs > 18000) this.stormActive = true;
+    this.rushMode = this.idleMs > 12000 || this.stormActive;
+    if (this.stormActive) {
+      const drain = 45 * dt / 1000;
+      const bb = this.map.baseOf("blue");
+      const rb = this.map.baseOf("red");
+      bb.hp = Math.max(0, bb.hp - drain);
+      rb.hp = Math.max(0, rb.hp - drain);
+      blueFort = bb.hp;
+      redFort = rb.hp;
+    }
 
     // "Fort under attack" warning: trigger when our fort loses HP, or when an
     // enemy bomb/dynamite is set near it.
@@ -182,6 +217,7 @@ class Game {
       for (const u of this.units) {
         if (!u.alive) continue;
         if (V.dist(it.x, it.y, u.x, u.y) <= it.radius + u.radius) {
+          if (!u.wantsItem(it)) continue; // leave items a unit can't benefit from
           it.applyTo(u);
           it.dead = true;
           break;

@@ -43,6 +43,43 @@ class AIController {
     // HP recovers past RECOVER_HP_FRAC (hysteresis avoids dithering at 40%).
     this.retreating = false;
     this.state = STATE.WANDER;
+    // Anti-stuck: if a unit stops making progress it briefly walks a random way
+    // so a wedged bot can never stall the whole match.
+    this.lastX = null;
+    this.lastY = null;
+    this.stuckMs = 0;
+    this.unstickMs = 0;
+    this.unstickAng = 0;
+    // Throttle weapon switching so bots don't thrash (each switch reloads).
+    this.weaponTimer = 0;
+  }
+
+  // Pick the best weapon for the current engagement distance, with a cooldown.
+  pickWeapon(self, dist, dt) {
+    this.weaponTimer -= dt;
+    if (this.weaponTimer > 0 || self.reloading) return;
+    if (typeof WEAPON_ORDER === "undefined") return;
+    let want = "rifle";
+    if (dist > 460) want = "sniper";
+    else if (dist < 150) want = "shotgun";
+    else if (dist < 300) want = "smg";
+    if (WEAPONS[want] && self.weaponKey !== want) {
+      self.setWeapon(want);
+      this.weaponTimer = 2500; // don't re-evaluate for a bit
+    }
+  }
+
+  // Nearest item this unit would actually benefit from, within `range`.
+  nearestWantedItem(self, game, range) {
+    if (!game.items) return null;
+    let best = null;
+    let bestD = range;
+    for (const it of game.items) {
+      if (it.dead || !self.wantsItem(it)) continue;
+      const d = V.dist(self.x, self.y, it.x, it.y);
+      if (d < bestD) { bestD = d; best = it; }
+    }
+    return best;
   }
 
   // ---- decision helpers (kept side-effect free for testing) ---------------
@@ -220,6 +257,18 @@ class AIController {
   // ---- main loop ----------------------------------------------------------
 
   update(self, dt, game) {
+    // Progress made since last frame (used for anti-stuck below).
+    const prog = this.lastX === null ? 99 : V.dist(self.x, self.y, this.lastX, this.lastY);
+    this.lastX = self.x;
+    this.lastY = self.y;
+
+    // If currently unsticking, keep walking the random escape heading.
+    if (this.unstickMs > 0) {
+      this.unstickMs -= dt;
+      self.move(Math.cos(this.unstickAng), Math.sin(this.unstickAng), game);
+      return;
+    }
+
     this.strafeTimer -= dt;
     if (this.strafeTimer <= 0) {
       this.strafeDir *= -1;
@@ -227,8 +276,51 @@ class AIController {
     }
 
     const target = this.findTarget(self, game);
-    const state = this.desiredState(self, game);
+    if (target) this.pickWeapon(self, V.dist(self.x, self.y, target.x, target.y), dt);
+
+    let state = this.desiredState(self, game);
+    // Anti-stall: when the match has gone quiet too long, everyone charges the
+    // enemy fort so it always reaches a conclusion (unless badly hurt).
+    if (game.rushMode && !this.shouldRetreat(self)) {
+      const fort = game.enemyBaseOf(self);
+      if (fort && fort.hp > 0) state = STATE.ASSAULT;
+    }
     this.state = state;
+
+    // Anti-stuck: while travelling (not deliberately holding or healing at base),
+    // a unit that has barely moved for ~0.9s breaks into a random walk so it can
+    // never wedge and stall the match when the player isn't around.
+    const travelling = state === STATE.RETREAT || state === STATE.ADVANCE ||
+      state === STATE.ASSAULT || state === STATE.WANDER || state === STATE.HIDE;
+    if (travelling && !game.map.inBase(self.x, self.y, self.team)) {
+      if (prog < 0.35) this.stuckMs += dt; else this.stuckMs = 0;
+      if (this.stuckMs > 900) {
+        this.unstickMs = 600;
+        this.unstickAng = Math.random() * Math.PI * 2;
+        this.stuckMs = 0;
+        self.move(Math.cos(this.unstickAng), Math.sin(this.unstickAng), game);
+        return;
+      }
+    } else {
+      this.stuckMs = 0;
+    }
+
+    // Opportunistic item grab when not locked in a close fight.
+    if (state === STATE.ENGAGE || state === STATE.WANDER || state === STATE.HIDE) {
+      const item = this.nearestWantedItem(self, game, 240);
+      const dTarget = target ? V.dist(self.x, self.y, target.x, target.y) : Infinity;
+      if (item && dTarget > 180) {
+        this.moveTo(self, item.x, item.y, game);
+        if (target) {
+          this.aimAt(self, target.x, target.y);
+          if (!game.map.blockedBetween(self.x, self.y, target.x, target.y) &&
+              !self.reloading && self.ammo > 0 && Math.random() < self.skill * 0.5) {
+            self.tryShoot(game);
+          }
+        }
+        return;
+      }
+    }
 
     switch (state) {
       case STATE.RETREAT: return this.doRetreat(self, dt, game, target);
