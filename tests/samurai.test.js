@@ -81,6 +81,28 @@ s.test("大将が救出されず一定時間経つと討死(状態2)＝サドン
   t.equal(game.stormActive, true, "討死でサドンデス(storm)が発動する");
 });
 
+s.test("武器はクラス固定：手動の持ち替え(cycleWeapon)は無効", (t) => {
+  const sb = loadGame();
+  const u = new sb.Unit(0, 0, "blue");
+  u.applyClass("ashigaru"); // 刀
+  u.cycleWeapon(1);
+  t.equal(u.weaponKey, "katana", "Fキー相当でも武器は変わらない");
+});
+
+s.test("攻撃するとモーション(swingMs)が立つ（刀も弓も）", (t) => {
+  const { sb, game } = newGame(0);
+  const katana = new sb.Unit(1500, 300, "blue");
+  katana.applyClass("ashigaru");
+  game.units = [katana, new sb.Unit(1530, 300, "red")];
+  katana.tryShoot(game);
+  t.greaterThan(katana.swingMs, 0, "刀の攻撃でモーションが立つ");
+  const bow = new sb.Unit(1500, 800, "blue");
+  bow.applyClass("archer");
+  game.bullets = [];
+  bow.tryShoot(game);
+  t.greaterThan(bow.swingMs, 0, "弓の攻撃でもモーションが立つ");
+});
+
 s.test("味方AIは倒れた総大将を最優先で救出に向かう", (t) => {
   const { sb, game } = newGame(0);
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);

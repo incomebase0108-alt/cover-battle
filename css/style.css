@@ -418,6 +418,9 @@ body.touch .control-bar { bottom: auto; top: 92px; font-size: 12px; }
 .stage-buttons { flex-wrap: wrap; max-width: 520px; justify-content: center; }
 .stage-btn { padding: 6px 14px; font-size: 13px; }
 
+/* 合戦版：武器はクラス固定なので武器切替ボタンは隠す（持ち替え無効） */
+.act.weapon { display: none !important; }
+
 .hidden { display: none !important; }
 
 /* Help button + panel (added by js/help.js) */

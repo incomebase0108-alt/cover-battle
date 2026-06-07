@@ -318,6 +318,7 @@ class Unit {
     this.sinceShot = 99999;  // ms since last shot (drives passive ammo regen)
     this.regenAccum = 0;     // accumulator for partial regenerated rounds
     this.muzzleFlash = 0;    // ms remaining on the muzzle-flash effect
+    this.swingMs = 0;        // ms remaining on the katana swing animation
     this.skill = 0.7; // AI accuracy/decision quality, overridden per spawn
     this.aiSkill = null; // difficulty coefficient 0..1 (null = use `skill`); set per AI spawn
     this.damageMul = 1;  // bullet damage multiplier (weak AI < 1; players stay 1)
@@ -443,15 +444,10 @@ class Unit {
     this.cooldown = 0;
   }
 
-  // Advance to the next weapon in WEAPON_ORDER (used by the F-key cycle).
+  // 合戦版：武器はクラス固定。手動の持ち替え（番号キー/F/🔫）は無効化した。
+  // 宝箱で拾う特殊武器だけは grantSpecial 経由で一時的に持てる（別経路）。
   cycleWeapon(dir = 1) {
-    const i = WEAPON_ORDER.indexOf(this.weaponKey);
-    const base = i < 0 ? 0 : i;
-    const n = WEAPON_ORDER.length;
-    const next = WEAPON_ORDER[((base + dir) % n + n) % n];
-    this.special = false; // manually switching drops the temporary chest weapon
-    this.baseWeaponKey = next;
-    this.setWeapon(next);
+    return;
   }
 
   // Grant a temporary special weapon from a chest. Reverts after a timer.
@@ -548,6 +544,7 @@ class Unit {
       this.regenAccum = 0;
     }
     this.muzzleFlash = 70;
+    this.swingMs = (CONFIG.melee && CONFIG.melee.swingMs) || 220; // 攻撃モーション（弓引き/反動）
 
     const pellets = w.pellets ?? 1;
     const spread = w.spread ?? 0;
@@ -582,6 +579,7 @@ class Unit {
   _meleeStrike(game, w) {
     this.cooldown = this.fireCooldownVal();
     this.muzzleFlash = 70;
+    this.swingMs = (CONFIG.melee && CONFIG.melee.swingMs) || 220; // 刃の弧アニメ開始
     const reach = w.meleeRange ?? 40;
     const arc = w.meleeArc ?? 1.0;
     const dmg = (this.weapon().damage ?? CONFIG.bullet.damage) * (this.damageMul || 1) * (this.moraleMul || 1);
@@ -644,6 +642,7 @@ class Unit {
     if (!this.alive) return;
     if (this.cooldown > 0) this.cooldown -= dt;
     if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
+    if (this.swingMs > 0) this.swingMs -= dt;
     if (this.movingTimer > 0) this.movingTimer -= dt; // walk-cycle grace timer
     if (this.abilityCd > 0) this.abilityCd -= dt;
     if (this.dashMs > 0) this.dashMs -= dt;
@@ -704,8 +703,8 @@ class Unit {
     if (!n) return;
     if (n.mx || n.my) this.move(n.mx, n.my, game);
     if (typeof n.aim === "number") this.aim = n.aim;
-    if (n.slot > 0 && WEAPON_ORDER[n.slot - 1]) this.setWeapon(WEAPON_ORDER[n.slot - 1]);
-    if (n.cycleW) { this.cycleWeapon(1); n.cycleW = false; }
+    // 武器はクラス固定：slot/cycleW は無視（フラグだけクリア）。
+    if (n.cycleW) n.cycleW = false;
     if (n.shoot) this.tryShoot(game);
     if (n.bomb) { this.placeBomb(game); n.bomb = false; }
     if (n.ability) { this.useAbility(game); n.ability = false; }
@@ -715,10 +714,9 @@ class Unit {
     const { dx, dy } = Input.moveVector();
     if (dx !== 0 || dy !== 0) this.move(dx, dy, game);
 
-    // Weapon switching: number keys select directly, F cycles forward.
-    const slot = Input.consumeWeaponSlot();
-    if (slot > 0 && WEAPON_ORDER[slot - 1]) this.setWeapon(WEAPON_ORDER[slot - 1]);
-    if (Input.consumeWeaponCycle()) this.cycleWeapon(1);
+    // 武器はクラス固定：番号キー/F の入力はドレインのみで持ち替えない。
+    Input.consumeWeaponSlot();
+    Input.consumeWeaponCycle();
 
     // Lock-on toggle / cycle.
     if (Input.consumeLockToggle()) {
@@ -813,8 +811,10 @@ class Unit {
 
     // Body group: lift everything above the feet by the bob (toward +X reads as
     // a subtle forward weight-shift in this top-down view). Feet stay grounded.
+    // 攻撃時は前後の反動（刀=踏み込み/飛び道具=後ろへ）も本体に乗せる。
+    const recoil = (typeof attackRecoil === "function") ? attackRecoil(this.weapon(), this.swingMs, r) : 0;
     ctx.save();
-    ctx.translate(bob, 0);
+    ctx.translate(bob + recoil, 0);
 
     let sprite = null;
     if (typeof Assets !== "undefined") {
@@ -888,7 +888,10 @@ class Unit {
       ctx.fill();
     }
 
-    ctx.restore(); // end body group (undo walk bob)
+    // 攻撃モーション：刀＝斬りの弧／弓＝弓引き（鉄砲はマズルフラッシュ＋本体反動）。
+    if (typeof drawAttackFX === "function") drawAttackFX(ctx, this.weapon(), this.swingMs, r);
+
+    ctx.restore(); // end body group (undo walk bob + recoil)
     ctx.restore(); // end rotated frame
 
     // Class accent ring + rank badge (screen-space, not rotated).

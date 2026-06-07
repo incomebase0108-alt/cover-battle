@@ -112,3 +112,54 @@ const CHEST_LOOT = ["flame", "piercer", "rockbuster"];
 function getWeapon(key) {
   return WEAPONS[key] || WEAPONS.rifle;
 }
+
+// 攻撃モーション。ユニットの「回転フレーム内（局所 +X＝前方）」で呼ぶこと。
+//   刀  : 前方の扇を斬り抜ける刃の弧
+//   弓  : 弓を引き絞って放つ動作（弦＋矢）
+//   鉄砲: ここでは描かない（マズルフラッシュ＋本体の反動で表現＝呼び出し側）
+// swingMs は残り時間(ms)。CONFIG.melee.swingMs を全体の長さとして進行度を出す。
+function drawAttackFX(ctx, w, swingMs, r) {
+  if (!w || swingMs <= 0) return;
+  const D = (typeof CONFIG !== "undefined" && CONFIG.melee && CONFIG.melee.swingMs) || 220;
+  const p = Math.max(0, Math.min(1, 1 - swingMs / D)); // 0→1
+  if (w.isMelee) {
+    const reach = w.meleeRange || 40;
+    const arc = w.meleeArc || 1.0;
+    const la = -arc + 2 * arc * p; // 局所角（+X=前方）。-arc→+arc へ振り抜ける
+    ctx.fillStyle = "rgba(220,235,255,0.18)"; // 振った範囲の残光
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, reach, -arc, la, false); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(244,248,255,0.95)"; ctx.lineWidth = 4; ctx.lineCap = "round"; // 刀身
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(la) * reach * 0.3, Math.sin(la) * reach * 0.3);
+    ctx.lineTo(Math.cos(la) * reach, Math.sin(la) * reach);
+    ctx.stroke();
+    ctx.fillStyle = "#fff"; // 切っ先のきらめき
+    ctx.beginPath(); ctx.arc(Math.cos(la) * reach, Math.sin(la) * reach, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.lineCap = "butt";
+  } else if (w.noReload) {
+    // 弓を引く（p<0.6）→放つ（その後 弦が前に戻る）。
+    const reach = r * 1.7;
+    const pull = p < 0.6 ? p / 0.6 : 1 - (p - 0.6) / 0.4; // 0→1→0
+    const cx = reach * 0.55, rr = reach * 0.7;
+    ctx.strokeStyle = "rgba(210,180,120,0.95)"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; // 弓
+    ctx.beginPath(); ctx.arc(cx, 0, rr, -1.15, 1.15); ctx.stroke();
+    const topX = cx + Math.cos(-1.15) * rr, topY = Math.sin(-1.15) * rr;
+    const botX = cx + Math.cos(1.15) * rr, botY = Math.sin(1.15) * rr;
+    const nockX = cx - pull * reach * 0.55;
+    ctx.strokeStyle = "rgba(240,240,240,0.9)"; ctx.lineWidth = 1.5; // 弦
+    ctx.beginPath(); ctx.moveTo(topX, topY); ctx.lineTo(nockX, 0); ctx.lineTo(botX, botY); ctx.stroke();
+    ctx.strokeStyle = "rgba(120,90,60,0.95)"; ctx.lineWidth = 2; // 矢
+    ctx.beginPath(); ctx.moveTo(nockX, 0); ctx.lineTo(reach * 1.05, 0); ctx.stroke();
+    ctx.lineCap = "butt";
+  }
+}
+
+// 攻撃の本体反動/踏み込み量（局所 +X 方向のオフセット px）。刀は前へ踏み込み(+)、
+// 飛び道具は後ろへ反動(-)。攻撃直後が最大で、すぐ戻る。
+function attackRecoil(w, swingMs, r) {
+  if (!w || swingMs <= 0) return 0;
+  const D = (typeof CONFIG !== "undefined" && CONFIG.melee && CONFIG.melee.swingMs) || 220;
+  const e = Math.max(0, Math.min(1, swingMs / D)); // 1→0
+  const amp = r * (w.isMelee ? 0.5 : 0.6);
+  return (w.isMelee ? amp : -amp) * e;
+}

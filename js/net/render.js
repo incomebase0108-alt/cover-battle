@@ -52,9 +52,12 @@ const NetRender = {
     const r = CONFIG.unit.radius * (cls ? (cls.sizeMul || 1) : 1);
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath(); ctx.ellipse(u.x, u.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+    const wdef = (typeof WEAPONS !== "undefined") ? WEAPONS[u.w] : null;
+    const recoil = (typeof attackRecoil === "function") ? attackRecoil(wdef, u.sw || 0, r) : 0;
     ctx.save();
     ctx.translate(u.x, u.y);
     ctx.rotate(u.a);
+    if (recoil) ctx.translate(recoil, 0); // 攻撃の反動/踏み込み
     const sprite = typeof Assets !== "undefined" && Assets.ready("soldier_" + team) ? Assets.get("soldier_" + team) : null;
     if (sprite) {
       const s = r * 5.2;
@@ -65,6 +68,8 @@ const NetRender = {
       ctx.fillStyle = "#15181f";
       ctx.fillRect(r * 0.2, -r * 0.12, r * 1.2, r * 0.24);
     }
+    // 攻撃モーション（刀=斬り弧／弓=弓引き）。前方+X基準でこの回転フレーム内に描く。
+    if (typeof drawAttackFX === "function") drawAttackFX(ctx, wdef, u.sw || 0, r);
     ctx.restore();
     // Class accent ring + rank badge.
     if (cls) {

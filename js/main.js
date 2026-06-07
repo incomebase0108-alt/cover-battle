@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v28 合戦テーマ刷新（総大将/足軽/弓兵/鉄砲兵/騎馬/忍者・刀近接・大将ルール・山城決戦・LANステージ選択）";
+  const BUILD = "v29 武器をクラス固定（持ち替え無効）＋全クラスに攻撃モーション（刀=斬り弧/弓=弓引き/鉄砲=反動）";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

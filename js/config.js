@@ -126,6 +126,9 @@ const CONFIG = {
     debuffMul: 0.7,    // 大将が倒れている間の味方の移動/与ダメ倍率
     discardMs: 14000,  // この時間 救出されないと「討死」扱い
   },
+
+  // 刀の振りアニメーション時間（ms）。攻撃時にこの時間だけ刃の弧を描く。
+  melee: { swingMs: 220 },
 };
 
 // Difficulty levels in order, with the Japanese labels shown on the selector
