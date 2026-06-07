@@ -4,9 +4,10 @@
 //   nobushi : 野武士 — 数で湧く軽量の浪人。速いが脆い。
 //   kengo   : 剣豪   — まれに現れる達人。重く頑丈で一撃が痛い。
 const BEAST_TYPES = {
-  nobushi: { label: "野武士", hp: 150, radius: 22, speed: 2.6, damage: 16, sense: 260, attackRange: 26, attackCd: 600,
+  // 中立は脅威だが強すぎない調整：速度を落として relentless さを抑え、威力も控えめに。
+  nobushi: { label: "野武士", hp: 120, radius: 22, speed: 1.7, damage: 10, sense: 220, attackRange: 26, attackCd: 760,
              body: "#6b5e4a", dark: "#2f281d", head: "#caa98a" },
-  kengo:   { label: "剣豪",   hp: 300, radius: 26, speed: 2.5, damage: 36, sense: 300, attackRange: 32, attackCd: 820,
+  kengo:   { label: "剣豪",   hp: 230, radius: 26, speed: 1.65, damage: 22, sense: 250, attackRange: 32, attackCd: 980,
              body: "#4a4f5a", dark: "#23262e", head: "#d8c7a8" },
 };
 

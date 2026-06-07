@@ -216,6 +216,16 @@ s.test("仲間の浪人は敵砦に到達するとコアを攻撃する", (t) =>
   t.lessThan(redBase.hp, hp0, "敵砦コアにダメージが入る");
 });
 
+s.test("拠点は3つ・中立の浪人は弱体(速度/威力ダウン)", (t) => {
+  const { sb, game } = newGame(0);
+  t.equal(game.capturePoints.length, 3, "拠点は3つ配置される");
+  const nob = new sb.Beast(0, 0, "nobushi");
+  const ken = new sb.Beast(0, 0, "kengo");
+  t.lessThan(nob.speed, 2.0, "野武士の速度は控えめ");
+  t.lessThan(ken.speed, 2.0, "剣豪の速度も控えめ");
+  t.lessThan(nob.damage, 16, "野武士の威力は以前(16)より低い");
+});
+
 s.test("槍兵は槍を持ち、刀より長い間合い", (t) => {
   const sb = loadGame();
   const sp = new sb.Unit(0, 0, "blue");

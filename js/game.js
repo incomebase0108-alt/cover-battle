@@ -214,8 +214,11 @@ class Game {
   _spawnObjectives() {
     const W = CONFIG.world.width;
     const H = CONFIG.world.height;
+    // 確保すると味方が回復できる拠点を3つ配置（中央＋対角の北西/南東）。
     this.capturePoints = [
-      { x: W / 2, y: H / 2, r: CONFIG.capture.radius, owner: null, progress: 0, capBy: null },
+      { x: W * 0.5, y: H * 0.5,  r: CONFIG.capture.radius, owner: null, progress: 0, capBy: null },
+      { x: W * 0.3, y: H * 0.32, r: CONFIG.capture.radius, owner: null, progress: 0, capBy: null },
+      { x: W * 0.7, y: H * 0.68, r: CONFIG.capture.radius, owner: null, progress: 0, capBy: null },
     ];
     this.chests = [];
     if (typeof Chest !== "undefined") {

@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v37 砦を城に（段々の石垣＋天守）＋マップ拡大(4800x3000)。天守スプライト fort_{team}.png 対応";
+  const BUILD = "v38 中立の浪人(野武士/剣豪)を弱体（速度/威力ダウン）＋確保拠点を3つに";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
