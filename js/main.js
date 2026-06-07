@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v38 中立の浪人(野武士/剣豪)を弱体（速度/威力ダウン）＋確保拠点を3つに";
+  const BUILD = "v39 キャラ大型化＋ゆっくりプレイ化（移動2.2→1.6・弾速7→5.5・浪人も減速）";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

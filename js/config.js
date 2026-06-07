@@ -35,9 +35,9 @@ const CONFIG = {
   maxPlayersPerTeam: 8,
 
   unit: {
-    radius: 14,
+    radius: 16,        // キャラを少し大きく（当たり判定＋スプライトの基準）
     maxHp: 100,
-    speed: 2.2,
+    speed: 1.6,        // ゆっくりプレイできるよう全体的に減速
     fireCooldown: 300, // ms between shots within a magazine
     magSize: 10,       // rounds per magazine before a reload is forced
     reloadTime: 3000,  // ms to reload an empty magazine (can't fire meanwhile)
@@ -50,10 +50,10 @@ const CONFIG = {
   },
 
   bullet: {
-    speed: 7,
+    speed: 5.5,        // 弾もゆっくりに（避けやすく＝ゆったりした撃ち合い）
     radius: 4,
     damage: 16,
-    life: 1200,        // ms before a stray bullet despawns
+    life: 1400,        // 弾速を下げたぶん射程維持のため少し延ばす
     rockDamage: 25,    // damage bullets do to rocks
   },
 

@@ -46,7 +46,7 @@ const Assets = {
   // 立ち姿が横倒しになるため）。aim が左向き(cos<0)のときだけ左右反転。足元を接地点
   // (gx,gy)付近に置き、本体は上へ伸ばす。歩行中(walkPhase>0)は軽く上下に弾む。
   drawSprite(ctx, sprite, gx, gy, aim, r, walkPhase) {
-    const s = r * 5.6;
+    const s = r * 6.6; // スプライトを少し大きめに（キャラを大きく見せる）
     const bob = walkPhase ? Math.abs(Math.sin(walkPhase)) * r * 0.16 : 0;
     ctx.save();
     ctx.translate(gx, gy - bob);
