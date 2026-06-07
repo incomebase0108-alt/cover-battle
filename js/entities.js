@@ -663,15 +663,30 @@ class Unit {
       this.lockTarget = game.nextVisibleEnemy(this, this.lockTarget);
     }
 
-    // Aiming. On touch there's no mouse, so auto-aim the nearest visible enemy
-    // (fall back to the movement direction). On desktop, lock-on or the mouse.
+    // Aiming. スマホは「移動スティックの向き＝照準」で、動いている間は自動射撃
+    // （方向を押した先に弾が出る）。ロックオン中は対象へ自動照準＆自動射撃。
+    // 右ドラッグの手動エイムも引き続き使える。PCはロックオンかマウス。
+    let autoFire = false;
     if (Input.isTouch) {
-      // Manual aim stick (right-side drag). When not aiming, face movement.
-      if (Input.aimStick && Input.aimStick.active) {
+      const moving = (dx !== 0 || dy !== 0);
+      if (this.lockMode) {
+        if (!this.lockTarget || !this.lockTarget.alive ||
+            !game.unitVisibleToPlayer(this.lockTarget)) {
+          this.lockTarget = game.nearestVisibleEnemy(this);
+        }
+        if (this.lockTarget) {
+          this.aim = Math.atan2(this.lockTarget.y - this.y, this.lockTarget.x - this.x);
+        } else if (Input.aimStick && Input.aimStick.active) {
+          this.aim = Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
+        } else if (moving) {
+          this.aim = Math.atan2(dy, dx);
+        }
+      } else if (Input.aimStick && Input.aimStick.active) {
         this.aim = Math.atan2(Input.aimStick.dy, Input.aimStick.dx);
-      } else if (dx !== 0 || dy !== 0) {
+      } else if (moving) {
         this.aim = Math.atan2(dy, dx);
       }
+      autoFire = moving || (this.lockMode && !!this.lockTarget);
     } else if (this.lockMode) {
       // Keep a valid target, then aim straight at it.
       if (!this.lockTarget || !this.lockTarget.alive ||
@@ -687,7 +702,7 @@ class Unit {
       this.aimAtMouse(game);
     }
 
-    if (Input.shooting) this.tryShoot(game);
+    if (Input.shooting || autoFire) this.tryShoot(game);
     if (Input.consumeBomb()) this.placeBomb(game);
     if (Input.consumeAbility()) this.useAbility(game);
   }

@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v14 ダイナマイト廃止＋AI動物使いが捕獲";
+  const BUILD = "v15 スマホ移動方向に自動攻撃＋画面上の欠け修正";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

@@ -41,7 +41,9 @@ body.touch #app { max-width: none; max-height: none; }
 body.touch canvas { border-radius: 0; }
 /* The verbose control bar is desktop-only; phones use the labelled buttons + ? help. */
 body.touch .control-bar { display: none; }
-body.touch .hud { font-size: 13px; left: 8px; right: 8px; }
+/* スマホはノッチ/ステータスバーに隠れないよう、上端をセーフエリア分下げる。 */
+body.touch .hud { font-size: 13px; left: 8px; right: 8px; top: calc(env(safe-area-inset-top, 0px) + 8px); }
+body.touch .hud-row { flex-wrap: wrap; row-gap: 4px; }
 body.touch .hud-row { gap: 8px; font-size: 14px; }
 
 /* HUD */
@@ -178,7 +180,7 @@ body.touch .touch-controls {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 8px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
   display: flex;
   flex-direction: row;
   justify-content: center;
