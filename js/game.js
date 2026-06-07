@@ -144,13 +144,22 @@ class Game {
   }
 
   _syncHud() {
-    if (this.callbacks.onHud) {
-      this.callbacks.onHud({
-        stage: STAGES[this.stageIndex].name,
-        blue: this.aliveCount("blue"),
-        red: this.aliveCount("red"),
-      });
-    }
+    if (!this.callbacks.onHud) return;
+    const p = this.units.find((u) => u.isPlayer);
+    this.callbacks.onHud({
+      stage: STAGES[this.stageIndex].name,
+      blue: this.aliveCount("blue"),
+      red: this.aliveCount("red"),
+      player: p ? {
+        alive: p.alive,
+        ammo: p.ammo,
+        magSize: CONFIG.unit.magSize,
+        reloading: p.reloading,
+        reloadPct: 1 - p.reloadTimer / CONFIG.unit.reloadTime,
+        hp: Math.round(p.hp),
+        lockMode: p.lockMode,
+      } : null,
+    });
   }
 
   _render() {
@@ -171,9 +180,63 @@ class Game {
         this._drawSpotted(ctx, u);
       }
     }
-    this.map.drawRocks(ctx);
+    this.map.drawSolids(ctx);
     // Bombs/explosions on top so the blast reads clearly over everything.
     for (const b of this.bombs) b.draw(ctx);
+    this._drawLockOn(ctx);
+  }
+
+  // Reticle over the player's locked-on target.
+  _drawLockOn(ctx) {
+    const player = this.units.find((u) => u.isPlayer && u.alive);
+    if (!player || !player.lockMode) return;
+    const t = player.lockTarget;
+    if (!t || !t.alive || !this.unitVisibleToPlayer(t)) return;
+    const r = t.radius + 8;
+    ctx.strokeStyle = "#ffe14a";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    // Corner ticks.
+    ctx.beginPath();
+    for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+      ctx.moveTo(t.x + Math.cos(a) * (r - 4), t.y + Math.sin(a) * (r - 4));
+      ctx.lineTo(t.x + Math.cos(a) * (r + 5), t.y + Math.sin(a) * (r + 5));
+    }
+    ctx.stroke();
+    // Aim line from player to target.
+    ctx.strokeStyle = "rgba(255,225,74,0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    ctx.lineTo(t.x, t.y);
+    ctx.stroke();
+  }
+
+  // Enemies the player can currently see (used for lock-on).
+  visibleEnemiesOf(unit) {
+    return this.units.filter((u) =>
+      u.alive && u.team !== unit.team && this.unitVisibleToPlayer(u));
+  }
+
+  nearestVisibleEnemy(unit) {
+    let best = null;
+    let bestD = Infinity;
+    for (const e of this.visibleEnemiesOf(unit)) {
+      const d = V.dist(unit.x, unit.y, e.x, e.y);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best;
+  }
+
+  // Cycle to the next visible enemy after `current` (by distance order).
+  nextVisibleEnemy(unit, current) {
+    const list = this.visibleEnemiesOf(unit)
+      .sort((a, b) => V.dist(unit.x, unit.y, a.x, a.y) - V.dist(unit.x, unit.y, b.x, b.y));
+    if (list.length === 0) return null;
+    const i = list.indexOf(current);
+    return list[(i + 1) % list.length];
   }
 
   // "!" alert over a forest-hidden enemy the moment they're spotted.

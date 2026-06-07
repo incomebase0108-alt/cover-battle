@@ -12,7 +12,9 @@ const CONFIG = {
     radius: 14,
     maxHp: 100,
     speed: 2.2,
-    fireCooldown: 420, // ms between shots
+    fireCooldown: 300, // ms between shots within a magazine
+    magSize: 10,       // rounds per magazine before a reload is forced
+    reloadTime: 3000,  // ms to reload an empty magazine (can't fire meanwhile)
     range: 360,        // how far a unit can see/shoot
   },
 
@@ -51,6 +53,15 @@ const CONFIG = {
   // until an opposing unit comes within this distance (in px). Raise it to make
   // forests less safe, lower it to make ambushes stronger.
   forestDetectRange: 110,
+
+  // Movement speed multiplier while wading through a river.
+  riverSpeedMul: 0.5,
+
+  // Home base/fort: standing in your own base slowly regenerates HP.
+  base: {
+    radius: 95,
+    regenPerSec: 16,
+  },
 };
 
 // Weighted random item type for rock drops.
@@ -70,6 +81,9 @@ const STAGES = [
       { x: 200, y: 440, r: 64 },
       { x: 760, y: 160, r: 64 },
     ],
+    // Mountains: indestructible solid cover. Rivers: passable but slow you down.
+    mountains: [ { x: 250, y: 470, r: 44 } ],
+    rivers: [ { x: 430, y: 0, w: 60, h: 600 } ],
     blueSpawns: [ { x: 90, y: 220 }, { x: 90, y: 300 }, { x: 90, y: 380 }, { x: 150, y: 300 } ],
     redSpawns:  [ { x: 870, y: 220 }, { x: 870, y: 300 }, { x: 870, y: 380 }, { x: 810, y: 300 } ],
     enemySkill: 0.65,
@@ -84,6 +98,8 @@ const STAGES = [
     forests: [
       { x: 160, y: 300, r: 58 }, { x: 800, y: 300, r: 58 },
     ],
+    mountains: [ { x: 480, y: 70, r: 36 }, { x: 480, y: 530, r: 36 } ],
+    rivers: [ { x: 0, y: 275, w: 960, h: 50 } ],
     blueSpawns: [ { x: 90, y: 200 }, { x: 90, y: 400 }, { x: 160, y: 120 }, { x: 160, y: 480 } ],
     redSpawns:  [ { x: 870, y: 200 }, { x: 870, y: 400 }, { x: 800, y: 120 }, { x: 800, y: 480 } ],
     enemySkill: 0.8,
@@ -99,6 +115,8 @@ const STAGES = [
       { x: 200, y: 440, r: 70 }, { x: 760, y: 440, r: 70 },
       { x: 480, y: 300, r: 60 },
     ],
+    mountains: [ { x: 130, y: 300, r: 34 }, { x: 830, y: 300, r: 34 } ],
+    rivers: [ { x: 440, y: 0, w: 80, h: 600 } ],
     blueSpawns: [ { x: 90, y: 260 }, { x: 90, y: 340 }, { x: 150, y: 220 }, { x: 150, y: 380 } ],
     redSpawns:  [ { x: 870, y: 260 }, { x: 870, y: 340 }, { x: 810, y: 220 }, { x: 810, y: 380 } ],
     enemySkill: 0.95,

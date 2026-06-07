@@ -4,8 +4,27 @@
   Input.init(canvas);
   UI.init();
 
+  // Hook up on-screen mobile controls.
+  Input.initTouch({
+    joystick: document.getElementById("joystick"),
+    knob: document.getElementById("knob"),
+    fire: document.getElementById("btnFire"),
+    bomb: document.getElementById("btnBomb"),
+    lock: document.getElementById("btnLock"),
+    cycle: document.getElementById("btnCycle"),
+  });
+
+  // Mute / unmute BGM + SFX.
+  const muteBtn = document.getElementById("muteBtn");
+  if (muteBtn) {
+    muteBtn.addEventListener("click", () => {
+      const muted = Sound.toggleMute();
+      muteBtn.textContent = muted ? "🔇" : "🔊";
+    });
+  }
+
   let game = null;
-  let nextAction = "start"; // what the result-screen "next" button should do
+  let nextAction = "start";
 
   function newGameAt(index) {
     game = new Game(canvas, {
@@ -19,11 +38,18 @@
         }
       },
     });
+    game.sound = Sound;
     game.loadStage(index);
+    // On touch devices, default to lock-on so aiming is one-button.
+    if (Input.isTouch) {
+      const p = game.units.find((u) => u.isPlayer);
+      if (p) { p.lockMode = true; p.lockTarget = game.nearestVisibleEnemy(p); }
+    }
     game.start();
   }
 
   function startGame() {
+    Sound.start(); // begin BGM on the user gesture
     UI.showStart(false);
     UI.hideResult();
     UI.showHud(true);
@@ -33,6 +59,7 @@
   document.getElementById("startBtn").addEventListener("click", startGame);
 
   document.getElementById("nextBtn").addEventListener("click", () => {
+    Sound.start();
     UI.hideResult();
     if (nextAction.type === "restart") {
       newGameAt(0);

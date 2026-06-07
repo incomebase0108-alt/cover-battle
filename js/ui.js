@@ -7,6 +7,8 @@ const UI = {
     this.el.stageLabel = document.getElementById("stageLabel");
     this.el.blueCount = document.getElementById("blueCount");
     this.el.redCount = document.getElementById("redCount");
+    this.el.ammo = document.getElementById("ammo");
+    this.el.lockState = document.getElementById("lockState");
     this.el.overlay = document.getElementById("overlay");
     this.el.resultOverlay = document.getElementById("resultOverlay");
     this.el.resultTitle = document.getElementById("resultTitle");
@@ -21,6 +23,22 @@ const UI = {
     this.el.stageLabel.textContent = state.stage;
     this.el.blueCount.textContent = state.blue;
     this.el.redCount.textContent = state.red;
+
+    const p = state.player;
+    if (this.el.ammo && p) {
+      if (p.reloading) {
+        const pct = Math.round(p.reloadPct * 100);
+        this.el.ammo.innerHTML = `<span class="reloading">リロード中… ${pct}%</span>`;
+      } else {
+        this.el.ammo.innerHTML = `弾 <b>${p.ammo}</b>/${p.magSize}`;
+        if (p.ammo <= 3) this.el.ammo.classList.add("low");
+        else this.el.ammo.classList.remove("low");
+      }
+    }
+    if (this.el.lockState && p) {
+      this.el.lockState.textContent = p.lockMode ? "🔒 ロックオン" : "自由照準";
+      this.el.lockState.classList.toggle("on", p.lockMode);
+    }
   },
 
   showStart(show) {

@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Cover Battle — 岩と森の4vs4バトル</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -16,6 +16,22 @@
         <span id="stageLabel">STAGE 1</span>
         <span class="team-count blue">青 <b id="blueCount">4</b></span>
         <span class="team-count red">赤 <b id="redCount">4</b></span>
+        <button id="muteBtn" class="icon-btn" title="BGM ON/OFF">🔊</button>
+      </div>
+      <div class="hud-row hud-sub">
+        <span id="ammo" class="ammo">弾 <b>10</b>/10</span>
+        <span id="lockState" class="lock-state">自由照準</span>
+      </div>
+    </div>
+
+    <!-- Mobile touch controls (shown only on touch devices) -->
+    <div id="touchControls" class="touch-controls">
+      <div id="joystick" class="joystick"><div id="knob" class="knob"></div></div>
+      <div class="action-buttons">
+        <button id="btnLock" class="act lock">🔒</button>
+        <button id="btnCycle" class="act cycle">⇄</button>
+        <button id="btnBomb" class="act bomb">💣</button>
+        <button id="btnFire" class="act fire">撃</button>
       </div>
     </div>
 
@@ -23,13 +39,14 @@
     <div id="overlay" class="overlay">
       <div class="panel">
         <h1>COVER BATTLE</h1>
-        <p class="subtitle">岩と森に隠れて戦う 4 vs 4 バトル</p>
+        <p class="subtitle">岩と森に隠れて戦う 4 vs 4 サバイバルバトル</p>
         <div class="how">
-          <p><b>操作</b>： 移動 = WASD / 矢印キー ・ 照準 = マウス ・ 射撃 = 左クリック / スペース ・ 爆弾設置 = E キー</p>
+          <p><b>操作</b>： 移動=WASD/矢印 ・ 照準=マウス ・ 射撃=クリック/スペース ・ 爆弾=E ・ ロックオン=R（切替）/Tab（対象変更）</p>
+          <p><b>弾薬</b>： マガジンは <b>10発</b>。撃ち切ると <b>3秒リロード</b>（その間は撃てない）。撃ちっぱなしは禁物、間合いと残弾を管理しよう。</p>
           <p><b>勝利条件</b>： 赤チームを全滅させるとステージクリア。味方が全滅すると敗北。</p>
-          <p><b>地形</b>： <span class="rock-key">岩</span>は弾と移動を遮る盾。撃ち続けると<b>破壊</b>でき、壊すと<b>アイテム</b>が出ることも。<span class="bush-key">森</span>に入ると敵に狙われにくくなる。</p>
-          <p><b>アイテム</b>： 回復 / 移動速度UP / 弾速UP / 飛距離UP / 爆弾＋。拾うと強化される。</p>
-          <p><b>爆弾</b>： ボンバーマン風。設置すると時間差で爆発し、岩も敵も巻き込む（味方や自分も巻き込むので注意！）。</p>
+          <p><b>地形</b>： <span class="rock-key">岩</span>=破壊できる盾 / <span class="mtn-key">山</span>=壊せない遮蔽 / <span class="bush-key">森</span>=隠れると敵から見えない / <span class="river-key">川</span>=移動が遅くなる</p>
+          <p><b>砦</b>： 自分の<span class="base-key">砦</span>（自陣）に戻ると体力が少しずつ回復する。</p>
+          <p><b>スマホ</b>： 左スティックで移動（斜めOK）、右のボタンで 撃つ／爆弾／ロック／対象変更。</p>
         </div>
         <button id="startBtn" class="btn">ゲーム開始</button>
       </div>
@@ -46,6 +63,7 @@
 
   <script src="js/vector.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/input.js"></script>
   <script src="js/map.js"></script>
   <script src="js/entities.js"></script>

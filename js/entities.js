@@ -26,6 +26,14 @@ class Bullet {
       return;
     }
 
+    // Mountains stop bullets but are indestructible.
+    for (const m of game.map.mountains) {
+      if (V.dist(this.x, this.y, m.x, m.y) <= m.r + this.radius) {
+        this.dead = true;
+        return;
+      }
+    }
+
     // Rocks stop bullets and take damage (and may drop an item when broken).
     for (const rock of game.map.rocks) {
       if (V.dist(this.x, this.y, rock.x, rock.y) <= rock.r + this.radius) {
@@ -128,6 +136,7 @@ class Bomb {
   detonate(game) {
     this.exploded = true;
     this.flash = CONFIG.bomb.flashTime;
+    if (game.sound) game.sound.explosion();
     if (this.owner) this.owner.activeBombs = Math.max(0, this.owner.activeBombs - 1);
 
     // Damage every unit in range (friendly fire included — watch your step!).
@@ -185,6 +194,9 @@ class Unit {
     this.alive = true;
     this.aim = team === "blue" ? 0 : Math.PI; // facing angle
     this.cooldown = 0;
+    this.ammo = CONFIG.unit.magSize; // rounds left in the magazine
+    this.reloading = false;
+    this.reloadTimer = 0;
     this.skill = 0.7; // AI accuracy/decision quality, overridden per spawn
     this.ai = null;   // assigned for non-player units
 
@@ -194,6 +206,10 @@ class Unit {
     this.rangeMul = 1;
     this.maxBombs = 1;
     this.activeBombs = 0;
+
+    // Lock-on aiming (player only).
+    this.lockMode = false;
+    this.lockTarget = null;
   }
 
   takeDamage(amount) {
@@ -207,7 +223,8 @@ class Unit {
 
   // dirX/dirY are a (roughly) unit vector of intended movement.
   move(dirX, dirY, game) {
-    const speed = CONFIG.unit.speed * this.speedMul;
+    let speed = CONFIG.unit.speed * this.speedMul;
+    if (game.map.inRiver(this.x, this.y)) speed *= CONFIG.riverSpeedMul; // wading is slow
     const next = game.map.resolveCollision(
       this.x + dirX * speed,
       this.y + dirY * speed,
@@ -218,8 +235,11 @@ class Unit {
   }
 
   tryShoot(game) {
-    if (this.cooldown > 0) return;
+    if (this.cooldown > 0 || this.reloading) return;
+    if (this.ammo <= 0) { this.startReload(); return; }
+
     this.cooldown = CONFIG.unit.fireCooldown;
+    this.ammo--;
     const dx = Math.cos(this.aim);
     const dy = Math.sin(this.aim);
     const bx = this.x + dx * (this.radius + 6);
@@ -229,6 +249,14 @@ class Unit {
       speed: CONFIG.bullet.speed * this.bulletSpeedMul,
       life: CONFIG.bullet.life * this.rangeMul,
     }));
+    if (game.sound) game.sound.shoot();
+    if (this.ammo <= 0) this.startReload();
+  }
+
+  startReload() {
+    if (this.reloading) return;
+    this.reloading = true;
+    this.reloadTimer = CONFIG.unit.reloadTime;
   }
 
   placeBomb(game) {
@@ -240,6 +268,18 @@ class Unit {
   update(dt, game) {
     if (!this.alive) return;
     if (this.cooldown > 0) this.cooldown -= dt;
+    if (this.reloading) {
+      this.reloadTimer -= dt;
+      if (this.reloadTimer <= 0) {
+        this.reloading = false;
+        this.ammo = CONFIG.unit.magSize;
+      }
+    }
+
+    // Slowly regenerate while standing in your own base/fort.
+    if (this.hp < CONFIG.unit.maxHp && game.map.inBase(this.x, this.y, this.team)) {
+      this.hp = Math.min(CONFIG.unit.maxHp, this.hp + CONFIG.base.regenPerSec * dt / 1000);
+    }
 
     if (this.isPlayer) {
       this.updatePlayer(game);
@@ -251,7 +291,31 @@ class Unit {
   updatePlayer(game) {
     const { dx, dy } = Input.moveVector();
     if (dx !== 0 || dy !== 0) this.move(dx, dy, game);
-    this.aim = Math.atan2(Input.mouseY - this.y, Input.mouseX - this.x);
+
+    // Lock-on toggle / cycle.
+    if (Input.consumeLockToggle()) {
+      this.lockMode = !this.lockMode;
+      if (this.lockMode) this.lockTarget = game.nearestVisibleEnemy(this);
+    }
+    if (this.lockMode && Input.consumeCycle()) {
+      this.lockTarget = game.nextVisibleEnemy(this, this.lockTarget);
+    }
+
+    if (this.lockMode) {
+      // Keep a valid target, then aim straight at it.
+      if (!this.lockTarget || !this.lockTarget.alive ||
+          !game.unitVisibleToPlayer(this.lockTarget)) {
+        this.lockTarget = game.nearestVisibleEnemy(this);
+      }
+      if (this.lockTarget) {
+        this.aim = Math.atan2(this.lockTarget.y - this.y, this.lockTarget.x - this.x);
+      } else {
+        this.aim = Math.atan2(Input.mouseY - this.y, Input.mouseX - this.x);
+      }
+    } else {
+      this.aim = Math.atan2(Input.mouseY - this.y, Input.mouseX - this.x);
+    }
+
     if (Input.shooting) this.tryShoot(game);
     if (Input.consumeBomb()) this.placeBomb(game);
   }
@@ -262,28 +326,58 @@ class Unit {
     const concealed = game.map.inForest(this.x, this.y);
     ctx.globalAlpha = concealed ? 0.55 : 1;
 
-    // Body
-    const color = this.team === "blue" ? "#2f7bff" : "#ff4d4d";
-    ctx.fillStyle = color;
+    const r = this.radius;
+    const uniform = this.team === "blue" ? "#2f7bff" : "#ff4d4d";
+    const dark = this.team === "blue" ? "#17407f" : "#7f2222";
+
+    // Drop shadow.
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.ellipse(this.x, this.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Gun barrel pointing at aim direction
-    ctx.strokeStyle = "#1a1f29";
-    ctx.lineWidth = 5;
+    // Draw the soldier oriented toward the aim direction.
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.aim);
+
+    // Backpack.
+    ctx.fillStyle = dark;
     ctx.beginPath();
-    ctx.moveTo(this.x, this.y);
-    ctx.lineTo(this.x + Math.cos(this.aim) * (this.radius + 10),
-               this.y + Math.sin(this.aim) * (this.radius + 10));
+    ctx.arc(-r * 0.5, 0, r * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Shoulders / torso (uniform).
+    ctx.fillStyle = uniform;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 0.95, r * 0.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Player ring marker
+    // Rifle (held forward).
+    ctx.fillStyle = "#15181f";
+    ctx.fillRect(r * 0.1, -r * 0.18, r * 1.25, r * 0.28); // barrel
+    ctx.fillRect(-r * 0.15, -r * 0.12, r * 0.4, r * 0.45); // stock/grip
+
+    // Helmet (top-down dome).
+    const hg = ctx.createRadialGradient(-r * 0.1, -r * 0.1, r * 0.1, 0, 0, r * 0.6);
+    hg.addColorStop(0, this.team === "blue" ? "#9cc2ff" : "#ffb3b3");
+    hg.addColorStop(1, dark);
+    ctx.fillStyle = hg;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Player ring marker (screen-space, not rotated).
     if (this.isPlayer) {
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius + 5, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, r + 6, 0, Math.PI * 2);
       ctx.stroke();
     }
 
