@@ -8,6 +8,7 @@ const UI = {
     this.el.blueCount = document.getElementById("blueCount");
     this.el.redCount = document.getElementById("redCount");
     this.el.ammo = document.getElementById("ammo");
+    this.el.weaponName = document.getElementById("weaponName");
     this.el.lockState = document.getElementById("lockState");
     this.el.overlay = document.getElementById("overlay");
     this.el.resultOverlay = document.getElementById("resultOverlay");
@@ -34,6 +35,9 @@ const UI = {
         if (p.ammo <= 3) this.el.ammo.classList.add("low");
         else this.el.ammo.classList.remove("low");
       }
+    }
+    if (this.el.weaponName && p && p.weapon) {
+      this.el.weaponName.textContent = p.weapon;
     }
     if (this.el.lockState && p) {
       this.el.lockState.textContent = p.lockMode ? "🔒 ロックオン" : "自由照準";

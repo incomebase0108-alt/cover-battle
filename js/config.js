@@ -121,4 +121,70 @@ const STAGES = [
     redSpawns:  [ { x: 870, y: 260 }, { x: 870, y: 340 }, { x: 810, y: 220 }, { x: 810, y: 380 } ],
     enemySkill: 0.95,
   },
+  {
+    name: "STAGE 4 — 双子山の回廊",
+    // A central wall of mountains splits the field into an upper and lower
+    // corridor. Two gaps (around y=300 center, and the open top/bottom edges)
+    // keep the lanes connected so units can still reach each other.
+    rocks: [
+      { x: 480, y: 110, r: 36 }, { x: 480, y: 490, r: 36 },
+      { x: 320, y: 300, r: 34 }, { x: 640, y: 300, r: 34 },
+    ],
+    forests: [
+      { x: 230, y: 110, r: 60 }, { x: 730, y: 490, r: 60 },
+      { x: 480, y: 300, r: 52 },
+    ],
+    // Three stacked mountains down the middle, leaving lane gaps top & bottom.
+    mountains: [
+      { x: 480, y: 210, r: 40 }, { x: 480, y: 300, r: 40 }, { x: 480, y: 390, r: 40 },
+    ],
+    rivers: [ { x: 0, y: 280, w: 960, h: 40 } ],
+    blueSpawns: [ { x: 90, y: 150 }, { x: 90, y: 450 }, { x: 150, y: 250 }, { x: 150, y: 350 } ],
+    redSpawns:  [ { x: 870, y: 150 }, { x: 870, y: 450 }, { x: 810, y: 250 }, { x: 810, y: 350 } ],
+    enemySkill: 0.97,
+  },
+  {
+    name: "STAGE 5 — 渡河の攻防",
+    // A wide river cuts the map vertically; rocks form stepping cover in the
+    // crossing, and forests line both banks for ambushes while wading.
+    rocks: [
+      { x: 480, y: 140, r: 34 }, { x: 480, y: 300, r: 44 }, { x: 480, y: 460, r: 34 },
+      { x: 380, y: 220, r: 30 }, { x: 580, y: 380, r: 30 },
+    ],
+    forests: [
+      { x: 300, y: 110, r: 58 }, { x: 660, y: 490, r: 58 },
+      { x: 300, y: 490, r: 58 }, { x: 660, y: 110, r: 58 },
+    ],
+    mountains: [ { x: 480, y: 60, r: 30 }, { x: 480, y: 540, r: 30 } ],
+    rivers: [ { x: 410, y: 0, w: 140, h: 600 } ],
+    blueSpawns: [ { x: 90, y: 240 }, { x: 90, y: 360 }, { x: 150, y: 180 }, { x: 150, y: 420 } ],
+    redSpawns:  [ { x: 870, y: 240 }, { x: 870, y: 360 }, { x: 810, y: 180 }, { x: 810, y: 420 } ],
+    enemySkill: 1.0,
+  },
+  {
+    name: "STAGE 6 — 岩塞の決戦",
+    // Final stage: each base is ringed by a rock fortress with a single funnel
+    // opening, mountains anchor the flanks, and a central forest contests the
+    // middle. A river snakes across to slow any frontal rush.
+    rocks: [
+      // Blue fortress wall (opening toward y=300 center-right)
+      { x: 250, y: 200, r: 34 }, { x: 280, y: 300, r: 34 }, { x: 250, y: 400, r: 34 },
+      // Red fortress wall (opening toward y=300 center-left)
+      { x: 710, y: 200, r: 34 }, { x: 680, y: 300, r: 34 }, { x: 710, y: 400, r: 34 },
+      // Central contested cover
+      { x: 480, y: 180, r: 38 }, { x: 480, y: 420, r: 38 },
+    ],
+    forests: [
+      { x: 480, y: 300, r: 64 },
+      { x: 250, y: 90, r: 50 }, { x: 710, y: 510, r: 50 },
+    ],
+    mountains: [
+      { x: 480, y: 70, r: 36 }, { x: 480, y: 530, r: 36 },
+      { x: 380, y: 300, r: 30 }, { x: 580, y: 300, r: 30 },
+    ],
+    rivers: [ { x: 0, y: 285, w: 960, h: 36 }, { x: 460, y: 0, w: 40, h: 600 } ],
+    blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 280 }, { x: 150, y: 360 } ],
+    redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 280 }, { x: 810, y: 360 } ],
+    enemySkill: 1.0,
+  },
 ];

@@ -7,6 +7,8 @@ const Input = {
   bombQueued: false,        // edge-triggered, consumed once
   lockToggleQueued: false,  // edge-triggered, consumed once
   cycleQueued: false,       // edge-triggered, consumed once
+  weaponSlotQueued: 0,      // edge-triggered: 1/2/3/4 to select a weapon, 0=none
+  weaponCycleQueued: false, // edge-triggered: F cycles to the next weapon
 
   isTouch: false,
   touch: { active: false, dx: 0, dy: 0 },
@@ -17,6 +19,9 @@ const Input = {
       if ((k === "e" || k === "q") && !this.keys[k]) this.bombQueued = true;
       if (k === "r" && !this.keys[k]) this.lockToggleQueued = true;
       if (k === "tab" && !this.keys[k]) { this.cycleQueued = true; e.preventDefault(); }
+      // Weapon switching: 1-4 select directly, F cycles forward.
+      if (k >= "1" && k <= "4" && !this.keys[k]) this.weaponSlotQueued = Number(k);
+      if (k === "f" && !this.keys[k]) this.weaponCycleQueued = true;
       this.keys[k] = true;
       if (e.key === " ") { this.shooting = true; e.preventDefault(); }
     });
@@ -98,6 +103,7 @@ const Input = {
     hold(els.bomb, () => { this.bombQueued = true; });
     hold(els.lock, () => { this.lockToggleQueued = true; });
     hold(els.cycle, () => { this.cycleQueued = true; });
+    hold(els.weapon, () => { this.weaponCycleQueued = true; });
   },
 
   moveVector() {
@@ -119,4 +125,6 @@ const Input = {
   consumeBomb() { const v = this.bombQueued; this.bombQueued = false; return v; },
   consumeLockToggle() { const v = this.lockToggleQueued; this.lockToggleQueued = false; return v; },
   consumeCycle() { const v = this.cycleQueued; this.cycleQueued = false; return v; },
+  consumeWeaponSlot() { const v = this.weaponSlotQueued; this.weaponSlotQueued = 0; return v; },
+  consumeWeaponCycle() { const v = this.weaponCycleQueued; this.weaponCycleQueued = false; return v; },
 };

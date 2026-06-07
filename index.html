@@ -20,6 +20,7 @@
       </div>
       <div class="hud-row hud-sub">
         <span id="ammo" class="ammo">弾 <b>10</b>/10</span>
+        <span id="weaponName" class="weapon-name">ライフル</span>
         <span id="lockState" class="lock-state">自由照準</span>
       </div>
     </div>
@@ -28,6 +29,7 @@
     <div id="touchControls" class="touch-controls">
       <div id="joystick" class="joystick"><div id="knob" class="knob"></div></div>
       <div class="action-buttons">
+        <button id="btnWeapon" class="act weapon">🔫</button>
         <button id="btnLock" class="act lock">🔒</button>
         <button id="btnCycle" class="act cycle">⇄</button>
         <button id="btnBomb" class="act bomb">💣</button>
@@ -42,6 +44,7 @@
         <p class="subtitle">岩と森に隠れて戦う 4 vs 4 サバイバルバトル</p>
         <div class="how">
           <p><b>操作</b>： 移動=WASD/矢印 ・ 照準=マウス ・ 射撃=クリック/スペース ・ 爆弾=E ・ ロックオン=R（切替）/Tab（対象変更）</p>
+          <p><b>武器切替</b>： 数字 <b>1</b>=ライフル / <b>2</b>=スナイパー / <b>3</b>=ショットガン / <b>4</b>=サブマシンガン ・ <b>F</b> キーで順送り。武器ごとに威力・連射・装弾数・射程・拡散が異なる。</p>
           <p><b>弾薬</b>： マガジンは <b>10発</b>。撃ち切ると <b>3秒リロード</b>（その間は撃てない）。撃ちっぱなしは禁物、間合いと残弾を管理しよう。</p>
           <p><b>勝利条件</b>： 赤チームを全滅させるとステージクリア。味方が全滅すると敗北。</p>
           <p><b>地形</b>： <span class="rock-key">岩</span>=破壊できる盾 / <span class="mtn-key">山</span>=壊せない遮蔽 / <span class="bush-key">森</span>=隠れると敵から見えない / <span class="river-key">川</span>=移動が遅くなる</p>
@@ -66,6 +69,7 @@
   <script src="js/audio.js"></script>
   <script src="js/input.js"></script>
   <script src="js/map.js"></script>
+  <script src="js/weapons.js"></script>
   <script src="js/entities.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/game.js"></script>

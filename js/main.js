@@ -12,6 +12,7 @@
     bomb: document.getElementById("btnBomb"),
     lock: document.getElementById("btnLock"),
     cycle: document.getElementById("btnCycle"),
+    weapon: document.getElementById("btnWeapon"),
   });
 
   // Mute / unmute BGM + SFX.
@@ -30,6 +31,7 @@
     game = new Game(canvas, {
       onHud: (state) => UI.updateHud(state),
       onEnd: (win, hasNext, stageIndex) => {
+        if (win) Sound.victory(); else Sound.defeat();
         UI.showResult(win, hasNext, stageIndex);
         if (win) {
           nextAction = hasNext ? { type: "stage", index: stageIndex + 1 } : { type: "restart" };

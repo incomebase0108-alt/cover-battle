@@ -153,11 +153,13 @@ class Game {
       player: p ? {
         alive: p.alive,
         ammo: p.ammo,
-        magSize: CONFIG.unit.magSize,
+        magSize: p.magSizeVal(),
         reloading: p.reloading,
-        reloadPct: 1 - p.reloadTimer / CONFIG.unit.reloadTime,
+        reloadPct: 1 - p.reloadTimer / p.reloadTimeVal(),
         hp: Math.round(p.hp),
         lockMode: p.lockMode,
+        weapon: p.weapon().label,
+        weaponKey: p.weaponKey,
       } : null,
     });
   }

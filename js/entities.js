@@ -194,7 +194,10 @@ class Unit {
     this.alive = true;
     this.aim = team === "blue" ? 0 : Math.PI; // facing angle
     this.cooldown = 0;
-    this.ammo = CONFIG.unit.magSize; // rounds left in the magazine
+    // Equipped weapon (see weapons.js). AI + player default to "rifle", which
+    // reproduces the original magazine behaviour exactly.
+    this.weaponKey = "rifle";
+    this.ammo = this.weapon().magSize ?? CONFIG.unit.magSize; // rounds left
     this.reloading = false;
     this.reloadTimer = 0;
     this.skill = 0.7; // AI accuracy/decision quality, overridden per spawn
@@ -210,6 +213,37 @@ class Unit {
     // Lock-on aiming (player only).
     this.lockMode = false;
     this.lockTarget = null;
+  }
+
+  // Current weapon definition (always returns a valid object).
+  weapon() {
+    return getWeapon(this.weaponKey);
+  }
+
+  // Per-weapon stats with CONFIG.unit fallbacks for anything unspecified.
+  fireCooldownVal() { return this.weapon().fireCooldown ?? CONFIG.unit.fireCooldown; }
+  magSizeVal()      { return this.weapon().magSize ?? CONFIG.unit.magSize; }
+  reloadTimeVal()   { return this.weapon().reloadTime ?? CONFIG.unit.reloadTime; }
+  damageVal()       { return this.weapon().damage ?? CONFIG.bullet.damage; }
+
+  // Switch to a specific weapon key (no-op for unknown keys). Resets the
+  // magazine to the new weapon's full capacity and cancels any reload.
+  setWeapon(key) {
+    if (!WEAPONS[key] || key === this.weaponKey) return;
+    this.weaponKey = key;
+    this.ammo = this.magSizeVal();
+    this.reloading = false;
+    this.reloadTimer = 0;
+    this.cooldown = 0;
+  }
+
+  // Advance to the next weapon in WEAPON_ORDER (used by the F-key cycle).
+  cycleWeapon(dir = 1) {
+    const i = WEAPON_ORDER.indexOf(this.weaponKey);
+    const base = i < 0 ? 0 : i;
+    const n = WEAPON_ORDER.length;
+    const next = WEAPON_ORDER[((base + dir) % n + n) % n];
+    this.setWeapon(next);
   }
 
   takeDamage(amount) {
@@ -236,27 +270,44 @@ class Unit {
 
   tryShoot(game) {
     if (this.cooldown > 0 || this.reloading) return;
-    if (this.ammo <= 0) { this.startReload(); return; }
+    if (this.ammo <= 0) { this.startReload(game); return; }
 
-    this.cooldown = CONFIG.unit.fireCooldown;
-    this.ammo--;
-    const dx = Math.cos(this.aim);
-    const dy = Math.sin(this.aim);
-    const bx = this.x + dx * (this.radius + 6);
-    const by = this.y + dy * (this.radius + 6);
-    game.bullets.push(new Bullet(bx, by, dx, dy, this.team, {
-      damage: CONFIG.bullet.damage,
-      speed: CONFIG.bullet.speed * this.bulletSpeedMul,
-      life: CONFIG.bullet.life * this.rangeMul,
-    }));
+    const w = this.weapon();
+    this.cooldown = this.fireCooldownVal();
+    this.ammo--; // one trigger pull = one round, even for multi-pellet weapons
+
+    const pellets = w.pellets ?? 1;
+    const spread = w.spread ?? 0;
+    const wSpeedMul = w.bulletSpeedMul ?? 1;
+    const wRangeMul = w.rangeMul ?? 1;
+    const damage = this.damageVal();
+    const speed = CONFIG.bullet.speed * wSpeedMul * this.bulletSpeedMul;
+    const life = CONFIG.bullet.life * wRangeMul * this.rangeMul;
+
+    for (let i = 0; i < pellets; i++) {
+      // Center the spread so a single pellet fires perfectly straight.
+      const jitter = pellets > 1
+        ? (i / (pellets - 1) - 0.5) * spread + (Math.random() - 0.5) * spread * 0.5
+        : (Math.random() - 0.5) * spread;
+      const a = this.aim + jitter;
+      const dx = Math.cos(a);
+      const dy = Math.sin(a);
+      const bx = this.x + dx * (this.radius + 6);
+      const by = this.y + dy * (this.radius + 6);
+      game.bullets.push(new Bullet(bx, by, dx, dy, this.team, {
+        damage, speed, life,
+      }));
+    }
+
     if (game.sound) game.sound.shoot();
-    if (this.ammo <= 0) this.startReload();
+    if (this.ammo <= 0) this.startReload(game);
   }
 
-  startReload() {
+  startReload(game) {
     if (this.reloading) return;
     this.reloading = true;
-    this.reloadTimer = CONFIG.unit.reloadTime;
+    this.reloadTimer = this.reloadTimeVal();
+    if (this.isPlayer && game && game.sound) game.sound.reload();
   }
 
   placeBomb(game) {
@@ -272,7 +323,7 @@ class Unit {
       this.reloadTimer -= dt;
       if (this.reloadTimer <= 0) {
         this.reloading = false;
-        this.ammo = CONFIG.unit.magSize;
+        this.ammo = this.magSizeVal();
       }
     }
 
@@ -291,6 +342,11 @@ class Unit {
   updatePlayer(game) {
     const { dx, dy } = Input.moveVector();
     if (dx !== 0 || dy !== 0) this.move(dx, dy, game);
+
+    // Weapon switching: number keys select directly, F cycles forward.
+    const slot = Input.consumeWeaponSlot();
+    if (slot > 0 && WEAPON_ORDER[slot - 1]) this.setWeapon(WEAPON_ORDER[slot - 1]);
+    if (Input.consumeWeaponCycle()) this.cycleWeapon(1);
 
     // Lock-on toggle / cycle.
     if (Input.consumeLockToggle()) {
