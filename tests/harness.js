@@ -101,6 +101,8 @@ function loadGame() {
     "WEAPONS",
     "WEAPON_ORDER",
     "CHEST_LOOT",
+    "rpsBonus",
+    "weaponRps",
     "CLASSES",
     "getClass",
     "getWeapon",

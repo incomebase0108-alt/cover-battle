@@ -15,7 +15,7 @@ const CONFIG = {
   world: { width: 3600, height: 2250 },
 
   // Units per team (the engine supports any number; stages auto-generate spawns).
-  teamSize: 6,
+  teamSize: 7,
 
   // Selectable AI difficulty. A single coefficient `aiSkill` (0 = weak … 1 =
   // strong) expresses how good the AI is: it drives aim accuracy, reaction time,
@@ -129,6 +129,9 @@ const CONFIG = {
 
   // 刀の振りアニメーション時間（ms）。攻撃時にこの時間だけ刃の弧を描く。
   melee: { swingMs: 220 },
+
+  // じゃんけん三角の相性ダメージ：槍＞剣、剣＞弓、弓＞槍。有利な相手にこの倍率。
+  rps: { bonus: 1.5 },
 
   // 体力（スタミナ）：攻撃すると消費し、0に近いほど移動が鈍る。止まれば自然回復。
   // 全クラス共通（刀の振り＝大きく消費、弓/鉄砲の射撃＝中程度）。連戦すると息切れする。

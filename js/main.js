@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v34 大筒を強化：大きな砲丸が飛び、直撃＋着弾点周囲に衝撃（一撃が重い宝箱武器）";
+  const BUILD = "v35 槍兵追加＋7vs7＋三すくみ（槍＞剣＞弓＞槍 の相性ダメージ）。槍は長い間合いで突く";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

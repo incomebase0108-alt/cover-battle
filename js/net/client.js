@@ -47,6 +47,7 @@
     gunner: "鉄砲・一撃重い",
     cavalry: "突進する刀",
     ninja: "森に潜む＋煙幕",
+    spearman: "長い槍・剣に強い",
   };
 
   const statusEl = document.getElementById("netStatus");

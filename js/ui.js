@@ -41,6 +41,7 @@ const UI = {
       case "gunner":   return "鉄砲・一撃重いが長い装填";
       case "cavalry":  return "騎馬・突進で急接近する刀";
       case "ninja":    return "忍者・森に潜む刀＋煙幕";
+      case "spearman": return "槍兵・長い間合いで突く（剣に強い/弓に弱い）";
       default:         return "";
     }
   },

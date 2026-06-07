@@ -216,6 +216,44 @@ s.test("仲間の浪人は敵砦に到達するとコアを攻撃する", (t) =>
   t.lessThan(redBase.hp, hp0, "敵砦コアにダメージが入る");
 });
 
+s.test("槍兵は槍を持ち、刀より長い間合い", (t) => {
+  const sb = loadGame();
+  const sp = new sb.Unit(0, 0, "blue");
+  sp.applyClass("spearman");
+  t.equal(sp.weaponKey, "yari", "槍兵は槍を装備");
+  t.greaterThan(sb.WEAPONS.yari.meleeRange, sb.WEAPONS.katana.meleeRange, "槍は刀より長いリーチ");
+});
+
+s.test("じゃんけん三角の相性：槍＞剣＞弓＞槍", (t) => {
+  const sb = loadGame();
+  const b = sb.CONFIG.rps.bonus;
+  t.equal(sb.rpsBonus("spear", "sword"), b, "槍は剣に有利");
+  t.equal(sb.rpsBonus("sword", "bow"), b, "剣は弓に有利");
+  t.equal(sb.rpsBonus("bow", "spear"), b, "弓は槍に有利");
+  t.equal(sb.rpsBonus("sword", "spear"), 1, "剣→槍は等倍（不利側）");
+  t.equal(sb.rpsBonus("bow", "sword"), 1, "弓→剣は等倍（不利側）");
+});
+
+s.test("槍兵の突きは剣士に有利ダメージが乗る（実戦）", (t) => {
+  const { sb, game } = newGame(0);
+  const spear = new sb.Unit(1500, 300, "blue");
+  spear.applyClass("spearman");
+  const sword = new sb.Unit(1550, 300, "red");
+  sword.applyClass("ashigaru"); // 刀
+  spear.aim = 0;
+  game.units = [spear, sword];
+  const hp0 = sword.hp;
+  spear.tryShoot(game);
+  t.lessThan(sword.hp, hp0 - sb.WEAPONS.yari.damage, "剣士には素の槍ダメージより多く入る（相性有利）");
+});
+
+s.test("7vs7：各チーム CONFIG.teamSize(=7) 人が配置される", (t) => {
+  const { sb, game } = newGame(0);
+  t.equal(sb.CONFIG.teamSize, 7, "teamSize は7");
+  t.equal(game.units.filter((u) => u.team === "blue").length, 7, "青7人");
+  t.equal(game.units.filter((u) => u.team === "red").length, 7, "赤7人");
+});
+
 s.test("大筒は大きな砲丸で、直撃＋着弾点周囲にも衝撃が及ぶ", (t) => {
   const { sb, game } = newGame(0);
   game.beasts = []; game.map.rocks = []; game.map.mountains = []; // 障害物を除いて検証

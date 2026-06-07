@@ -29,6 +29,7 @@ const CLASSES = [
   { key: "gunner",   label: "鉄砲兵",  desc: "鉄砲の一撃は重いが、撃つたびに長い装填が要る。", weapon: "teppo", hpMul: 0.9, speedMul: 0.92, sizeMul: 1.0, accent: "#c98cff", badge: "鉄" },
   { key: "cavalry",  label: "騎馬",    desc: "高速で突進し一気に間合いを詰める刀の遊撃。", weapon: "katana", hpMul: 1.2, speedMul: 1.28, sizeMul: 1.08, accent: "#ff8a5a", badge: "騎", ability: "dash", abilityCd: 4000 },
   { key: "ninja",    label: "忍者",    desc: "森に潜み煙幕で撹乱する刀の奇襲。", weapon: "katana", hpMul: 0.9, speedMul: 1.18, sizeMul: 0.92, accent: "#5ad6ff", badge: "忍", ability: "smoke", abilityCd: 9000 },
+  { key: "spearman", label: "槍兵",    desc: "長い槍で間合いの外から突く。突きは遅めだが、剣（刀）に強い。弓には弱い。", weapon: "yari", hpMul: 1.05, speedMul: 1.0, sizeMul: 1.06, accent: "#e89bd0", badge: "槍" },
 ];
 
 function getClass(keyOrIndex) {

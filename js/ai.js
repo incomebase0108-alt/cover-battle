@@ -28,7 +28,7 @@ const STATE = {
 };
 
 // Squad roles assigned per unit so a team fights with a plan, not as a blob.
-const ROLES = ["DEFENDER", "ATTACKER", "FLANKER", "ATTACKER", "DEFENDER", "ATTACKER"];
+const ROLES = ["DEFENDER", "ATTACKER", "FLANKER", "ATTACKER", "DEFENDER", "ATTACKER", "FLANKER"];
 
 // HP thresholds expressed as a fraction of CONFIG.unit.maxHp.
 const RETREAT_HP_FRAC = 0.4; // drop below this -> break off and heal

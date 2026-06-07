@@ -36,11 +36,22 @@ const WEAPONS = {
   katana: {
     label: "刀",
     damage: 34,
-    fireCooldown: 420,   // 振りの間隔
+    fireCooldown: 420,   // 振りの間隔（速い）
     isMelee: true,
     meleeRange: 46,      // 前方リーチ(px)。unit.radius(14)+α
     meleeArc: 1.1,       // 左右±約63°の扇
     noReload: true,
+    rps: "sword",        // 剣＞弓・剣＜槍
+  },
+  yari: {
+    label: "槍",
+    damage: 30,
+    fireCooldown: 720,   // 突きは刀より遅い（切り付けが早くない）
+    isMelee: true,
+    meleeRange: 82,      // 刀より長いリーチ（間合いの外から突ける）
+    meleeArc: 0.5,       // 前方の狭い扇（突き）
+    noReload: true,
+    rps: "spear",        // 槍＞剣・槍＜弓
   },
   yumi: {
     label: "弓",
@@ -49,6 +60,7 @@ const WEAPONS = {
     bulletSpeedMul: 1.2,
     rangeMul: 1.3,
     noReload: true,      // 装填無しで撃ち続けられる
+    rps: "bow",          // 弓＞槍・弓＜剣
   },
   teppo: {
     label: "鉄砲",
@@ -113,6 +125,24 @@ const CHEST_LOOT = ["flame", "piercer", "rockbuster"];
 // Resolve a weapon definition, defaulting to rifle for unknown keys.
 function getWeapon(key) {
   return WEAPONS[key] || WEAPONS.rifle;
+}
+
+// じゃんけん三角の相性倍率：攻撃側 atk が防御側 def に有利なら CONFIG.rps.bonus、
+// それ以外は 1。三角は 槍(spear)＞剣(sword)＞弓(bow)＞槍。鉄砲(rps無し)は対象外。
+function rpsBonus(atk, def) {
+  if (!atk || !def) return 1;
+  if ((atk === "spear" && def === "sword") ||
+      (atk === "sword" && def === "bow") ||
+      (atk === "bow" && def === "spear")) {
+    return (typeof CONFIG !== "undefined" && CONFIG.rps) ? CONFIG.rps.bonus : 1.5;
+  }
+  return 1;
+}
+
+// 武器キーから三角属性を引く（未知/鉄砲は null）。
+function weaponRps(key) {
+  const w = WEAPONS[key];
+  return w ? (w.rps || null) : null;
 }
 
 // 攻撃モーション。ユニットの「回転フレーム内（局所 +X＝前方）」で呼ぶこと。

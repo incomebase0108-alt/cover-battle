@@ -31,6 +31,7 @@ class Bullet {
     this.ball = !!opts.ball;           // 大筒の砲丸：大きく描画＆判定を広げる
     if (this.ball) this.radius = opts.ballRadius || 13;
     this.splash = opts.splash || 0;    // 着弾時に周囲へ及ぼす衝撃の半径(px)
+    this.rps = opts.rps || null;       // 三角相性属性（弓=bow 等）。命中時に相手の武器と比較
     this.maxLife = this.life;
     this._hit = this.pierce ? [] : null; // units already hit, so pierce hits each once
     this.dead = false;
@@ -119,10 +120,11 @@ class Bullet {
     for (const u of game.units) {
       if (!u.alive || u.team === this.team) continue;
       if (V.dist(this.x, this.y, u.x, u.y) <= u.radius + this.radius) {
+        const dmg = this.damage * rpsBonus(this.rps, weaponRps(u.weaponKey)); // 三角相性
         if (this.pierce) {
-          if (this._hit.indexOf(u) === -1) { u.takeDamage(this.damage); this._hit.push(u); }
+          if (this._hit.indexOf(u) === -1) { u.takeDamage(dmg); this._hit.push(u); }
         } else {
-          u.takeDamage(this.damage);
+          u.takeDamage(dmg);
           if (this.splash) this._splash(game, u);
           this.dead = true;
           return;
@@ -611,7 +613,7 @@ class Unit {
       const by = this.y + dy * (this.radius + 6);
       game.bullets.push(new Bullet(bx, by, dx, dy, this.team, {
         damage, speed, life, pierce: w.pierce, breakRock: w.breakRock || w.fire, fire: w.fire,
-        ball: w.ball, splash: w.splash,
+        ball: w.ball, splash: w.splash, rps: w.rps,
       }));
     }
 
@@ -640,7 +642,8 @@ class Unit {
 
     for (const u of game.units) {
       if (!u.alive || u.team === this.team) continue;
-      if (hitArc(u.x, u.y, u.radius)) u.takeDamage(dmg);
+      // 三角相性：槍は剣に強い 等（rpsBonus）。鉄砲など rps 無しは等倍。
+      if (hitArc(u.x, u.y, u.radius)) u.takeDamage(dmg * rpsBonus(w.rps, weaponRps(u.weaponKey)));
     }
     for (const b of (game.beasts || [])) {
       if (b.dead || !b.takeDamage || (b.team && b.team === this.team)) continue; // 仲間の浪人は斬らない
