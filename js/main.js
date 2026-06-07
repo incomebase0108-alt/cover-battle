@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v20 LAN速度修正＋勝利の多重発火修正＋LAN版HUD";
+  const BUILD = "v21 ゲーム開始無反応(ui.js構文崩れ)を修正";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

@@ -43,7 +43,7 @@ const UI = {
       case "tamer":    return "動物を捕獲して仲間に";
       default:         return "";
     }
-  }
+  },
 
   // Short, per-class description of the special ability (C / 🎯).
   abilityHelp(cls) {
