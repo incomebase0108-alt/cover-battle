@@ -110,6 +110,7 @@ function loadGame() {
     "Smoke",
     "Turret",
     "ABILITY",
+    "RESCUE",
     "Unit",
     "AIController",
     "Game",

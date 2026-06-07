@@ -7,7 +7,7 @@ const CONFIG = {
   // The whole battlefield is larger than the screen; the camera scrolls to
   // follow the player. Stages are authored in a 960x600 design space and
   // scaled up to fill this world at load (see GameMap).
-  world: { width: 2400, height: 1500 },
+  world: { width: 3000, height: 1900 },
 
   // Units per team (the engine supports any number; stages auto-generate spawns).
   teamSize: 6,
@@ -130,7 +130,6 @@ const STAGES = [
     rivers: [ { x: 430, y: 0, w: 60, h: 600 } ],
     // Ledges in front of each fort: climbers cross straight (shortcut), others
     // detour around the open top/bottom lanes.
-    ledges: [ { x: 175, y: 175, w: 55, h: 250 }, { x: 730, y: 175, w: 55, h: 250 } ],
     blueSpawns: [ { x: 90, y: 220 }, { x: 90, y: 300 }, { x: 90, y: 380 }, { x: 150, y: 300 } ],
     redSpawns:  [ { x: 870, y: 220 }, { x: 870, y: 300 }, { x: 870, y: 380 }, { x: 810, y: 300 } ],
     enemySkill: 0.65,
@@ -252,7 +251,6 @@ const STAGES = [
     rivers: [],
     sand: [ { x: 120, y: 0, w: 720, h: 600 } ],
     oases: [ { x: 300, y: 300, r: 60 }, { x: 660, y: 300, r: 60 }, { x: 480, y: 90, r: 48 } ],
-    ledges: [ { x: 175, y: 180, w: 55, h: 240 }, { x: 730, y: 180, w: 55, h: 240 } ],
     blueSpawns: [ { x: 90, y: 230 }, { x: 90, y: 370 }, { x: 150, y: 290 }, { x: 150, y: 350 } ],
     redSpawns:  [ { x: 870, y: 230 }, { x: 870, y: 370 }, { x: 810, y: 290 }, { x: 810, y: 350 } ],
     enemySkill: 1.0,
@@ -311,7 +309,6 @@ const STAGES = [
     rivers: [ { x: 0, y: 285, w: 960, h: 34 } ],
     sand: [ { x: 0, y: 0, w: 220, h: 600 }, { x: 740, y: 0, w: 220, h: 600 } ],
     oases: [ { x: 480, y: 440, r: 46 } ],
-    ledges: [ { x: 180, y: 185, w: 55, h: 230 }, { x: 725, y: 185, w: 55, h: 230 } ],
     blueSpawns: [ { x: 80, y: 230 }, { x: 80, y: 370 }, { x: 140, y: 290 }, { x: 140, y: 350 } ],
     redSpawns:  [ { x: 880, y: 230 }, { x: 880, y: 370 }, { x: 820, y: 290 }, { x: 820, y: 350 } ],
     enemySkill: 1.0,

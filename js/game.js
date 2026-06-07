@@ -28,6 +28,7 @@ class Game {
     this.rushMode = false;
     this.stormActive = false;
     this.idleMs = 0;
+    this.elapsedMs = 0;
     this._eventSig = null;
     this.lastTime = 0;
     this._loop = this._loop.bind(this);
@@ -52,6 +53,7 @@ class Game {
     this.rushMode = false;
     this.stormActive = false;
     this.idleMs = 0;
+    this.elapsedMs = 0;
     this._eventSig = null;
 
     // Spread starting weapons across each AI squad so fights feel varied (the
@@ -160,13 +162,13 @@ class Game {
         i, x: Math.round(u.x), y: Math.round(u.y), a: +u.aim.toFixed(2),
         t: u.team === "blue" ? 0 : 1, h: Math.round(u.hp), al: u.alive ? 1 : 0,
         n: u.name, w: u.weaponKey, mv: u.movingTimer > 0 ? 1 : 0,
-        cl: u.cls, mh: u.maxHp,
+        cl: u.cls, mh: u.maxHp, dn: u.downed ? 1 : 0,
       })),
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),
       d: this.dynamites.map((d) => ({ x: Math.round(d.x), y: Math.round(d.y), e: d.exploded ? 1 : 0, fl: Math.round(d.flash) })),
       c: this.chests.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.opened ? 1 : 0 })),
-      be: this.beasts.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), a: +b.aim.toFixed(2), ty: b.type, h: half(b.hp, b.maxHp) })),
+      be: this.beasts.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), a: +b.aim.toFixed(2), ty: b.type, h: half(b.hp, b.maxHp), tm: b.team || null })),
       sm: this.smokes.map((s) => ({ x: Math.round(s.x), y: Math.round(s.y), r: Math.round(s.r), l: Math.round(s.life) })),
       tr: this.turrets.map((t) => ({ x: Math.round(t.x), y: Math.round(t.y), a: +t.aim.toFixed(2), tm: t.team === "blue" ? 0 : 1, h: half(t.hp, t.maxHp) })),
       cp: this.capturePoints.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.owner, p: c.progress / CONFIG.capture.captureTime, cb: c.capBy })),
@@ -198,10 +200,46 @@ class Game {
         { x: W * 0.5, y: H * 0.5, t: "bear" },
         { x: W * 0.35, y: H * 0.4, t: "tiger" },
         { x: W * 0.65, y: H * 0.6, t: "tiger" },
+        { x: W * 0.5, y: H * 0.22, t: "tiger" },
+        { x: W * 0.5, y: H * 0.78, t: "bear" },
+        { x: W * 0.3, y: H * 0.68, t: "tiger" },
+        { x: W * 0.7, y: H * 0.32, t: "bear" },
       ];
       for (const s of spots) {
         const p = this.map.resolveCollision(s.x, s.y, 22);
         this.beasts.push(new Beast(p.x, p.y, s.t));
+      }
+    }
+  }
+
+  // Downed-ally rescue: alive units pick up downed teammates on contact, carry
+  // them (the downed one follows), and reviving happens at the home fort.
+  _updateRescue(dt) {
+    for (const u of this.units) {
+      if (!u.alive) continue;
+      if (u.carrying) {
+        const c = u.carrying;
+        c.x = u.x; c.y = u.y; // slung over the carrier
+        if (this.map.inBase(u.x, u.y, u.team)) {
+          c.reviveT += dt;
+          if (c.reviveT >= RESCUE.reviveTime) {
+            c.alive = true; c.downed = false;
+            c.hp = Math.max(1, Math.round(c.maxHp * RESCUE.reviveFrac));
+            c.reviveT = 0; c.carrier = null; u.carrying = null;
+            const b = this.map.baseOf(u.team); c.x = b.x; c.y = b.y;
+          }
+        } else {
+          c.reviveT = 0;
+        }
+        continue;
+      }
+      // Pick up a downed teammate on contact (one at a time).
+      for (const d of this.units) {
+        if (!d.downed || d.carrier || d === u || d.team !== u.team) continue;
+        if (V.dist(u.x, u.y, d.x, d.y) <= u.radius + d.radius + 6) {
+          u.carrying = d; d.carrier = u; d.reviveT = 0;
+          break;
+        }
       }
     }
   }
@@ -325,6 +363,7 @@ class Game {
     this._handleChests(dt);
     this._updateCapture(dt);
     this._updateBeasts(dt);
+    this._updateRescue(dt);
 
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.bombs = this.bombs.filter((b) => !b.dead);
@@ -346,7 +385,10 @@ class Game {
     const sig = blue + "|" + red + "|" + Math.round(blueFort) + "|" + Math.round(redFort);
     if (!this.stormActive && sig !== this._eventSig) { this._eventSig = sig; this.idleMs = 0; }
     else this.idleMs += dt;
-    if (this.idleMs > 18000) this.stormActive = true;
+    // Hard cap: even with revive/rescue loops keeping things "eventful", force
+    // sudden death after a few minutes so a match always ends.
+    this.elapsedMs += dt;
+    if (this.idleMs > 18000 || this.elapsedMs > 180000) this.stormActive = true;
     this.rushMode = this.idleMs > 12000 || this.stormActive;
     if (this.stormActive) {
       const drain = 45 * dt / 1000;
@@ -485,7 +527,8 @@ class Game {
 
     // Dead units first (faint markers), then bullets, then live units, then rocks on top.
     for (const u of this.units) {
-      if (!u.alive) this._drawWreck(ctx, u);
+      if (u.alive) continue;
+      if (u.downed) this._drawDowned(ctx, u); else this._drawWreck(ctx, u);
     }
     for (const c of this.chests) c.draw(ctx);
     for (const tr of this.turrets) tr.draw(ctx);
@@ -615,6 +658,30 @@ class Game {
     ctx.strokeText("!", x, y);
     ctx.fillText("!", x, y);
     ctx.textAlign = "left";
+  }
+
+  // A downed (incapacitated) unit: a fallen body + pulsing SOS marker.
+  _drawDowned(ctx, u) {
+    const col = u.team === "blue" ? "#2f7bff" : "#ff4d4d";
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = "#2a2f3a";
+    ctx.beginPath();
+    ctx.ellipse(u.x, u.y, u.radius * 1.1, u.radius * 0.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(u.x, u.y, u.radius * 1.1, u.radius * 0.7, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    // Pulsing SOS bubble.
+    const pulse = 0.6 + 0.4 * Math.sin(Date.now() * 0.008);
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = "#ffd24a";
+    ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 3;
+    ctx.font = "bold 15px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.strokeText("SOS", u.x, u.y - u.radius - 12);
+    ctx.fillText("SOS", u.x, u.y - u.radius - 12);
+    ctx.textAlign = "left";
+    ctx.globalAlpha = 1;
   }
 
   _drawWreck(ctx, u) {

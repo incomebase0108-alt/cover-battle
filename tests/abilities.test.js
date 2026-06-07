@@ -1,22 +1,16 @@
-// Class abilities: scout smoke conceals, engineer turret auto-fires, assault
-// dash speeds up, and the ability respects its cooldown.
+// Class abilities: smoke clouds conceal, engineer turret auto-fires, assault
+// dash speeds up, the beast-tamer captures wild animals, and cooldowns hold.
 
 const { newGame, loadGame } = require("./harness");
 const { suite } = require("./assert");
 
 const s = suite();
 
-s.test("scout ability drops a concealing smoke (cloud hides enemies)", (t) => {
+s.test("a smoke cloud conceals enemies inside it", (t) => {
   const { sb, game } = newGame(0);
-  const scout = new sb.Unit(500, 500, "blue");
-  scout.applyClass("scout");
-  game.units = [scout];
-  scout.useAbility(game);
-  t.equal(game.smokes.length, 1, "a smoke cloud was created");
-  // An enemy inside far-off smoke, with no blue nearby, is hidden.
-  game.smokes = [new sb.Smoke(1500, 900)];
-  game.units = [new sb.Unit(100, 100, "blue"), new sb.Unit(1500, 900, "red")];
-  t.equal(game.inSmoke(1500, 900), true, "point is inside smoke");
+  game.smokes = [new sb.Smoke(1800, 1100)];
+  game.units = [new sb.Unit(100, 100, "blue"), new sb.Unit(1800, 1100, "red")];
+  t.equal(game.inSmoke(1800, 1100), true, "point is inside smoke");
   t.equal(game.unitVisibleToPlayer(game.units[1]), false, "enemy hidden in smoke");
 });
 
@@ -32,14 +26,24 @@ s.test("engineer ability deploys a turret that fires at an enemy", (t) => {
   t.greaterThan(game.bullets.length, 0, "turret shot at the enemy");
 });
 
+s.test("beast tamer captures a nearby wild beast", (t) => {
+  const { sb, game } = newGame(0);
+  const tamer = new sb.Unit(500, 500, "blue");
+  tamer.applyClass("tamer");
+  game.units = [tamer];
+  game.beasts = [new sb.Beast(560, 500, "tiger")];
+  tamer.useAbility(game);
+  t.equal(game.beasts[0].team, "blue", "beast joined the tamer's team");
+});
+
 s.test("assault dash makes the unit move faster briefly", (t) => {
   const { sb, game } = newGame(0);
-  const a = new sb.Unit(1200, 150, "blue"); // open ground, clear of obstacles
+  const a = new sb.Unit(1500, 200, "blue"); // open ground
   a.applyClass("assault");
   game.units = [a];
-  a.x = 1200; a.y = 150;
+  a.x = 1500; a.y = 200;
   const base = a.move(1, 0, game);
-  a.x = 1200; a.y = 150;
+  a.x = 1500; a.y = 200;
   a.useAbility(game);
   const dashed = a.move(1, 0, game);
   t.greaterThan(dashed, base + 0.5, "dash step is longer than a normal step");
@@ -47,12 +51,12 @@ s.test("assault dash makes the unit move faster briefly", (t) => {
 
 s.test("ability respects its cooldown", (t) => {
   const { sb, game } = newGame(0);
-  const sc = new sb.Unit(500, 500, "blue");
-  sc.applyClass("scout");
-  game.units = [sc];
-  sc.useAbility(game);
-  sc.useAbility(game); // still on cooldown
-  t.equal(game.smokes.length, 1, "second use blocked by cooldown");
+  const eng = new sb.Unit(500, 500, "blue");
+  eng.applyClass("engineer");
+  game.units = [eng];
+  eng.useAbility(game);
+  eng.useAbility(game); // still on cooldown
+  t.equal(game.turrets.length, 1, "second use blocked by cooldown");
 });
 
 module.exports = s;

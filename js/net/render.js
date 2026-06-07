@@ -30,7 +30,7 @@ const NetRender = {
     this._beasts(ctx, snap);
     for (const b of snap.b) this._bullet(ctx, b);
     for (const u of snap.u) {
-      if (!u.al) { this._wreck(ctx, u); continue; }
+      if (!u.al) { if (u.dn) this._downed(ctx, u); else this._wreck(ctx, u); continue; }
       if (!this.visible(u, snap, map, myTeam)) continue;
       this._unit(ctx, u, u.i === myIndex);
     }
@@ -87,6 +87,19 @@ const NetRender = {
     ctx.textAlign = "left";
   },
 
+  _downed(ctx, u) {
+    const col = u.t === 0 ? "#2f7bff" : "#ff4d4d";
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = "#2a2f3a";
+    ctx.beginPath(); ctx.ellipse(u.x, u.y, 16, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+    ctx.globalAlpha = 0.6 + 0.4 * Math.sin(Date.now() * 0.008);
+    ctx.fillStyle = "#ffd24a"; ctx.font = "bold 15px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("SOS", u.x, u.y - 26);
+    ctx.textAlign = "left"; ctx.globalAlpha = 1;
+  },
+
   _wreck(ctx, u) {
     ctx.globalAlpha = 0.3;
     ctx.strokeStyle = u.t === 0 ? "#2f7bff" : "#ff4d4d";
@@ -136,6 +149,10 @@ const NetRender = {
       ctx.beginPath(); ctx.arc(r * 1.15, -r * 0.18, r * 0.08, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(r * 1.15, r * 0.18, r * 0.08, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
+      if (b.tm) {
+        ctx.strokeStyle = b.tm === "blue" ? "#5ad6ff" : "#ff6b6b"; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(b.x, b.y, r + 4, 0, Math.PI * 2); ctx.stroke();
+      }
       ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(b.x - r, b.y - r - 10, r * 2, 4);
       ctx.fillStyle = "#caa14a"; ctx.fillRect(b.x - r, b.y - r - 10, r * 2 * b.h, 4);
     }

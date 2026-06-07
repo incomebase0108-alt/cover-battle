@@ -187,12 +187,12 @@ def build_fort(color, dark):
 
 # Class accents (mirror js/classes.js). 0..1 RGB.
 CLASS_ACCENTS = {
-    "scout": (0.49, 0.99, 0.60),
     "sniper": (0.79, 0.55, 1.0),
     "heavy": (1.0, 0.70, 0.28),
     "climber": (0.35, 0.84, 1.0),
     "engineer": (1.0, 0.54, 0.35),
     "assault": (1.0, 0.42, 0.42),
+    "tamer": (0.72, 0.95, 0.49),
 }
 
 

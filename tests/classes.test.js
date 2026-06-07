@@ -10,16 +10,16 @@ s.test("applyClass sets weapon, scaled HP and abilities", (t) => {
   const sb = loadGame();
   const heavy = new sb.Unit(0, 0, "blue");
   heavy.applyClass("heavy");
-  const scout = new sb.Unit(0, 0, "blue");
-  scout.applyClass("scout");
+  const sniper = new sb.Unit(0, 0, "blue");
+  sniper.applyClass("sniper");
   t.equal(heavy.weaponKey, "shotgun", "heavy carries a shotgun");
-  t.greaterThan(heavy.maxHp, scout.maxHp, "heavy is tougher than scout");
-  t.greaterThan(scout.classSpeedMul, heavy.classSpeedMul, "scout is faster than heavy");
-  t.equal(scout.hp, scout.maxHp, "spawns at full (scaled) HP");
+  t.greaterThan(heavy.maxHp, sniper.maxHp, "heavy is tougher than the sniper");
+  t.greaterThan(sniper.classSpeedMul, heavy.classSpeedMul, "sniper is faster than heavy");
+  t.equal(sniper.hp, sniper.maxHp, "spawns at full (scaled) HP");
 });
 
 s.test("only the climber can pass a ledge", (t) => {
-  const { game } = newGame(0); // STAGE 1 has ledges
+  const { game } = newGame(1); // STAGE 2 has mid-field shortcut ledges
   t.ok(game.map.ledges.length > 0, "stage has ledges");
   const l = game.map.ledges[0];
   const cx = l.x + l.w / 2;

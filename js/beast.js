@@ -50,11 +50,13 @@ class Beast {
     if (this.attackCd > 0) this.attackCd -= dt;
     if (this.flash > 0) this.flash -= dt;
 
-    // Hunt the nearest living unit (any team) within sense range.
+    // Hunt the nearest living unit within sense range. A wild beast (no team)
+    // attacks anyone; a tamed beast attacks only the opposing team.
     let tgt = null;
     let bd = this.sense;
     for (const u of game.units) {
       if (!u.alive) continue;
+      if (this.team && u.team === this.team) continue; // don't bite your owners
       const d = V.dist(this.x, this.y, u.x, u.y);
       if (d < bd) { bd = d; tgt = u; }
     }
@@ -113,6 +115,13 @@ class Beast {
     ctx.beginPath(); ctx.arc(r * 1.15, -r * 0.18, r * 0.08, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(r * 1.15, r * 0.18, r * 0.08, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
+
+    // Team ring when tamed.
+    if (this.team) {
+      ctx.strokeStyle = this.team === "blue" ? "#5ad6ff" : "#ff6b6b";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(this.x, this.y, r + 4, 0, Math.PI * 2); ctx.stroke();
+    }
 
     // HP bar.
     const w = r * 2;

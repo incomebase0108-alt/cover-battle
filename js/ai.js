@@ -131,6 +131,18 @@ class AIController {
     return best;
   }
 
+  // Nearest downed teammate not already being carried, within `range`.
+  nearestDowned(self, game, range) {
+    let best = null;
+    let bd = range;
+    for (const u of game.units) {
+      if (!u.downed || u.carrier || u.team !== self.team) continue;
+      const d = V.dist(self.x, self.y, u.x, u.y);
+      if (d < bd) { bd = d; best = u; }
+    }
+    return best;
+  }
+
   // Nearest living wild beast within `range`, or null.
   nearestBeast(self, game, range) {
     if (!game.beasts) return null;
@@ -355,6 +367,23 @@ class AIController {
       this.unstickMs -= dt;
       self.move(Math.cos(this.unstickAng), Math.sin(this.unstickAng), game);
       return;
+    }
+
+    // Rescue: once carrying a downed ally, head straight home; otherwise, when
+    // safe, go pick up a nearby downed teammate.
+    if (self.carrying) {
+      const home = game.map.baseOf(self.team);
+      this.moveTo(self, home.x, home.y, game);
+      const t = this.findTarget(self, game);
+      if (t && !game.map.blockedBetween(self.x, self.y, t.x, t.y) &&
+          !self.reloading && self.ammo > 0 && Math.random() < self.skill * 0.5) {
+        this.aimAt(self, t.x, t.y); self.tryShoot(game);
+      }
+      return;
+    }
+    if (!this.shouldRetreat(self)) {
+      const d = this.nearestDowned(self, game, 430);
+      if (d) { this.moveTo(self, d.x, d.y, game); return; }
     }
 
     this.strafeTimer -= dt;

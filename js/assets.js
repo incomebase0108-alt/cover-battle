@@ -12,7 +12,7 @@ const Assets = {
   },
 
   // Per-class soldier sprites (helmet/shoulders tinted to the class accent).
-  _classKeys: ["scout", "sniper", "heavy", "climber", "engineer", "assault"],
+  _classKeys: ["sniper", "heavy", "climber", "engineer", "assault", "tamer"],
 
   load() {
     if (typeof Image === "undefined") return; // Node / no DOM

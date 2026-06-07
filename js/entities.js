@@ -66,10 +66,12 @@ class Bullet {
       }
     }
 
-    // Anyone's bullets can wound the wild beasts.
+    // Bullets wound wild beasts (any shooter) and enemy-tamed beasts; a tamed
+    // beast is not hit by its own team's fire.
     if (game.beasts) {
       for (const beast of game.beasts) {
-        if (!beast.dead && V.dist(this.x, this.y, beast.x, beast.y) <= beast.radius + this.radius) {
+        if (beast.dead || (beast.team && beast.team === this.team)) continue;
+        if (V.dist(this.x, this.y, beast.x, beast.y) <= beast.radius + this.radius) {
           beast.takeDamage(this.damage);
           if (!this.pierce) { this.dead = true; return; }
         }
@@ -359,6 +361,12 @@ class Unit {
     this.maxHp = CONFIG.unit.maxHp;
     this.hp = this.maxHp;
     this.alive = true;
+    // Downed-but-not-out: at 0 HP a unit is incapacitated (SOS) instead of dead,
+    // and can be carried back to the fort to revive.
+    this.downed = false;
+    this.carrier = null;     // teammate carrying me (if downed)
+    this.carrying = null;    // downed teammate I'm carrying
+    this.reviveT = 0;        // ms accrued at the fort toward revival
     // Class / rank (see classes.js): affects look, stats and abilities.
     this.cls = "assault";
     this.classSpeedMul = 1;
@@ -427,6 +435,18 @@ class Unit {
       game.turrets.push(new Turret(this.x, this.y, this.team, this.name));
     } else if (c.ability === "dash") {
       this.dashMs = ABILITY.dashMs;
+    } else if (c.ability === "capture") {
+      // Tame the nearest still-wild beast within range — it joins your side.
+      let best = null;
+      let bd = ABILITY.captureRange;
+      for (const b of (game.beasts || [])) {
+        if (b.dead || b.team) continue; // already tamed / dead
+        const d = V.dist(this.x, this.y, b.x, b.y);
+        if (d < bd) { bd = d; best = b; }
+      }
+      if (!best) return; // nothing to capture -> don't spend the cooldown
+      best.team = this.team;
+      best.tamedBy = this.name;
     } else {
       return; // unknown / no entity available
     }
@@ -482,6 +502,12 @@ class Unit {
     if (this.hp <= 0) {
       this.hp = 0;
       this.alive = false;
+      this.downed = true;      // incapacitated (SOS), not dead
+      this.reviveT = 0;
+      if (this.carrying) {     // drop anyone I was carrying
+        this.carrying.carrier = null;
+        this.carrying = null;
+      }
     }
   }
 
@@ -489,6 +515,7 @@ class Unit {
   move(dirX, dirY, game) {
     let speed = CONFIG.unit.speed * this.speedMul * this.classSpeedMul;
     if (this.dashMs > 0) speed *= ABILITY.dashMul; // assault dash burst
+    if (this.carrying) speed *= RESCUE.carrySpeedMul; // slowed while hauling an ally
     if (game.map.inRiver(this.x, this.y)) speed *= CONFIG.riverSpeedMul; // wading is slow
     if (game.map.inSand && game.map.inSand(this.x, this.y)) speed *= CONFIG.sandSpeedMul; // trudging through sand
     const tryAt = (dx, dy) =>
@@ -496,15 +523,18 @@ class Unit {
 
     let next = tryAt(dirX, dirY);
     let moved = V.dist(this.x, this.y, next.x, next.y);
-    // Wedged against an obstacle/corner: slide along whichever single axis makes
-    // the most progress, so units don't get stuck (which could stall the match).
-    if (moved < speed * 0.5) {
-      const ax = tryAt(dirX, 0);
-      const ay = tryAt(0, dirY);
-      const mx = V.dist(this.x, this.y, ax.x, ax.y);
-      const my = V.dist(this.x, this.y, ay.x, ay.y);
-      if (mx >= my && mx > moved) { next = ax; moved = mx; }
-      else if (my > moved) { next = ay; moved = my; }
+    // If the straight path is blocked, fan out around the desired heading and
+    // take the first direction that makes real progress — units flow around
+    // obstacles/corners instead of grinding to a halt.
+    if (moved < speed * 0.6 && (dirX !== 0 || dirY !== 0)) {
+      const base = Math.atan2(dirY, dirX);
+      const offs = [0.5, -0.5, 0.9, -0.9, 1.3, -1.3, 1.7, -1.7, 2.2, -2.2];
+      for (const o of offs) {
+        const a = base + o;
+        const c = tryAt(Math.cos(a), Math.sin(a));
+        const m = V.dist(this.x, this.y, c.x, c.y);
+        if (m > speed * 0.6) { next = c; moved = m; break; }
+      }
     }
     this.x = next.x;
     this.y = next.y;

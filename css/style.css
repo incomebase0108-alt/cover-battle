@@ -275,3 +275,39 @@ body.touch .touch-controls {
 .char-card .cstat { font-size: 11px; color: #8fa0b4; }
 
 .hidden { display: none !important; }
+
+/* Help button + panel (added by js/help.js) */
+.help-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 50;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  -webkit-tap-highlight-color: transparent;
+}
+.help-btn:hover { background: rgba(0, 0, 0, 0.75); }
+.help-btn:active { filter: brightness(1.3); }
+
+.help-overlay { z-index: 100; }
+.help-panel {
+  max-width: 560px;
+  width: calc(100vw - 28px);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 24px 22px;
+  -webkit-overflow-scrolling: touch;
+}
+.help-how { font-size: 15px; line-height: 1.6; }
+.help-how p { margin: 6px 0; }
+.help-close { margin-top: 6px; }

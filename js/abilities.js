@@ -11,6 +11,14 @@ const ABILITY = {
   turretDamage: 12,
   dashMs: 230,            // duration of an assault dash
   dashMul: 2.6,           // speed multiplier during a dash
+  captureRange: 230,      // beast-tamer capture reach
+};
+
+// Downed-ally rescue tuning.
+const RESCUE = {
+  reviveTime: 3000,       // ms at your fort to revive a carried ally
+  reviveFrac: 1 / 3,      // HP fraction on revival
+  carrySpeedMul: 0.7,     // carrier moves slower
 };
 
 // A smoke cloud: blocks line of sight and conceals units inside it (like a

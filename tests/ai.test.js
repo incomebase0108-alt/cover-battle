@@ -14,6 +14,11 @@ const s = suite();
 function emptyGame(stage = 0) {
   const ctx = newGame(stage);
   ctx.game.units = [];
+  // Strip neutral entities so unit-behaviour tests are deterministic.
+  ctx.game.beasts = [];
+  ctx.game.items = [];
+  ctx.game.smokes = [];
+  ctx.game.turrets = [];
   return ctx;
 }
 
@@ -115,7 +120,7 @@ s.test("a low-HP unit retreats toward its home fort", (t) => {
   spawnAI(sb, game, base.x + 460, base.y + 200, "red");
   const before = distToHome(game, u);
   t.equal(u.ai.desiredState(u, game), sb.AIController.STATE.RETREAT, "state is RETREAT");
-  u.update(16, game);
+  for (let i = 0; i < 20; i++) u.update(16, game); // net progress (steering may detour a frame)
   const after = distToHome(game, u);
   t.lessThan(after, before, "moved closer to home fort while retreating");
 });
@@ -128,7 +133,7 @@ s.test("a low-HP unit does not close on a nearby enemy", (t) => {
   // Enemy positioned away from home so retreating necessarily increases the gap.
   const enemy = spawnAI(sb, game, base.x + 520, base.y, "red");
   const before = Math.hypot(u.x - enemy.x, u.y - enemy.y);
-  u.update(16, game);
+  for (let i = 0; i < 20; i++) u.update(16, game);
   const after = Math.hypot(u.x - enemy.x, u.y - enemy.y);
   t.greaterThan(after, before, "retreating unit increases distance to the enemy");
 });
@@ -175,7 +180,7 @@ s.test("a healthy distant unit heads for a forest to ambush", (t) => {
   t.equal(u.ai.desiredState(u, game), sb.AIController.STATE.HIDE,
     "healthy unit with a handy forest -> HIDE");
   const before = Math.hypot(u.x - forest.x, u.y - forest.y);
-  u.update(16, game);
+  for (let i = 0; i < 10; i++) u.update(16, game);
   const after = Math.hypot(u.x - forest.x, u.y - forest.y);
   t.lessThan(after, before, "moved toward the forest");
 });
