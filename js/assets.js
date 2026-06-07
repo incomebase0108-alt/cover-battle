@@ -15,6 +15,9 @@ const Assets = {
   // それも無ければベクター描画にフォールバックする。Blender侍12枚はこのキー名で投下。
   _classKeys: ["general", "ashigaru", "archer", "gunner", "cavalry", "ninja"],
 
+  // 中立の浪人スプライト（assets/beast_{key}.png）。無ければ人型ベクターにフォールバック。
+  _beastKeys: ["nobushi", "kengo"],
+
   load() {
     if (typeof Image === "undefined") return; // Node / no DOM
     for (const team of ["blue", "red"]) {
@@ -22,6 +25,9 @@ const Assets = {
         const k = "soldier_" + team + "_" + cls;
         this.defs[k] = "assets/" + k + ".png";
       }
+    }
+    for (const bt of this._beastKeys) {
+      this.defs["beast_" + bt] = "assets/beast_" + bt + ".png";
     }
     for (const key in this.defs) {
       const img = new Image();

@@ -8,7 +8,7 @@ const s = suite();
 
 s.test("a beast claws a unit standing next to it", (t) => {
   const { sb, game } = newGame(0);
-  const beast = new sb.Beast(800, 800, "tiger");
+  const beast = new sb.Beast(800, 800, "nobushi");
   const u = new sb.Unit(805, 800, "blue");
   game.units = [u];
   game.beasts = [beast];
@@ -18,7 +18,7 @@ s.test("a beast claws a unit standing next to it", (t) => {
 
 s.test("a bullet (either team) wounds a beast", (t) => {
   const { sb, game } = newGame(0);
-  const beast = new sb.Beast(800, 800, "tiger");
+  const beast = new sb.Beast(800, 800, "nobushi");
   game.beasts = [beast];
   game.units = [];
   const before = beast.hp;
@@ -31,14 +31,14 @@ s.test("a bullet (either team) wounds a beast", (t) => {
 
 s.test("enough damage kills a beast", (t) => {
   const { sb, game } = newGame(0);
-  const beast = new sb.Beast(800, 800, "tiger");
+  const beast = new sb.Beast(800, 800, "nobushi");
   beast.takeDamage(beast.maxHp);
   t.equal(beast.dead, true, "beast dies when HP hits 0");
 });
 
 s.test("a tamed beast is friendly: allies ignore it and it spares them", (t) => {
   const { sb, game } = newGame(0);
-  const beast = new sb.Beast(800, 800, "tiger");
+  const beast = new sb.Beast(800, 800, "nobushi");
   beast.team = "blue"; // tamed by blue
   const ally = new sb.Unit(810, 800, "blue");
   const ai = new sb.AIController();

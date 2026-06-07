@@ -156,24 +156,31 @@ const NetRender = {
 
   _beasts(ctx, snap) {
     for (const b of snap.be) {
-      const col = b.ty === "bear" ? "#5e3d24" : "#e07c1e";
-      const dk = b.ty === "bear" ? "#2a1a0e" : "#5a3408";
-      const r = b.ty === "bear" ? 30 : 23;
+      const t = (typeof BEAST_TYPES !== "undefined" && BEAST_TYPES[b.ty]) ? BEAST_TYPES[b.ty] : null;
+      const r = t ? t.radius : 24;
+      const sprite = (typeof Assets !== "undefined" && Assets.ready("beast_" + b.ty)) ? Assets.get("beast_" + b.ty) : null;
+      // 影
+      ctx.fillStyle = "rgba(0,0,0,0.28)";
+      ctx.beginPath(); ctx.ellipse(b.x, b.y + r * 0.5, r * 1.0, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
       ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.a);
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.3, r * 0.92, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = dk; ctx.lineWidth = 2.5; ctx.stroke();
-      if (b.ty === "tiger") { ctx.fillStyle = dk; for (let i = -2; i <= 2; i++) ctx.fillRect(i * r * 0.32 - r * 0.06, -r * 0.8, r * 0.12, r * 1.6); }
-      ctx.fillStyle = col;
-      ctx.beginPath(); ctx.arc(r * 1.15, 0, r * 0.62, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "#ff3b2f";
-      ctx.beginPath(); ctx.arc(r * 1.3, -r * 0.22, r * 0.1, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(r * 1.3, r * 0.22, r * 0.1, 0, Math.PI * 2); ctx.fill();
+      if (sprite) {
+        const s = r * 4.8;
+        ctx.drawImage(sprite, -s / 2, -s / 2, s, s);
+      } else if (typeof drawRoninBody === "function") {
+        drawRoninBody(ctx, b.ty, r, 0, 0); // 人型（浪人）ベクター
+      }
       ctx.restore();
+      // 仲間になったらチームの輪
       if (b.tm) {
         ctx.strokeStyle = b.tm === "blue" ? "#5ad6ff" : "#ff6b6b"; ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.arc(b.x, b.y, r + 4, 0, Math.PI * 2); ctx.stroke();
       }
+      // 名前（野武士/剣豪）
+      if (t) {
+        ctx.fillStyle = "rgba(232,232,238,0.92)"; ctx.font = "bold 11px system-ui, sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(t.label, b.x, b.y - r - 14); ctx.textAlign = "left";
+      }
+      // HPバー
       ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(b.x - r, b.y - r - 10, r * 2, 4);
       ctx.fillStyle = "#caa14a"; ctx.fillRect(b.x - r, b.y - r - 10, r * 2 * b.h, 4);
     }

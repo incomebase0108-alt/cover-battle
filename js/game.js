@@ -223,17 +223,17 @@ class Game {
         this.chests.push(new Chest(p.x, p.y));
       }
     }
-    // Wild beasts roaming the mid-field (neutral, hostile to everyone).
+    // 中立の浪人（野武士/剣豪）が中盤を徘徊。誰にでも斬りかかる。総大将が説得で仲間に。
     this.beasts = [];
     if (typeof Beast !== "undefined") {
       const spots = [
-        { x: W * 0.5, y: H * 0.5, t: "bear" },
-        { x: W * 0.35, y: H * 0.4, t: "tiger" },
-        { x: W * 0.65, y: H * 0.6, t: "tiger" },
-        { x: W * 0.5, y: H * 0.22, t: "tiger" },
-        { x: W * 0.5, y: H * 0.78, t: "bear" },
-        { x: W * 0.3, y: H * 0.68, t: "tiger" },
-        { x: W * 0.7, y: H * 0.32, t: "bear" },
+        { x: W * 0.5, y: H * 0.5, t: "kengo" },    // 中央に剣豪（達人）
+        { x: W * 0.35, y: H * 0.4, t: "nobushi" },
+        { x: W * 0.65, y: H * 0.6, t: "nobushi" },
+        { x: W * 0.5, y: H * 0.22, t: "nobushi" },
+        { x: W * 0.5, y: H * 0.78, t: "kengo" },
+        { x: W * 0.3, y: H * 0.68, t: "nobushi" },
+        { x: W * 0.7, y: H * 0.32, t: "kengo" },
       ];
       for (const s of spots) {
         const p = this.map.resolveCollision(s.x, s.y, 22);

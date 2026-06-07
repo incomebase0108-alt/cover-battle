@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v29 武器をクラス固定（持ち替え無効）＋全クラスに攻撃モーション（刀=斬り弧/弓=弓引き/鉄砲=反動）";
+  const BUILD = "v30 中立の動物→野武士/剣豪（人型・総大将が説得で仲間に）。Blender浪人スプライト対応";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
