@@ -78,7 +78,8 @@ class Beast {
 
   _move(dx, dy, game, scale) {
     const sp = this.speed * (scale == null ? 1 : scale);
-    const n = game.map.resolveCollision(this.x + dx * sp, this.y + dy * sp, this.radius);
+    // 仲間になった浪人は自軍の城門を通れるよう team を渡す（中立は null＝全ゲートで阻まれる）。
+    const n = game.map.resolveCollision(this.x + dx * sp, this.y + dy * sp, this.radius, false, this.team);
     const moved = V.dist(this.x, this.y, n.x, n.y);
     this.x = n.x;
     this.y = n.y;
@@ -102,6 +103,27 @@ class Beast {
     }
 
     if (!tgt) {
+      // 仲間になった浪人は味方として敵の砦へ進軍する。回復できない＝退かず前進あるのみ。
+      // 砦に到達したらコアを攻撃して攻城に加わる。
+      if (this.team && game.map.bases) {
+        const enemyBase = game.map.bases.find((b) => b.team !== this.team);
+        if (enemyBase) {
+          this.aim = Math.atan2(enemyBase.y - this.y, enemyBase.x - this.x);
+          const d = V.dist(this.x, this.y, enemyBase.x, enemyBase.y);
+          if (d <= (enemyBase.coreR || 30) + this.attackRange + 12) {
+            if (this.attackCd <= 0) {
+              enemyBase.hp = Math.max(0, enemyBase.hp - Math.min(this.damage, 12)); // 砦へは控えめダメージ
+              this.attackCd = this.attackCdMax;
+              this.flash = 140;
+              if (game.sound && game.sound.hit) game.sound.hit();
+            }
+          } else {
+            this._move(Math.cos(this.aim), Math.sin(this.aim), game, 1);
+          }
+          return;
+        }
+      }
+      // 中立の浪人は徘徊する。
       this.wanderT -= dt;
       if (this.wanderT <= 0) { this.wanderAng += V.randRange(-1, 1); this.wanderT = V.randRange(800, 1700); }
       this.aim = this.wanderAng;

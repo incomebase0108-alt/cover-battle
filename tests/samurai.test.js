@@ -191,6 +191,31 @@ s.test("味方AIは倒れた総大将を最優先で救出に向かう", (t) => 
   t.lessThan(dist(ally, gen), before, "味方が倒れた大将へ近づく");
 });
 
+s.test("仲間になった浪人は敵の砦へ進軍する（退かず前進）", (t) => {
+  const { sb, game } = newGame(0);
+  const redBase = game.map.baseOf("red");
+  const b = new sb.Beast(sb.CONFIG.world.width / 2, sb.CONFIG.world.height / 2, "nobushi");
+  b.team = "blue"; // 仲間
+  game.units = []; // 周囲に敵ユニットなし → 砦へ進軍
+  game.beasts = [b];
+  const d0 = Math.hypot(b.x - redBase.x, b.y - redBase.y);
+  for (let i = 0; i < 10; i++) b.update(50, game);
+  const d1 = Math.hypot(b.x - redBase.x, b.y - redBase.y);
+  t.lessThan(d1, d0, "敵の砦(赤)に近づく");
+});
+
+s.test("仲間の浪人は敵砦に到達するとコアを攻撃する", (t) => {
+  const { sb, game } = newGame(0);
+  const redBase = game.map.baseOf("red");
+  const b = new sb.Beast(redBase.x, redBase.y, "nobushi"); // 砦中心に配置
+  b.team = "blue"; b.attackCd = 0;
+  game.units = [];
+  game.beasts = [b];
+  const hp0 = redBase.hp;
+  b.update(16, game);
+  t.lessThan(redBase.hp, hp0, "敵砦コアにダメージが入る");
+});
+
 s.test("山城決戦ステージが読み込め、地形が揃っている", (t) => {
   const sb = loadGame();
   const idx = sb.STAGES.findIndex((st) => st.name === "山城決戦");

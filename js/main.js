@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v32 体力で駆け引き：全攻撃が体力消費、体力切れは攻撃不可(息切れ)＋移動鈍化。仲間の浪人を斬る友軍誤射を修正";
+  const BUILD = "v33 仲間になった浪人は味方として敵砦へ進軍＋攻城（回復はせず退かない）";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
