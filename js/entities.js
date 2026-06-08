@@ -947,6 +947,12 @@ class Unit {
       ctx.restore(); // rotated frame
     }
 
+    // 軍師の仮見た目：専用スプライトが無い間だけ金の陣羽織を重ねて区別する。
+    if (this.cls === "gunshi" && typeof drawGunshiCloak === "function" &&
+        !(typeof Assets !== "undefined" && Assets.ready("soldier_" + this.team + "_gunshi"))) {
+      drawGunshiCloak(ctx, this.x, this.y, r, this.team);
+    }
+
     // Class accent ring + rank badge (screen-space, not rotated).
     const cls = (typeof getClass === "function") ? getClass(this.cls) : null;
     if (cls) {

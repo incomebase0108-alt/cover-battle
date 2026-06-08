@@ -89,6 +89,11 @@ const NetRender = {
     ctx.rotate(u.a);
     if (typeof drawAttackFX === "function") drawAttackFX(ctx, wdef, u.sw || 0, r);
     ctx.restore();
+    // 軍師の仮見た目：専用スプライトが無い間だけ金の陣羽織を重ねて区別する。
+    if (u.cl === "gunshi" && typeof drawGunshiCloak === "function" &&
+        !(typeof Assets !== "undefined" && Assets.ready("soldier_" + team + "_gunshi"))) {
+      drawGunshiCloak(ctx, u.x, u.y, r, team);
+    }
     // Class accent ring + rank badge.
     if (cls) {
       ctx.strokeStyle = cls.accent; ctx.lineWidth = 2;

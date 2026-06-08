@@ -179,6 +179,36 @@ function drawMatchupRing(ctx, x, y, r, kind) {
   ctx.restore();
 }
 
+// 軍師の仮見た目：専用スプライト(soldier_{team}_gunshi.png)が用意されるまでの間、
+// 素体の上に「金の陣羽織」を重ねて他クラスと一目で区別する。screen-space で描くので
+// スプライト/ベクターどちらの素体にも乗る。"軍"バッジは別途クラスバッジで出る。
+// PNG が assets に置かれれば自動でそちらが優先され、この仮見た目は出なくなる。
+function drawGunshiCloak(ctx, x, y, r, team) {
+  const trim = team === "blue" ? "#2f6fe0" : "#e04444";
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.lineJoin = "round";
+  ctx.fillStyle = "#e6bf3e";              // 金地の陣羽織
+  ctx.strokeStyle = trim;                  // チーム色の縁取り
+  ctx.lineWidth = Math.max(1.5, r * 0.14);
+  // 肩から裾へ広がる身頃を左右2枚。中央に前合わせの隙間を空けて「羽織」らしく。
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(side * r * 0.16, -r * 0.18); // 襟元（中央寄り）
+    ctx.lineTo(side * r * 0.72, -r * 0.12); // 肩
+    ctx.lineTo(side * r * 0.92, r * 0.92);  // 裾（外）
+    ctx.lineTo(side * r * 0.18, r * 0.95);  // 裾（内）
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  // 金の襟（指揮官らしさ）。
+  ctx.fillStyle = "#fff0b4";
+  ctx.beginPath(); ctx.ellipse(0, -r * 0.2, r * 0.34, r * 0.16, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = Math.max(1, r * 0.08); ctx.stroke();
+  ctx.restore();
+}
+
 // 攻撃モーション。ユニットの「回転フレーム内（局所 +X＝前方）」で呼ぶこと。
 //   刀  : 前方の扇を斬り抜ける刃の弧
 //   弓  : 弓を引き絞って放つ動作（弦＋矢）

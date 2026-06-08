@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v46 三すくみ相性を色分け表示：選択キャラ視点で得意な相手＝緑(▲)/苦手な相手＝赤(▼)を相手に表示";
+  const BUILD = "v47 軍師の仮見た目：専用スプライトが来るまで金の陣羽織＋軍バッジで他クラスと区別（PNGを置けば自動で本スプライトに）";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
