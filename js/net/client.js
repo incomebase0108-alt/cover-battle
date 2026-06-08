@@ -26,6 +26,7 @@
     bomb: document.getElementById("btnBomb"),
     weapon: document.getElementById("btnWeapon"),
     ability: document.getElementById("btnAbility"),
+    rally: document.getElementById("btnRally"),
     ctrlSize: document.getElementById("btnCtrlSize"),
   });
   Assets.load();
@@ -248,6 +249,7 @@
       shoot: Input.shooting,
       bomb: Input.consumeBomb(),
       ability: Input.consumeAbility(),
+      rally: Input.consumeRally(),
       slot: Input.consumeWeaponSlot(),
       cycleW: Input.consumeWeaponCycle(),
     }));
@@ -380,6 +382,19 @@
     return Net.snap; // 再生時刻が範囲外（最新より新しい/古すぎ）は最新で安全フォールバック
   }
 
+  // 操作中のクラスに応じてアクションボタンを出し分ける（軍師＝采配を出し爆弾を隠す）。
+  let _lastBtnCls = null;
+  function updateActionButtons(me) {
+    const cls = me ? me.cl : null;
+    if (cls === _lastBtnCls) return; // クラスが変わった時だけDOM更新
+    _lastBtnCls = cls;
+    const rally = document.getElementById("btnRally");
+    const bomb = document.getElementById("btnBomb");
+    const isGunshi = cls === "gunshi";
+    if (rally) rally.classList.toggle("hidden", !isGunshi);
+    if (bomb) bomb.classList.toggle("hidden", isGunshi);
+  }
+
   function frame(now) {
     if (Net.joined && Net.snap && Net.map) {
       const view = interpSnap(now);
@@ -390,6 +405,7 @@
       }
       NetRender.draw(ctx, view, Net.map, Net.myIndex, Net.cam);
       drawHud(ctx, view, Net.myIndex);
+      updateActionButtons(me); // 軍師なら采配ボタンを出す／軍師は爆弾を隠す
       if (bannerT > 0) {
         bannerT -= 16;
         ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, CONFIG.height / 2 - 30, CONFIG.width, 60);

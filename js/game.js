@@ -193,7 +193,7 @@ class Game {
         nr: u.weapon().noReload ? 1 : 0, // 装填不要（刀/弓）＝HUDで弾を出さない
         sw: u.swingMs > 0 ? Math.round(u.swingMs) : 0, // 刀の振り残り時間（ms）
         st: u.maxStamina ? +(u.stamina / u.maxStamina).toFixed(2) : 1, // 体力(0..1)
-        bf: u.buffed ? 1 : 0, // 軍師の強化中（描画で光輪）
+        bf: u.buffed ? (u.rallied ? 2 : 1) : 0, // 軍師の強化中（1=オーラ/2=采配。描画で光輪）
       })),
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0, bl: b.ball ? 1 : 0, br: b.ball ? Math.round(b.radius) : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),
@@ -394,21 +394,25 @@ class Game {
     for (const u of this.units) {
       if (u.alive && u.cls === "gunshi" && gunshi[u.team]) gunshi[u.team].push(u);
     }
-    const r2 = ABILITY.auraRadius * ABILITY.auraRadius;
+    const ar2 = ABILITY.auraRadius * ABILITY.auraRadius;
+    const rr2 = ABILITY.rallyRadius * ABILITY.rallyRadius;
     for (const u of this.units) {
-      let near = false;
+      let near = false;    // 自動オーラ圏内（弱い常時強化）
+      let rallied = false; // 采配中の軍師の圏内（強い一時強化）
       if (u.alive) {
         for (const g of (gunshi[u.team] || [])) {
-          const dx = g.x - u.x, dy = g.y - u.y;
-          if (dx * dx + dy * dy <= r2) { near = true; break; }
+          const dx = g.x - u.x, dy = g.y - u.y, d2 = dx * dx + dy * dy;
+          if (g.rallyMs > 0 && d2 <= rr2) { rallied = true; near = true; break; }
+          if (d2 <= ar2) near = true;
         }
       }
       if (near) u.buffMs = ABILITY.buffLingerMs;          // 近くにいる間は満タンに保つ
-      else u.buffMs = Math.max(0, (u.buffMs || 0) - dt);  // 離れたら秒数で減衰
+      else u.buffMs = Math.max(0, (u.buffMs || 0) - dt);  // 離れたら秒数で減衰（弱バフが余韻で残る）
       const on = u.alive && u.buffMs > 0;
       u.buffed = on;
-      u.cmdSpeedMul = on ? ABILITY.auraSpeedMul : 1;
-      u.cmdDmgMul = on ? ABILITY.auraDmgMul : 1;
+      u.rallied = rallied; // 采配中（強）＝描画で濃い光輪・倍率も大きく
+      u.cmdSpeedMul = on ? (rallied ? ABILITY.rallySpeedMul : ABILITY.auraSpeedMul) : 1;
+      u.cmdDmgMul = on ? (rallied ? ABILITY.rallyDmgMul : ABILITY.auraDmgMul) : 1;
     }
   }
 
@@ -622,6 +626,10 @@ class Game {
         cls: p.cls,
         healing: !!p.healing,
         abilityRemaining: p.abilityRemaining ? p.abilityRemaining(this) : null,
+        // 軍師の采配ボタン用：軍師か・采配が使えるか・効果中か。
+        isGunshi: p.cls === "gunshi",
+        rallyReady: p.cls === "gunshi" ? (p.rallyCd <= 0) : null,
+        rallyActive: (p.rallyMs || 0) > 0,
       } : null,
     });
   }

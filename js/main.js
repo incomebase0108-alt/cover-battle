@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v44 軍師を蘇生役に：特殊=蘇生(30秒)＋近くの味方を強化(5秒持続・金の光輪)・爆弾なし・後方支援AI";
+  const BUILD = "v45 軍師に「采配」ボタン追加：周囲の味方を一時強化(与ダメ+25%/移動+15%・8秒/CD22秒)。蘇生(特殊)とは別ボタン🚩(V)";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
@@ -46,6 +46,7 @@
     cycle: document.getElementById("btnCycle"),
     weapon: document.getElementById("btnWeapon"),
     ability: document.getElementById("btnAbility"),
+    rally: document.getElementById("btnRally"),
     ctrlSize: document.getElementById("btnCtrlSize"),
   });
 

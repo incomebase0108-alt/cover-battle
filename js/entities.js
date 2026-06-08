@@ -344,6 +344,9 @@ class Unit {
     this.cmdDmgMul = 1;   // 軍師の強化(aura)による与ダメ倍率。game が毎更新で設定
     this.buffed = false;  // 軍師の強化を受けている＝描画で光輪を出す
     this.buffMs = 0;      // 強化の残り時間（近くにいる間は満タン・離れると減衰）
+    this.rallied = false; // 軍師の「采配」(ボタン)による強い強化中＝描画で濃い光輪
+    this.rallyMs = 0;     // 自分が出した采配の残り効果時間（軍師のみ）
+    this.rallyCd = 0;     // 采配のクールダウン（軍師のみ）
     this.aim = team === "blue" ? 0 : Math.PI; // facing angle
     this.cooldown = 0;
     // Equipped weapon (see weapons.js). AI + player default to "rifle", which
@@ -471,6 +474,16 @@ class Unit {
       return; // unknown / no entity available
     }
     this.abilityCd = c.abilityCd || 9000;
+    if (game.sound && game.sound.reload) game.sound.reload();
+  }
+
+  // 軍師の「采配」：蘇生(特殊)とは別ボタン。押すと周囲の味方を一段強く・一定時間
+  // 強化する（実際の適用は game._updateCommand が rallyMs を見て行う）。軍師以外・
+  // 戦闘不能・クールダウン中は何もしない。
+  useRally(game) {
+    if (this.cls !== "gunshi" || !this.alive || this.rallyCd > 0) return;
+    this.rallyMs = ABILITY.rallyMs;
+    this.rallyCd = ABILITY.rallyCd;
     if (game.sound && game.sound.reload) game.sound.reload();
   }
 
@@ -716,6 +729,8 @@ class Unit {
     if (this.movingTimer > 0) this.movingTimer -= dt; // walk-cycle grace timer
     if (this.abilityCd > 0) this.abilityCd -= dt;
     if (this.dashMs > 0) this.dashMs -= dt;
+    if (this.rallyCd > 0) this.rallyCd -= dt; // 采配のクールダウン（軍師）
+    if (this.rallyMs > 0) this.rallyMs -= dt; // 采配の効果時間（軍師）
     this.sinceShot += dt;
 
     // Temporary chest weapon reverts to the normal gun when its timer runs out.
@@ -778,6 +793,7 @@ class Unit {
     if (n.shoot) this.tryShoot(game);
     if (n.bomb) { this.placeBomb(game); n.bomb = false; }
     if (n.ability) { this.useAbility(game); n.ability = false; }
+    if (n.rally) { this.useRally(game); n.rally = false; }
   }
 
   updatePlayer(game) {
@@ -827,6 +843,7 @@ class Unit {
     if (Input.shooting || autoFire) this.tryShoot(game);
     if (Input.consumeBomb()) this.placeBomb(game);
     if (Input.consumeAbility()) this.useAbility(game);
+    if (Input.consumeRally()) this.useRally(game);
   }
 
   // Aim toward the mouse, converting screen coords to world via the camera.
@@ -849,7 +866,7 @@ class Unit {
     ctx.fill();
 
     // 軍師の強化を受けている味方は、足元に金色の光輪を出して一目で分かるように。
-    if (this.buffed) drawBuffAura(ctx, this.x, this.y + r * 0.5, r * 1.3);
+    if (this.buffed) drawBuffAura(ctx, this.x, this.y + r * 0.5, r * 1.3, this.rallied);
 
     // クラス別スプライト（DQ風3/4立ち姿）。無ければベクター（回転）にフォールバック。
     let sprite = null;

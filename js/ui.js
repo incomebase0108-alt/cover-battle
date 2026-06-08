@@ -10,6 +10,7 @@ const UI = {
     this.el.ammo = document.getElementById("ammo");
     this.el.abilitySmall = document.getElementById("abilitySmall");
     this.el.abilityBtn = document.getElementById("btnAbility");
+    this.el.rallyBtn = document.getElementById("btnRally");
     this.el.bombBtn = document.getElementById("btnBomb");
     this.el.mClassInfo = document.getElementById("mClassInfo");
     this._mClassStr = null;
@@ -43,7 +44,7 @@ const UI = {
       case "cavalry":  return "騎馬・突進で急接近する刀＝剣（弓に強い/槍に弱い）";
       case "ninja":    return "忍者・森に潜む刀＝剣＋煙幕（弓に強い/槍に弱い）";
       case "spearman": return "槍兵・長い間合いで突く槍（剣に強い/弓に弱い）";
-      case "gunshi":   return "軍師・近くの味方を強化＋再起不能の味方を蘇生（後方支援・爆弾なし）";
+      case "gunshi":   return "軍師・味方を強化(采配🚩)＋再起不能の味方を蘇生(🎯)（後方支援・爆弾なし）";
       default:         return "";
     }
   },
@@ -119,6 +120,11 @@ const UI = {
     }
     // 軍師は爆弾を持たない → 爆弾ボタンを隠す（他クラスでは表示）。
     if (this.el.bombBtn && p) this.el.bombBtn.classList.toggle("hidden", p.cls === "gunshi");
+    // 軍師だけ「采配」ボタンを出す。クールダウン中はグレーアウト。
+    if (this.el.rallyBtn && p) {
+      this.el.rallyBtn.classList.toggle("hidden", !p.isGunshi);
+      this.el.rallyBtn.classList.toggle("depleted", p.isGunshi && p.rallyReady === false);
+    }
     if (this.el.weaponName && p && p.weapon) {
       this.el.weaponName.textContent = p.weapon;
     }

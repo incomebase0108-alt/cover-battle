@@ -313,6 +313,44 @@ s.test("軍師は爆弾を持たない（maxBombs=0）", (t) => {
   t.equal(g.maxBombs, 0, "軍師の爆弾上限は0");
 });
 
+s.test("采配：軍師がボタンを押すと広範囲の味方を一段強く一時強化（オーラより強・広い）", (t) => {
+  const { sb, game } = newGame(0);
+  const A = sb.ABILITY;
+  const gunshi = new sb.Unit(1500, 300, "blue"); gunshi.applyClass("gunshi");
+  // aura圏外(280)・采配圏内(460) の距離400pxに味方を置く。
+  const ally = new sb.Unit(1500, 700, "blue"); ally.applyClass("ashigaru");
+  game.units = [gunshi, ally];
+
+  game._updateCommand(16);
+  t.equal(ally.buffed, false, "采配前：オーラ圏外なので強化なし");
+
+  gunshi.useRally(game);
+  t.greaterThan(gunshi.rallyMs, 0, "采配で効果時間がセット");
+  t.greaterThan(gunshi.rallyCd, 0, "采配でクールダウンに入る");
+
+  game._updateCommand(16);
+  t.equal(ally.rallied, true, "采配中：圏内の味方は強い強化フラグ");
+  t.close(ally.cmdDmgMul, A.rallyDmgMul, 1e-9, "采配中：与ダメは采配倍率（オーラより強い）");
+  t.close(ally.cmdSpeedMul, A.rallySpeedMul, 1e-9, "采配中：移動も采配倍率");
+  t.greaterThan(A.rallyDmgMul, A.auraDmgMul, "采配はオーラより強い");
+  t.greaterThan(A.rallyRadius, A.auraRadius, "采配はオーラより広い");
+});
+
+s.test("采配：軍師以外は使えない／クールダウン中は再発動しない", (t) => {
+  const { sb, game } = newGame(0);
+  const ashigaru = new sb.Unit(0, 0, "blue"); ashigaru.applyClass("ashigaru");
+  ashigaru.useRally(game);
+  t.equal(ashigaru.rallyMs, 0, "軍師以外は采配できない");
+
+  const gunshi = new sb.Unit(0, 0, "blue"); gunshi.applyClass("gunshi");
+  gunshi.useRally(game);
+  const cd = gunshi.rallyCd;
+  gunshi.rallyMs = 0;        // 効果が切れた状態にする
+  gunshi.useRally(game);     // まだCD中
+  t.equal(gunshi.rallyMs, 0, "クールダウン中は再発動しない");
+  t.close(gunshi.rallyCd, cd, 1e-9, "CDは延長されない");
+});
+
 s.test("8vs8：各チーム CONFIG.teamSize(=8) 人が配置される（軍師追加）", (t) => {
   const { sb, game } = newGame(0);
   t.equal(sb.CONFIG.teamSize, 8, "teamSize は8");

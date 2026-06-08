@@ -19,6 +19,13 @@ const ABILITY = {
   buffLingerMs: 5000,     // 近くを離れても強化が持続する時間（秒数で効果＝5秒）
   auraDmgMul: 1.12,       // 強化中の味方 与ダメ倍率
   auraSpeedMul: 1.08,     // 強化中の味方 移動倍率
+  // 軍師の「采配」（ボタン技）：押すと周囲(rallyRadius)の味方を一定時間(rallyMs)、自動
+  // オーラより強く強化する。クールダウン(rallyCd)制＝ここぞの全体バフ。蘇生とは別ボタン。
+  rallyRadius: 460,       // 采配が届く半径（自動オーラより広い）
+  rallyMs: 8000,          // 采配の効果時間
+  rallyCd: 22000,         // 采配のクールダウン
+  rallyDmgMul: 1.25,      // 采配中の味方 与ダメ倍率（オーラより強い）
+  rallySpeedMul: 1.15,    // 采配中の味方 移動倍率
 };
 
 // Downed-ally rescue tuning.
@@ -29,12 +36,18 @@ const RESCUE = {
 };
 
 // 強化中(軍師のaura)の目印＝金色の光輪。単体プレイ/LANの描画で共用する。
-function drawBuffAura(ctx, x, y, r) {
+// strong=true（采配中）はより濃く太い二重の光輪で「強い強化」を一目で示す。
+function drawBuffAura(ctx, x, y, r, strong) {
   ctx.save();
-  ctx.fillStyle = "rgba(255,210,74,0.12)";
+  ctx.fillStyle = strong ? "rgba(255,210,74,0.22)" : "rgba(255,210,74,0.12)";
   ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(255,210,74,0.9)"; ctx.lineWidth = 3;
+  ctx.strokeStyle = strong ? "rgba(255,225,120,1)" : "rgba(255,210,74,0.9)";
+  ctx.lineWidth = strong ? 4.5 : 3;
   ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  if (strong) { // 二重の輪で采配を強調
+    ctx.strokeStyle = "rgba(255,240,180,0.7)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r * 1.18, 0, Math.PI * 2); ctx.stroke();
+  }
   ctx.restore();
 }
 
