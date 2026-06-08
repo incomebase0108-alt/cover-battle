@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v39 キャラ大型化＋ゆっくりプレイ化（移動2.2→1.6・弾速7→5.5・浪人も減速）";
+  const BUILD = "v40 天守スプライト導入（4号機製 fort_blue/red.png）。城が本物の天守に";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
