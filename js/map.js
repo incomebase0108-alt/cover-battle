@@ -441,16 +441,12 @@ class GameMap {
     // Home bases (healing zones), drawn on the ground.
     for (const b of this.bases) {
       const col = b.team === "blue" ? "47,123,255" : "255,77,77";
+      // 回復ゾーンの地面（チーム色の淡い円）。境界リングは城に隠れないよう城の上に別途描く。
       const g = ctx.createRadialGradient(b.x, b.y, b.r * 0.2, b.x, b.y, b.r);
-      g.addColorStop(0, `rgba(${col},0.28)`);
-      g.addColorStop(1, `rgba(${col},0.04)`);
+      g.addColorStop(0, `rgba(${col},0.22)`);
+      g.addColorStop(1, `rgba(${col},0.05)`);
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = `rgba(${col},0.5)`;
-      ctx.setLineDash([8, 6]);
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
 
       // 本丸の石垣：角丸の段々＋扇の勾配で「総石垣の城」に。最上段の天端Y（天守の足元）を得る。
       const platY = this._drawCastleBase(ctx, b, col);
@@ -493,6 +489,33 @@ class GameMap {
           ctx.arc(b.x + Math.cos(a) * b.coreR * 1.4, b.y + Math.sin(a) * b.coreR * 1.4, 10, 0, Math.PI * 2);
           ctx.fill();
         }
+      }
+
+      // 回復ゾーンの境界を城の上にはっきり描く。城は大きく＋チーム色なので、回復の合図は
+      // 緑(#62e08a＝HEALの色)で差別化し、城に色が被って分かりにくくなるのを防ぐ。
+      if (b.hp > 0) {
+        ctx.save();
+        // 緑のにじみで地面の回復円を強調（外周ほど濃く）。
+        const hg = ctx.createRadialGradient(b.x, b.y, b.r * 0.7, b.x, b.y, b.r);
+        hg.addColorStop(0, "rgba(98,224,138,0)");
+        hg.addColorStop(1, "rgba(98,224,138,0.20)");
+        ctx.fillStyle = hg;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+        // 緑の破線リング（回復の境界＝必ず城の上に出るので見える）。
+        ctx.setLineDash([10, 7]); ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(98,224,138,0.92)";
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
+        // 外周にチーム色の細リング（青/赤＝どちらの陣地かを示す）。
+        ctx.setLineDash([]); ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(${col},0.8)`;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 3, 0, Math.PI * 2); ctx.stroke();
+        // 境界の下端（手前の地面）に「回復ゾーン」ラベル。
+        ctx.fillStyle = "rgba(98,224,138,0.96)";
+        ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("✚ 回復ゾーン", b.x, b.y + b.r + 13);
+        ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+        ctx.restore();
       }
     }
 

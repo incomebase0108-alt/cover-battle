@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v41 城の描画を刷新：石垣を角丸の本丸＋扇の勾配に、天守を一回り大きく＋接地影";
+  const BUILD = "v42 回復ゾーンの境界を城の上に緑リング＋ラベルで明示（城が大きく色が被って分かりにくい対策）";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
