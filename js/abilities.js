@@ -12,14 +12,13 @@ const ABILITY = {
   dashMs: 230,            // duration of an assault dash
   dashMul: 2.6,           // speed multiplier during a dash
   captureRange: 280,      // beast-tamer capture reach
-  // 軍師の指揮（rally）：発動で味方全体を一定時間強化。さらに軍師の生存中は
-  // 周囲の味方に常時の小バフ（aura）がかかる。
-  rallyDuration: 8000,    // ms 采配の効果時間（味方全体）
-  rallyDmgMul: 1.25,      // 采配中の与ダメ倍率
-  rallySpeedMul: 1.15,    // 采配中の移動倍率
-  auraRadius: 260,        // 軍師の常時バフが届く半径
-  auraDmgMul: 1.10,       // aura内の与ダメ倍率
-  auraSpeedMul: 1.05,     // aura内の移動倍率
+  reviveRange: 220,       // 軍師の蘇生が届く範囲（再起不能の味方を復活）
+  // 軍師のパッシブ強化（aura）：生存中、周囲の味方を常時強化する。強化中の味方は
+  // 描画で金色の光輪が出る（buffed フラグ）。
+  auraRadius: 280,        // 強化が届く半径（この中に入ると強化）
+  buffLingerMs: 5000,     // 近くを離れても強化が持続する時間（秒数で効果＝5秒）
+  auraDmgMul: 1.12,       // 強化中の味方 与ダメ倍率
+  auraSpeedMul: 1.08,     // 強化中の味方 移動倍率
 };
 
 // Downed-ally rescue tuning.
@@ -28,6 +27,16 @@ const RESCUE = {
   reviveFrac: 1 / 3,      // HP fraction on revival
   carrySpeedMul: 0.7,     // carrier moves slower
 };
+
+// 強化中(軍師のaura)の目印＝金色の光輪。単体プレイ/LANの描画で共用する。
+function drawBuffAura(ctx, x, y, r) {
+  ctx.save();
+  ctx.fillStyle = "rgba(255,210,74,0.12)";
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(255,210,74,0.9)"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
 
 // A smoke cloud: blocks line of sight and conceals units inside it (like a
 // forest), then fades.

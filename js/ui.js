@@ -10,6 +10,7 @@ const UI = {
     this.el.ammo = document.getElementById("ammo");
     this.el.abilitySmall = document.getElementById("abilitySmall");
     this.el.abilityBtn = document.getElementById("btnAbility");
+    this.el.bombBtn = document.getElementById("btnBomb");
     this.el.mClassInfo = document.getElementById("mClassInfo");
     this._mClassStr = null;
     this.el.weaponName = document.getElementById("weaponName");
@@ -42,7 +43,7 @@ const UI = {
       case "cavalry":  return "騎馬・突進で急接近する刀＝剣（弓に強い/槍に弱い）";
       case "ninja":    return "忍者・森に潜む刀＝剣＋煙幕（弓に強い/槍に弱い）";
       case "spearman": return "槍兵・長い間合いで突く槍（剣に強い/弓に弱い）";
-      case "gunshi":   return "軍師・采配で味方を強化する指揮役。刀＝剣（弓に強い/槍に弱い）";
+      case "gunshi":   return "軍師・近くの味方を強化＋再起不能の味方を蘇生（後方支援・爆弾なし）";
       default:         return "";
     }
   },
@@ -56,7 +57,7 @@ const UI = {
     if (a === "capture") return "近くの野武士を説得して仲間に";
     if (a === "repair") return "砦・城門を修復";
     if (a === "smoke") return "煙幕で隠れる";
-    if (a === "rally") return "采配（味方全体を一定時間強化）";
+    if (a === "revive") return "蘇生（再起不能の味方を復活・回復なし／30秒）";
     return "なし";
   },
 
@@ -112,9 +113,12 @@ const UI = {
     // 個数制アビリティ（工兵=砲台/動物使い=動物）の残り設置・捕獲数をボタンに表示。
     if (this.el.abilitySmall && p) {
       const rem = p.abilityRemaining;
-      this.el.abilitySmall.textContent = rem == null ? "特殊" : `特殊 残${rem}`;
+      // 軍師は特殊＝蘇生（回復ボタン）。それ以外は従来の「特殊/特殊 残N」。
+      this.el.abilitySmall.textContent = p.cls === "gunshi" ? "蘇生" : (rem == null ? "特殊" : `特殊 残${rem}`);
       if (this.el.abilityBtn) this.el.abilityBtn.classList.toggle("depleted", rem === 0);
     }
+    // 軍師は爆弾を持たない → 爆弾ボタンを隠す（他クラスでは表示）。
+    if (this.el.bombBtn && p) this.el.bombBtn.classList.toggle("hidden", p.cls === "gunshi");
     if (this.el.weaponName && p && p.weapon) {
       this.el.weaponName.textContent = p.weapon;
     }

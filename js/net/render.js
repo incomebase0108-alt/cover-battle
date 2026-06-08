@@ -52,6 +52,8 @@ const NetRender = {
     const r = CONFIG.unit.radius * (cls ? (cls.sizeMul || 1) : 1);
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath(); ctx.ellipse(u.x, u.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+    // 軍師の強化中は金色の光輪（buffed）。
+    if (u.bf && typeof drawBuffAura === "function") drawBuffAura(ctx, u.x, u.y + r * 0.5, r * 1.3);
     const wdef = (typeof WEAPONS !== "undefined") ? WEAPONS[u.w] : null;
     // クラス別スプライト（DQ風3/4立ち姿）を優先。無ければ汎用→ベクター。
     let sprite = null;

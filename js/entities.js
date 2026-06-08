@@ -340,8 +340,10 @@ class Unit {
     this.abilityCd = 0;  // ms until the class ability is ready again
     this.dashMs = 0;     // >0 while a dash (騎馬/総大将) is active
     this.moraleMul = 1;  // 士気倍率（大将が discard すると<1。移動と与ダメに乗る）
-    this.cmdSpeedMul = 1; // 軍師の指揮バフ（移動）。game が毎更新で設定
-    this.cmdDmgMul = 1;   // 軍師の指揮バフ（与ダメ）。game が毎更新で設定
+    this.cmdSpeedMul = 1; // 軍師の強化(aura)による移動倍率。game が毎更新で設定
+    this.cmdDmgMul = 1;   // 軍師の強化(aura)による与ダメ倍率。game が毎更新で設定
+    this.buffed = false;  // 軍師の強化を受けている＝描画で光輪を出す
+    this.buffMs = 0;      // 強化の残り時間（近くにいる間は満タン・離れると減衰）
     this.aim = team === "blue" ? 0 : Math.PI; // facing angle
     this.cooldown = 0;
     // Equipped weapon (see weapons.js). AI + player default to "rifle", which
@@ -393,7 +395,7 @@ class Unit {
     this.radius = CONFIG.unit.radius * (c.sizeMul || 1);
     this.maxHp = Math.round(CONFIG.unit.maxHp * (c.hpMul || 1));
     this.hp = this.maxHp;
-    if (c.maxBombs) this.maxBombs = c.maxBombs;
+    if (c.maxBombs != null) this.maxBombs = c.maxBombs; // 0 も適用（軍師＝爆弾なし）
     if (c.weapon) { this.baseWeaponKey = c.weapon; this.setWeapon(c.weapon); }
   }
 
@@ -452,10 +454,19 @@ class Unit {
       game.smokes.push(new Smoke(this.x, this.y));
     } else if (c.ability === "dash") {
       this.dashMs = ABILITY.dashMs;
-    } else if (c.ability === "rally") {
-      // 軍師の采配：自軍全体に一定時間バフ。game側のカウントダウンに記録（毎更新で減算）。
-      if (!game.rallyMs) game.rallyMs = { blue: 0, red: 0 };
-      game.rallyMs[this.team] = ABILITY.rallyDuration;
+    } else if (c.ability === "revive") {
+      // 軍師の蘇生：再起不能(ダウン)の味方を、その場で復活させる。回復はしない＝低HPで
+      // 立たせるだけ（reviveFrac）。範囲内に対象がいなければ何もしない（CDも消費しない）。
+      let best = null, bd = ABILITY.reviveRange;
+      for (const u of game.units) {
+        if (u === this || u.team !== this.team) continue;
+        if (!u.downed || u.carrier) continue; // ダウン中かつ運搬されていない味方のみ
+        const d = V.dist(this.x, this.y, u.x, u.y);
+        if (d < bd) { bd = d; best = u; }
+      }
+      if (!best) return; // 対象なし → CD据え置きで終了
+      best.alive = true; best.downed = false; best.carrier = null; best.reviveT = 0;
+      best.hp = Math.max(1, Math.round(best.maxHp * RESCUE.reviveFrac)); // 低HPで復活（回復なし）
     } else {
       return; // unknown / no entity available
     }
@@ -836,6 +847,9 @@ class Unit {
     ctx.beginPath();
     ctx.ellipse(this.x, this.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // 軍師の強化を受けている味方は、足元に金色の光輪を出して一目で分かるように。
+    if (this.buffed) drawBuffAura(ctx, this.x, this.y + r * 0.5, r * 1.3);
 
     // クラス別スプライト（DQ風3/4立ち姿）。無ければベクター（回転）にフォールバック。
     let sprite = null;

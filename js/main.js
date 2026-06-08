@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v43 体力増/野武士減速/速度up・三すくみ表記・AI交戦改善・軍師追加で8vs8・LAN補間と勝敗表示";
+  const BUILD = "v44 軍師を蘇生役に：特殊=蘇生(30秒)＋近くの味方を強化(5秒持続・金の光輪)・爆弾なし・後方支援AI";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

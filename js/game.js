@@ -193,6 +193,7 @@ class Game {
         nr: u.weapon().noReload ? 1 : 0, // 装填不要（刀/弓）＝HUDで弾を出さない
         sw: u.swingMs > 0 ? Math.round(u.swingMs) : 0, // 刀の振り残り時間（ms）
         st: u.maxStamina ? +(u.stamina / u.maxStamina).toFixed(2) : 1, // 体力(0..1)
+        bf: u.buffed ? 1 : 0, // 軍師の強化中（描画で光輪）
       })),
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0, bl: b.ball ? 1 : 0, br: b.ball ? Math.round(b.radius) : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),
@@ -385,31 +386,29 @@ class Game {
     }
   }
 
-  // 軍師の指揮バフ：①采配(rally)＝自軍全体に一定時間バフ ②aura＝生存中の軍師の
-  // 周囲の味方に常時の小バフ。両者を掛け合わせて各ユニットの cmd*Mul に確定する。
+  // 軍師の強化(aura)：生存中の軍師の周囲(auraRadius)にいる味方を強化する。近くにいる間は
+  // 強化タイマーを満タンに保ち、離れても buffLingerMs の間は強化が持続する（秒数で効果）。
+  // buffed フラグで描画に金色の光輪を出す＝強化中が一目で分かる。軍師自身も対象。
   _updateCommand(dt) {
-    if (!this.rallyMs) this.rallyMs = { blue: 0, red: 0 };
-    for (const team of ["blue", "red"]) {
-      this.rallyMs[team] = Math.max(0, (this.rallyMs[team] || 0) - dt);
-    }
-    // 生存中の軍師（各チーム）を集める。
     const gunshi = { blue: [], red: [] };
     for (const u of this.units) {
       if (u.alive && u.cls === "gunshi" && gunshi[u.team]) gunshi[u.team].push(u);
     }
-    const auraR2 = ABILITY.auraRadius * ABILITY.auraRadius;
+    const r2 = ABILITY.auraRadius * ABILITY.auraRadius;
     for (const u of this.units) {
-      let spd = 1, dmg = 1;
-      // ①采配：自軍がrally中なら全員に。
-      if ((this.rallyMs[u.team] || 0) > 0) { spd *= ABILITY.rallySpeedMul; dmg *= ABILITY.rallyDmgMul; }
-      // ②aura：自軍の生存軍師が半径内にいれば（軍師自身も含む）。
-      const list = gunshi[u.team] || [];
-      for (const g of list) {
-        const dx = g.x - u.x, dy = g.y - u.y;
-        if (dx * dx + dy * dy <= auraR2) { spd *= ABILITY.auraSpeedMul; dmg *= ABILITY.auraDmgMul; break; }
+      let near = false;
+      if (u.alive) {
+        for (const g of (gunshi[u.team] || [])) {
+          const dx = g.x - u.x, dy = g.y - u.y;
+          if (dx * dx + dy * dy <= r2) { near = true; break; }
+        }
       }
-      u.cmdSpeedMul = spd;
-      u.cmdDmgMul = dmg;
+      if (near) u.buffMs = ABILITY.buffLingerMs;          // 近くにいる間は満タンに保つ
+      else u.buffMs = Math.max(0, (u.buffMs || 0) - dt);  // 離れたら秒数で減衰
+      const on = u.alive && u.buffMs > 0;
+      u.buffed = on;
+      u.cmdSpeedMul = on ? ABILITY.auraSpeedMul : 1;
+      u.cmdDmgMul = on ? ABILITY.auraDmgMul : 1;
     }
   }
 
@@ -450,7 +449,7 @@ class Game {
   _update(dt) {
     if (this.over) return; // 試合終了後は一切更新しない（サーバーの多重終了/多重再戦を防ぐ）
     this._updateGenerals(dt); // 大将ルール：士気倍率と「討死」までの計時をユニット更新前に確定
-    this._updateCommand(dt);  // 軍師の指揮バフ（采配＋aura）をユニット更新前に確定
+    this._updateCommand(dt);  // 軍師の強化(aura)：近くの味方を一定秒数強化＋buffedフラグ
     for (const u of this.units) u.update(dt, this);
     for (const b of this.bullets) b.update(dt, this);
     for (const b of this.bombs) b.update(dt, this);

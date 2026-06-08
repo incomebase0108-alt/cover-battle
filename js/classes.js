@@ -30,7 +30,7 @@ const CLASSES = [
   { key: "cavalry",  label: "騎馬",    desc: "高速で突進し一気に間合いを詰める刀の遊撃。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 1.2, speedMul: 1.28, sizeMul: 1.08, accent: "#ff8a5a", badge: "騎", ability: "dash", abilityCd: 4000 },
   { key: "ninja",    label: "忍者",    desc: "森に潜み煙幕で撹乱する刀の奇襲。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 0.9, speedMul: 1.18, sizeMul: 0.92, accent: "#5ad6ff", badge: "忍", ability: "smoke", abilityCd: 9000 },
   { key: "spearman", label: "槍兵",    desc: "長い槍で間合いの外から突く。突きは遅めだが、剣（刀）に強い。弓には弱い。", weapon: "yari", hpMul: 1.05, speedMul: 1.0, sizeMul: 1.06, accent: "#e89bd0", badge: "槍" },
-  { key: "gunshi",   label: "軍師",    desc: "采配で味方を鼓舞する指揮役。自身の戦闘は弱いが、生存中は周囲の味方を強化し、特殊『采配』で味方全体を一定時間強化する。討たれると強化が消える。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 1.0, speedMul: 0.85, sizeMul: 1.04, accent: "#e8d24a", badge: "軍", ability: "rally", abilityCd: 14000 },
+  { key: "gunshi",   label: "軍師",    desc: "後方支援の指揮役。基本は戦わず、特殊『蘇生』で再起不能(ダウン)の味方をその場で復活させる（低HPで立たせるだけ＝回復はしない／30秒に1回）。爆弾は持たない。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 1.0, speedMul: 0.85, sizeMul: 1.04, accent: "#e8d24a", badge: "軍", ability: "revive", abilityCd: 30000, maxBombs: 0 },
 ];
 
 function getClass(keyOrIndex) {

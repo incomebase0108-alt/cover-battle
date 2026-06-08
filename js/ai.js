@@ -469,6 +469,26 @@ class AIController {
       }
       return;
     }
+    // 軍師（後方支援）：再起不能(ダウン)の味方がいれば近づいて『蘇生』する。運搬ではなく
+    // その場復活が主務。対象がいなければ後段で自陣付近に留まる（基本戦わない）。
+    if (self.cls === "gunshi" && !this.shouldRetreat(self)) {
+      const downed = this.nearestDowned(self, game, 1200);
+      if (downed) {
+        const dd = V.dist(self.x, self.y, downed.x, downed.y);
+        if (dd <= ABILITY.reviveRange - 12) {
+          if (self.abilityCd <= 0) self.useAbility(game); // 蘇生（CD中は近くで待機）
+        } else {
+          this.moveTo(self, downed.x, downed.y, game);
+        }
+        // 近づく途中で敵が至近なら最低限の応戦。
+        const t = this.findTarget(self, game);
+        if (t && V.dist(self.x, self.y, t.x, t.y) < 170 &&
+            !game.map.blockedBetween(self.x, self.y, t.x, t.y)) {
+          this.aimAt(self, t.x, t.y); this.aiTryShoot(self, game, t);
+        }
+        return;
+      }
+    }
     if (!this.shouldRetreat(self)) {
       // 大将ルール：自軍の総大将が倒れていたら、距離を問わず最優先で救出に向かう
       // （味方みんなで大将を守る）。回復ゾーン無効＋士気低下を解除する唯一の手段。
@@ -508,8 +528,7 @@ class AIController {
         if (cls.ability === "turret" && d < CONFIG.unit.range && Math.random() < 0.012) self.useAbility(game);
         else if (cls.ability === "smoke" && d < 280 && Math.random() < 0.02) self.useAbility(game);
         else if (cls.ability === "dash" && (d > 280 || this.shouldRetreat(self)) && Math.random() < 0.03) self.useAbility(game);
-        // 軍師の采配は味方全体への効果なので、敵が戦場にいれば自分の間合いに関係なく時々発動。
-        else if (cls.ability === "rally" && Math.random() < 0.02) self.useAbility(game);
+        // 軍師の蘇生は update 前段の専用処理（ダウン味方へ接近して復活）で発動する。
       }
     }
 

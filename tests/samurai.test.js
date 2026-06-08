@@ -257,39 +257,60 @@ s.test("槍兵の突きは剣士に有利ダメージが乗る（実戦）", (t)
   t.lessThan(sword.hp, hp0 - sb.WEAPONS.yari.damage, "剣士には素の槍ダメージより多く入る（相性有利）");
 });
 
-s.test("軍師：aura(近くの味方)と采配(味方全体)で与ダメ強化、敵は対象外", (t) => {
+s.test("軍師：近くの味方を強化（与ダメUP＋buffedフラグ）、敵は対象外", (t) => {
   const { sb, game } = newGame(0);
   const A = sb.ABILITY;
   const gunshi = new sb.Unit(1500, 300, "blue"); gunshi.applyClass("gunshi");
   const near = new sb.Unit(1550, 300, "blue"); near.applyClass("ashigaru");   // aura圏内(50px)
-  const far  = new sb.Unit(1500, 1000, "blue"); far.applyClass("ashigaru");   // aura圏外(700px)
+  const far  = new sb.Unit(1500, 1200, "blue"); far.applyClass("ashigaru");   // aura圏外(900px)
   const foe  = new sb.Unit(1550, 320, "red"); foe.applyClass("ashigaru");     // 敵
   game.units = [gunshi, near, far, foe];
 
-  // 采配前：近い味方だけ aura、遠い味方と敵は等倍。
   game._updateCommand(16);
-  t.close(near.cmdDmgMul, A.auraDmgMul, 1e-9, "近い味方は aura で与ダメ強化");
-  t.equal(far.cmdDmgMul, 1, "遠い味方は aura 圏外で等倍");
-  t.equal(foe.cmdDmgMul, 1, "敵は軍師バフの対象外");
-
-  // 采配後：味方全体が rally、敵は依然 等倍。近い味方は rally×aura で最大。
-  gunshi.useAbility(game);
-  game._updateCommand(16);
-  t.greaterThan(far.cmdDmgMul, 1, "采配で遠い味方も強化される");
-  t.greaterThan(near.cmdDmgMul, far.cmdDmgMul, "近い味方は rally×aura でさらに強い");
-  t.equal(foe.cmdDmgMul, 1, "采配中も敵は強化されない");
+  t.close(near.cmdDmgMul, A.auraDmgMul, 1e-9, "近い味方は与ダメ強化");
+  t.equal(near.buffed, true, "近い味方は強化中フラグ（光輪）");
+  t.equal(far.cmdDmgMul, 1, "遠い味方は圏外で等倍");
+  t.equal(far.buffed, false, "遠い味方は強化なし");
+  t.equal(foe.cmdDmgMul, 1, "敵は対象外");
 });
 
-s.test("軍師：倒れると aura が消える（強化が外れる）", (t) => {
+s.test("軍師：強化は秒数で持続（圏外に出ても buffLingerMs の間は継続→やがて切れる）", (t) => {
+  const { sb, game } = newGame(0);
+  const A = sb.ABILITY;
+  const gunshi = new sb.Unit(1500, 300, "blue"); gunshi.applyClass("gunshi");
+  const ally = new sb.Unit(1550, 300, "blue"); ally.applyClass("ashigaru");
+  game.units = [gunshi, ally];
+  game._updateCommand(16);
+  t.equal(ally.buffed, true, "近くで強化が付く");
+  // 圏外へ移動 → すぐには切れず持続する。
+  ally.x = 1500; ally.y = 1400;
+  game._updateCommand(100);
+  t.equal(ally.buffed, true, "離れても数秒は持続");
+  // 持続時間を超えたら切れる。
+  game._updateCommand(A.buffLingerMs + 100);
+  t.equal(ally.buffed, false, "持続時間を過ぎると強化が切れる");
+  t.equal(ally.cmdDmgMul, 1, "強化が切れると与ダメは等倍へ");
+});
+
+s.test("軍師：蘇生で再起不能の味方を低HPで復活（回復はしない・CD発生）", (t) => {
   const { sb, game } = newGame(0);
   const gunshi = new sb.Unit(1500, 300, "blue"); gunshi.applyClass("gunshi");
-  const near = new sb.Unit(1550, 300, "blue"); near.applyClass("ashigaru");
-  game.units = [gunshi, near];
-  game._updateCommand(16);
-  t.greaterThan(near.cmdDmgMul, 1, "生存中は aura で強化");
-  gunshi.alive = false; // 討死
-  game._updateCommand(16);
-  t.equal(near.cmdDmgMul, 1, "軍師が倒れると強化は消える");
+  const ally = new sb.Unit(1560, 300, "blue"); ally.applyClass("ashigaru");
+  game.units = [gunshi, ally];
+  ally.takeDamage(ally.hp + 50); // ダウンさせる
+  t.equal(ally.alive, false, "ダウン中は alive=false");
+  t.equal(ally.downed, true, "ダウン中は downed=true");
+  gunshi.useAbility(game);
+  t.equal(ally.alive, true, "蘇生で復活する");
+  t.equal(ally.downed, false, "ダウン解除");
+  t.lessThan(ally.hp, ally.maxHp, "回復はしない＝満タンにならない（低HP）");
+  t.greaterThan(gunshi.abilityCd, 0, "蘇生後はクールダウンに入る");
+});
+
+s.test("軍師は爆弾を持たない（maxBombs=0）", (t) => {
+  const { sb } = newGame(0);
+  const g = new sb.Unit(0, 0, "blue"); g.applyClass("gunshi");
+  t.equal(g.maxBombs, 0, "軍師の爆弾上限は0");
 });
 
 s.test("8vs8：各チーム CONFIG.teamSize(=8) 人が配置される（軍師追加）", (t) => {
