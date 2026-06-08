@@ -94,13 +94,34 @@
       if (Net.started) document.getElementById("lobby").classList.add("hidden");
     } else if (m.type === "start") {
       Net.started = true;
+      Net.buf = []; // 新しい試合：補間バッファを初期化（前試合の位置と混ざらないように）
       // 参加済みの人だけロビーを閉じる。未参加の人はロビーのまま（途中参加可）。
       if (Net.joined) document.getElementById("lobby").classList.add("hidden");
     } else if (m.type === "snap") {
       Net.snap = m.s;
+      // 補間用バッファ：受信時刻つきで直近スナップを溜める（描画は約100ms遅れで2点を補間）。
+      if (!Net.buf) Net.buf = [];
+      Net.buf.push({ rt: nowMs(), s: m.s });
+      if (Net.buf.length > 8) Net.buf.shift();
     } else if (m.type === "end") {
       Net.started = false;
-      flashBanner(m.win ? "青チーム勝利！" : "赤チーム勝利！");
+      // 勝者チーム（win=true ＝ 青の勝ち）と、自分の勝敗をはっきり出す。
+      const winnerLabel = m.win ? "青チーム" : "赤チーム";
+      const winnerTeam = m.win ? "blue" : "red";
+      // 自分のチームは最新スナップ（t:0=青/1=赤）から判定。無ければ参加時の値。
+      let myT = null;
+      if (Net.snap && Net.snap.u && Net.snap.u[Net.myIndex]) myT = Net.snap.u[Net.myIndex].t === 0 ? "blue" : "red";
+      else if (Net.myTeam != null) myT = (Net.myTeam === 0 || Net.myTeam === "blue") ? "blue" : "red";
+      let result;
+      if (Net.joined && myT) {
+        result = (myT === winnerTeam) ? `🎉 あなたの勝ち！（${winnerLabel}勝利）` : `敗北… （${winnerLabel}勝利）`;
+      } else {
+        result = `${winnerLabel}の勝利！`;
+      }
+      // きわどい試合でも結果が分かるよう、画面バナーを長め＋ロビーにも明示。
+      banner = result; bannerT = 6000;
+      Net.buf = []; // 試合終了：補間バッファをクリア
+      setStatus(result + "　／　まもなく次の試合の待機ロビーに戻ります");
       document.getElementById("lobby").classList.remove("hidden"); // 待機ロビーに戻る
     } else if (m.type === "slotTaken") {
       setStatus("そのスロットは使用中です。別を選んでください。");
@@ -310,15 +331,65 @@
     ctx.restore();
   }
 
+  // 高精度クロック（rAFのnowと同じ時間軸）。
+  function nowMs() { return (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now(); }
+
+  // 角度を最短経路で線形補間（-π..π を跨いでも自然に回る）。
+  function lerpAngle(a, b, t) {
+    let d = b - a;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return a + d * t;
+  }
+
+  // サーバーは30Hz送信。描画はrAF(～60fps)なので、約100ms遅れの「再生時刻」に対して
+  // 直近2スナップを線形補間し、ユニット/浪人の動きを滑らかにする（全体的にスロー/重い対策）。
+  const INTERP_DELAY = 100;
+  function blendSnap(sa, sb, al) {
+    const amap = {};
+    for (const ua of sa.u) amap[ua.i] = ua;
+    const u = sb.u.map((ub) => {
+      const ua = amap[ub.i];
+      if (!ua || !ub.al || !ua.al) return ub;            // 前フレーム不在/死亡は補間しない
+      const dx = ub.x - ua.x, dy = ub.y - ua.y;
+      if (dx * dx + dy * dy > 260 * 260) return ub;       // 復活等の大ジャンプはスナップ
+      return Object.assign({}, ub, { x: ua.x + dx * al, y: ua.y + dy * al, a: lerpAngle(ua.a, ub.a, al) });
+    });
+    let be = sb.be;
+    if (sa.be && sb.be && sa.be.length === sb.be.length) {
+      be = sb.be.map((bb, i) => {
+        const ba = sa.be[i];
+        const dx = bb.x - ba.x, dy = bb.y - ba.y;
+        if (dx * dx + dy * dy > 260 * 260) return bb;
+        return Object.assign({}, bb, { x: ba.x + dx * al, y: ba.y + dy * al, a: lerpAngle(ba.a, bb.a, al) });
+      });
+    }
+    return Object.assign({}, sb, { u, be });
+  }
+  function interpSnap(now) {
+    const buf = Net.buf;
+    if (!buf || buf.length < 2) return Net.snap; // バッファ不足は最新をそのまま（従来動作）
+    const renderT = now - INTERP_DELAY;
+    for (let k = 0; k < buf.length - 1; k++) {
+      if (buf[k].rt <= renderT && renderT <= buf[k + 1].rt) {
+        const span = buf[k + 1].rt - buf[k].rt;
+        const al = span > 0 ? (renderT - buf[k].rt) / span : 0;
+        return blendSnap(buf[k].s, buf[k + 1].s, al);
+      }
+    }
+    return Net.snap; // 再生時刻が範囲外（最新より新しい/古すぎ）は最新で安全フォールバック
+  }
+
   function frame(now) {
     if (Net.joined && Net.snap && Net.map) {
-      const me = Net.snap.u[Net.myIndex];
+      const view = interpSnap(now);
+      const me = view.u[Net.myIndex];
       if (me) {
         Net.cam.x = V.clamp(me.x - CONFIG.width / 2, 0, CONFIG.world.width - CONFIG.width);
         Net.cam.y = V.clamp(me.y - CONFIG.height / 2, 0, CONFIG.world.height - CONFIG.height);
       }
-      NetRender.draw(ctx, Net.snap, Net.map, Net.myIndex, Net.cam);
-      drawHud(ctx, Net.snap, Net.myIndex);
+      NetRender.draw(ctx, view, Net.map, Net.myIndex, Net.cam);
+      drawHud(ctx, view, Net.myIndex);
       if (bannerT > 0) {
         bannerT -= 16;
         ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, CONFIG.height / 2 - 30, CONFIG.width, 60);

@@ -340,6 +340,8 @@ class Unit {
     this.abilityCd = 0;  // ms until the class ability is ready again
     this.dashMs = 0;     // >0 while a dash (騎馬/総大将) is active
     this.moraleMul = 1;  // 士気倍率（大将が discard すると<1。移動と与ダメに乗る）
+    this.cmdSpeedMul = 1; // 軍師の指揮バフ（移動）。game が毎更新で設定
+    this.cmdDmgMul = 1;   // 軍師の指揮バフ（与ダメ）。game が毎更新で設定
     this.aim = team === "blue" ? 0 : Math.PI; // facing angle
     this.cooldown = 0;
     // Equipped weapon (see weapons.js). AI + player default to "rifle", which
@@ -450,6 +452,10 @@ class Unit {
       game.smokes.push(new Smoke(this.x, this.y));
     } else if (c.ability === "dash") {
       this.dashMs = ABILITY.dashMs;
+    } else if (c.ability === "rally") {
+      // 軍師の采配：自軍全体に一定時間バフ。game側のカウントダウンに記録（毎更新で減算）。
+      if (!game.rallyMs) game.rallyMs = { blue: 0, red: 0 };
+      game.rallyMs[this.team] = ABILITY.rallyDuration;
     } else {
       return; // unknown / no entity available
     }
@@ -511,7 +517,7 @@ class Unit {
 
   // dirX/dirY are a (roughly) unit vector of intended movement.
   move(dirX, dirY, game) {
-    let speed = CONFIG.unit.speed * this.speedMul * this.classSpeedMul * (this.moraleMul || 1);
+    let speed = CONFIG.unit.speed * this.speedMul * this.classSpeedMul * (this.moraleMul || 1) * (this.cmdSpeedMul || 1);
     // 体力が減るほど移動が鈍る（刀を振りすぎると遅くなる）。満タンで等速、0で minSpeedMul。
     if (CONFIG.stamina && this.maxStamina) {
       const min = CONFIG.stamina.minSpeedMul;
@@ -597,7 +603,7 @@ class Unit {
     const spread = w.spread ?? 0;
     const wSpeedMul = w.bulletSpeedMul ?? 1;
     const wRangeMul = w.rangeMul ?? 1;
-    const damage = this.damageVal() * (this.damageMul || 1) * (this.moraleMul || 1);
+    const damage = this.damageVal() * (this.damageMul || 1) * (this.moraleMul || 1) * (this.cmdDmgMul || 1);
     const speed = CONFIG.bullet.speed * wSpeedMul * this.bulletSpeedMul;
     const life = CONFIG.bullet.life * wRangeMul * this.rangeMul;
 
@@ -631,7 +637,7 @@ class Unit {
     if (CONFIG.stamina) this.stamina = Math.max(0, this.stamina - CONFIG.stamina.swingCost); // 振るほど体力消費
     const reach = w.meleeRange ?? 40;
     const arc = w.meleeArc ?? 1.0;
-    const dmg = (this.weapon().damage ?? CONFIG.bullet.damage) * (this.damageMul || 1) * (this.moraleMul || 1);
+    const dmg = (this.weapon().damage ?? CONFIG.bullet.damage) * (this.damageMul || 1) * (this.moraleMul || 1) * (this.cmdDmgMul || 1);
     // 点(tx,ty)が前方扇内かつ reach+extra 以内か。
     const hitArc = (tx, ty, extra) => {
       if (V.dist(this.x, this.y, tx, ty) > reach + (extra || 0)) return false;

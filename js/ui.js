@@ -35,13 +35,14 @@ const UI = {
   // クラスが「何が得意か」を一言で。プレイ中のスマホ表示用。
   classTrait(cls) {
     switch (cls) {
-      case "general":  return "総大将・最も頑丈な刀（討たれると不利）";
-      case "ashigaru": return "足軽・刀の標準前衛";
-      case "archer":   return "弓・遠距離の手数（装填不要）";
-      case "gunner":   return "鉄砲・一撃重いが長い装填";
-      case "cavalry":  return "騎馬・突進で急接近する刀";
-      case "ninja":    return "忍者・森に潜む刀＋煙幕";
-      case "spearman": return "槍兵・長い間合いで突く（剣に強い/弓に弱い）";
+      case "general":  return "総大将・最も頑丈な刀＝剣（弓に強い/槍に弱い）討たれると不利";
+      case "ashigaru": return "足軽・刀＝剣の標準前衛（弓に強い/槍に弱い）";
+      case "archer":   return "弓・遠距離の手数で装填不要（槍に強い/剣に弱い）";
+      case "gunner":   return "鉄砲・一撃重いが長い装填（三すくみ外）";
+      case "cavalry":  return "騎馬・突進で急接近する刀＝剣（弓に強い/槍に弱い）";
+      case "ninja":    return "忍者・森に潜む刀＝剣＋煙幕（弓に強い/槍に弱い）";
+      case "spearman": return "槍兵・長い間合いで突く槍（剣に強い/弓に弱い）";
+      case "gunshi":   return "軍師・采配で味方を強化する指揮役。刀＝剣（弓に強い/槍に弱い）";
       default:         return "";
     }
   },
@@ -55,6 +56,7 @@ const UI = {
     if (a === "capture") return "近くの野武士を説得して仲間に";
     if (a === "repair") return "砦・城門を修復";
     if (a === "smoke") return "煙幕で隠れる";
+    if (a === "rally") return "采配（味方全体を一定時間強化）";
     return "なし";
   },
 

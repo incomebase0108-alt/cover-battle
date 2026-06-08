@@ -12,6 +12,14 @@ const ABILITY = {
   dashMs: 230,            // duration of an assault dash
   dashMul: 2.6,           // speed multiplier during a dash
   captureRange: 280,      // beast-tamer capture reach
+  // 軍師の指揮（rally）：発動で味方全体を一定時間強化。さらに軍師の生存中は
+  // 周囲の味方に常時の小バフ（aura）がかかる。
+  rallyDuration: 8000,    // ms 采配の効果時間（味方全体）
+  rallyDmgMul: 1.25,      // 采配中の与ダメ倍率
+  rallySpeedMul: 1.15,    // 采配中の移動倍率
+  auraRadius: 260,        // 軍師の常時バフが届く半径
+  auraDmgMul: 1.10,       // aura内の与ダメ倍率
+  auraSpeedMul: 1.05,     // aura内の移動倍率
 };
 
 // Downed-ally rescue tuning.

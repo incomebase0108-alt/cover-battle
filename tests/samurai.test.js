@@ -257,11 +257,46 @@ s.test("槍兵の突きは剣士に有利ダメージが乗る（実戦）", (t)
   t.lessThan(sword.hp, hp0 - sb.WEAPONS.yari.damage, "剣士には素の槍ダメージより多く入る（相性有利）");
 });
 
-s.test("7vs7：各チーム CONFIG.teamSize(=7) 人が配置される", (t) => {
+s.test("軍師：aura(近くの味方)と采配(味方全体)で与ダメ強化、敵は対象外", (t) => {
   const { sb, game } = newGame(0);
-  t.equal(sb.CONFIG.teamSize, 7, "teamSize は7");
-  t.equal(game.units.filter((u) => u.team === "blue").length, 7, "青7人");
-  t.equal(game.units.filter((u) => u.team === "red").length, 7, "赤7人");
+  const A = sb.ABILITY;
+  const gunshi = new sb.Unit(1500, 300, "blue"); gunshi.applyClass("gunshi");
+  const near = new sb.Unit(1550, 300, "blue"); near.applyClass("ashigaru");   // aura圏内(50px)
+  const far  = new sb.Unit(1500, 1000, "blue"); far.applyClass("ashigaru");   // aura圏外(700px)
+  const foe  = new sb.Unit(1550, 320, "red"); foe.applyClass("ashigaru");     // 敵
+  game.units = [gunshi, near, far, foe];
+
+  // 采配前：近い味方だけ aura、遠い味方と敵は等倍。
+  game._updateCommand(16);
+  t.close(near.cmdDmgMul, A.auraDmgMul, 1e-9, "近い味方は aura で与ダメ強化");
+  t.equal(far.cmdDmgMul, 1, "遠い味方は aura 圏外で等倍");
+  t.equal(foe.cmdDmgMul, 1, "敵は軍師バフの対象外");
+
+  // 采配後：味方全体が rally、敵は依然 等倍。近い味方は rally×aura で最大。
+  gunshi.useAbility(game);
+  game._updateCommand(16);
+  t.greaterThan(far.cmdDmgMul, 1, "采配で遠い味方も強化される");
+  t.greaterThan(near.cmdDmgMul, far.cmdDmgMul, "近い味方は rally×aura でさらに強い");
+  t.equal(foe.cmdDmgMul, 1, "采配中も敵は強化されない");
+});
+
+s.test("軍師：倒れると aura が消える（強化が外れる）", (t) => {
+  const { sb, game } = newGame(0);
+  const gunshi = new sb.Unit(1500, 300, "blue"); gunshi.applyClass("gunshi");
+  const near = new sb.Unit(1550, 300, "blue"); near.applyClass("ashigaru");
+  game.units = [gunshi, near];
+  game._updateCommand(16);
+  t.greaterThan(near.cmdDmgMul, 1, "生存中は aura で強化");
+  gunshi.alive = false; // 討死
+  game._updateCommand(16);
+  t.equal(near.cmdDmgMul, 1, "軍師が倒れると強化は消える");
+});
+
+s.test("8vs8：各チーム CONFIG.teamSize(=8) 人が配置される（軍師追加）", (t) => {
+  const { sb, game } = newGame(0);
+  t.equal(sb.CONFIG.teamSize, 8, "teamSize は8");
+  t.equal(game.units.filter((u) => u.team === "blue").length, 8, "青8人");
+  t.equal(game.units.filter((u) => u.team === "red").length, 8, "赤8人");
 });
 
 s.test("大筒は大きな砲丸で、直撃＋着弾点周囲にも衝撃が及ぶ", (t) => {

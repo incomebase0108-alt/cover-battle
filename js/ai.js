@@ -425,23 +425,14 @@ class AIController {
       if (fort && fort.hp > 0) return STATE.ASSAULT;
     }
 
-    // 4. 森を活用: healthy and a forest is handy & not already engaged at point
-    // blank -> slip into the forest to ambush (higher skill uses this more).
-    if (hasLOS && d > 200 && this.hpFrac(self) > 0.6) {
-      const forest = this.nearestForest(self, game);
-      if (forest && !game.map.inForest(self.x, self.y)) {
-        const fd = V.dist(self.x, self.y, forest.x, forest.y);
-        if (fd < d && self.skill > 0.5) return STATE.HIDE;
-      }
-    }
-
-    // 2. 慎重さ: exposed in the open with no nearby allies and a competent foe
-    // count against us -> peek from cover instead of standing in the open.
+    // 慎重さ：森への伏撃(HIDE)は「FLANKER役」だけが使う戦術に限定した（後段の役割分岐）。
+    // 以前はスキルが高いほど HIDE/COVER を選び、結果『強い設定ほど戦わない』不具合があった
+    // ため、スキル依存の消極化を撤廃。COVER は「手負い」かつ「明確な数的不利」のときだけ。
     if (hasLOS && !game.map.inForest(self.x, self.y)) {
       const enemies = this.countVisibleEnemies(self, game);
       const allies = this.countNearbyAllies(self, game, 260);
       const outnumbered = enemies > allies + 1;
-      const cautious = self.skill > 0.55;
+      const cautious = this.hpFrac(self) < 0.55; // スキルではなくHPで判断（健康なら前へ）
       if (outnumbered && cautious) {
         if (this.nearestCover(self, target, game)) return STATE.COVER;
       }
@@ -489,8 +480,13 @@ class AIController {
       if (d) { this.moveTo(self, d.x, d.y, game); return; }
     }
 
-    // 動物使いは率先して野生動物を捕獲しに行く（＝無害化して仲間にする）。
-    if (!this.shouldRetreat(self) && this.huntBeastAsTamer(self, game)) return;
+    // 動物使い(総大将)は野武士を捕獲しに行くが、近くに交戦可能な敵がいる時は戦闘を優先。
+    // （以前は敵がいても捕獲へ向かい『戦わない』一因になっていた）。
+    {
+      const foe = this.findTarget(self, game);
+      const foeClose = foe && V.dist(self.x, self.y, foe.x, foe.y) < 360;
+      if (!this.shouldRetreat(self) && !foeClose && this.huntBeastAsTamer(self, game)) return;
+    }
 
     this.strafeTimer -= dt;
     if (this.strafeTimer <= 0) {
@@ -512,6 +508,8 @@ class AIController {
         if (cls.ability === "turret" && d < CONFIG.unit.range && Math.random() < 0.012) self.useAbility(game);
         else if (cls.ability === "smoke" && d < 280 && Math.random() < 0.02) self.useAbility(game);
         else if (cls.ability === "dash" && (d > 280 || this.shouldRetreat(self)) && Math.random() < 0.03) self.useAbility(game);
+        // 軍師の采配は味方全体への効果なので、敵が戦場にいれば自分の間合いに関係なく時々発動。
+        else if (cls.ability === "rally" && Math.random() < 0.02) self.useAbility(game);
       }
     }
 
@@ -547,6 +545,12 @@ class AIController {
     }
 
     let state = this.desiredState(self, game);
+    // 軍師は支援役：倒れると味方の強化(采配/aura)が消えるため前線に突っ込ませない。
+    // 敵が近い時だけ応戦し、基本は自陣付近で守って采配を撒く。
+    if (self.cls === "gunshi" && !this.shouldRetreat(self)) {
+      const foe = target ? V.dist(self.x, self.y, target.x, target.y) : Infinity;
+      state = foe < 230 ? STATE.ENGAGE : STATE.GUARD;
+    }
     // Anti-stall: when the match has gone quiet too long, everyone charges the
     // enemy fort so it always reaches a conclusion (unless badly hurt).
     if (game.rushMode && !this.shouldRetreat(self)) {

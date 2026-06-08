@@ -385,6 +385,34 @@ class Game {
     }
   }
 
+  // 軍師の指揮バフ：①采配(rally)＝自軍全体に一定時間バフ ②aura＝生存中の軍師の
+  // 周囲の味方に常時の小バフ。両者を掛け合わせて各ユニットの cmd*Mul に確定する。
+  _updateCommand(dt) {
+    if (!this.rallyMs) this.rallyMs = { blue: 0, red: 0 };
+    for (const team of ["blue", "red"]) {
+      this.rallyMs[team] = Math.max(0, (this.rallyMs[team] || 0) - dt);
+    }
+    // 生存中の軍師（各チーム）を集める。
+    const gunshi = { blue: [], red: [] };
+    for (const u of this.units) {
+      if (u.alive && u.cls === "gunshi" && gunshi[u.team]) gunshi[u.team].push(u);
+    }
+    const auraR2 = ABILITY.auraRadius * ABILITY.auraRadius;
+    for (const u of this.units) {
+      let spd = 1, dmg = 1;
+      // ①采配：自軍がrally中なら全員に。
+      if ((this.rallyMs[u.team] || 0) > 0) { spd *= ABILITY.rallySpeedMul; dmg *= ABILITY.rallyDmgMul; }
+      // ②aura：自軍の生存軍師が半径内にいれば（軍師自身も含む）。
+      const list = gunshi[u.team] || [];
+      for (const g of list) {
+        const dx = g.x - u.x, dy = g.y - u.y;
+        if (dx * dx + dy * dy <= auraR2) { spd *= ABILITY.auraSpeedMul; dmg *= ABILITY.auraDmgMul; break; }
+      }
+      u.cmdSpeedMul = spd;
+      u.cmdDmgMul = dmg;
+    }
+  }
+
   // Forest stealth: the player always sees allies and themself. An enemy
   // hidden in a forest is invisible until a friendly unit gets close enough
   // to spot them (matching the AI's own detection rule).
@@ -422,6 +450,7 @@ class Game {
   _update(dt) {
     if (this.over) return; // 試合終了後は一切更新しない（サーバーの多重終了/多重再戦を防ぐ）
     this._updateGenerals(dt); // 大将ルール：士気倍率と「討死」までの計時をユニット更新前に確定
+    this._updateCommand(dt);  // 軍師の指揮バフ（采配＋aura）をユニット更新前に確定
     for (const u of this.units) u.update(dt, this);
     for (const b of this.bullets) b.update(dt, this);
     for (const b of this.bombs) b.update(dt, this);

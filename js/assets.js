@@ -13,7 +13,7 @@ const Assets = {
 
   // クラス別スプライト（assets/soldier_{team}_{key}.png）。無ければ soldier_{team}.png →
   // それも無ければベクター描画にフォールバックする。Blender侍12枚はこのキー名で投下。
-  _classKeys: ["general", "ashigaru", "archer", "gunner", "cavalry", "ninja", "spearman"],
+  _classKeys: ["general", "ashigaru", "archer", "gunner", "cavalry", "ninja", "spearman", "gunshi"],
 
   // 中立の浪人スプライト（assets/beast_{key}.png）。無ければ人型ベクターにフォールバック。
   _beastKeys: ["nobushi", "kengo"],

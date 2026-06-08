@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cover Battle — 岩と森の4vs4バトル</title>
-  <link rel="stylesheet" href="css/style.css?v=42" />
+  <link rel="stylesheet" href="css/style.css?v=43" />
 </head>
 <body>
   <div id="app">
@@ -55,17 +55,17 @@
     <div id="overlay" class="overlay">
       <div class="panel">
         <h1>COVER BATTLE</h1>
-        <p class="subtitle">山城を攻め落とす 7 vs 7 合戦バトル　<span id="buildTag" style="color:#7CFC9A;font-weight:700;"></span></p>
+        <p class="subtitle">山城を攻め落とす 8 vs 8 合戦バトル　<span id="buildTag" style="color:#7CFC9A;font-weight:700;"></span></p>
         <div class="how">
           <p><b>操作</b>： 移動=WASD/矢印 ・ 照準=マウス ・ 攻撃=クリック/スペース ・ 爆弾=E ・ 特殊=C/🎯</p>
           <p><b>爆弾</b>： <b>E / 💣</b>で設置。敵や石垣はもちろん、<b>砦・城門の破壊</b>にも使える。</p>
-          <p><b>武器（クラス固定）</b>： 総大将・足軽・騎馬・忍者=<b>刀</b>（速い近接）／<b>槍兵</b>=槍（長い間合いで突く・遅め）／弓兵=<b>弓</b>（遠距離・装填不要）／鉄砲兵=<b>鉄砲</b>（一撃重い・長い装填）。</p>
+          <p><b>武器（クラス固定）</b>： 総大将・足軽・騎馬・忍者・軍師=<b>刀</b>（速い近接）／<b>槍兵</b>=槍（長い間合いで突く・遅め）／弓兵=<b>弓</b>（遠距離・装填不要）／鉄砲兵=<b>鉄砲</b>（一撃重い・長い装填）。</p>
           <p><b>三すくみ（相性）</b>： <b>槍＞剣</b>・<b>剣＞弓</b>・<b>弓＞槍</b>。有利な相手には大ダメージ。槍は間合いで剣に勝ち、剣は接近で弓に勝ち、弓は距離で槍に勝つ。</p>
           <p><b>大将ルール</b>： 各軍に<b>総大将</b>が1人。倒れている間は<b>自陣の回復ゾーンが無効</b>になり<b>味方全員が弱体</b>。救出されず討死すると<b>サドンデス</b>。総大将を守り、敵将を討て。</p>
           <p><b>勝利条件</b>： 赤チームを<b>全滅</b>、<b>赤の砦を破壊</b>、または<b>赤の総大将を討ち取る</b>。味方全滅か<b>自分の砦が破壊されると敗北</b>。</p>
           <p><b>地形</b>： <span class="rock-key">石垣</span>=破壊できる盾 / <span class="mtn-key">山(本丸)</span>=壊せない遮蔽 / <span class="bush-key">森</span>=隠れると敵から見えない / <span class="river-key">堀</span>=移動が遅くなる</p>
           <p><b>砦</b>： 自分の<span class="base-key">砦</span>（自陣）に戻ると体力が回復（総大将が健在なときのみ）。砦には<b>耐久ゲージ</b>があり、敵に壊されると負け。</p>
-          <p><b>クラス特殊（C / 🎯）</b>： 総大将=<b>野武士を説得</b>して仲間に（最大2）／騎馬=<b>突進ダッシュ</b>／忍者=<b>煙幕</b>。野武士は中立で誰にでも襲うが、総大将が近づけば味方になる。</p>
+          <p><b>クラス特殊（C / 🎯）</b>： 総大将=<b>野武士を説得</b>して仲間に（最大2）／騎馬=<b>突進ダッシュ</b>／忍者=<b>煙幕</b>／<b>軍師=采配</b>（味方全体を一定時間強化。生存中は周囲の味方も強化）。野武士は中立で誰にでも襲うが、総大将が近づけば味方になる。</p>
           <p><b>マップ</b>： 画面よりかなり広く、<b>カメラが自分を追って</b>スクロールする。段差は山岳海兵だけ越えられる近道。</p>
           <p><b>スマホ</b>： 左の「<b>移</b>」スティックで移動、右の「<b>攻</b>」スティックを倒すと<b>その方向へ照準＋射撃</b>（押している間だけ撃つ）。下のボタンで 爆弾／特殊／武器。</p>
         </div>
@@ -100,23 +100,23 @@
     </div>
   </div>
 
-  <script src="js/vector.js?v=42"></script>
-  <script src="js/config.js?v=42"></script>
-  <script src="js/classes.js?v=42"></script>
-  <script src="js/assets.js?v=42"></script>
-  <script src="js/audio.js?v=42"></script>
-  <script src="js/input.js?v=42"></script>
-  <script src="js/map.js?v=42"></script>
-  <script src="js/weapons.js?v=42"></script>
-  <script src="js/chest.js?v=42"></script>
-  <script src="js/beast.js?v=42"></script>
-  <script src="js/abilities.js?v=42"></script>
-  <script src="js/entities.js?v=42"></script>
-  <script src="js/ai.js?v=42"></script>
-  <script src="js/overlay.js?v=42"></script>
-  <script src="js/game.js?v=42"></script>
-  <script src="js/ui.js?v=42"></script>
-  <script src="js/main.js?v=42"></script>
-  <script src="js/help.js?v=42"></script>
+  <script src="js/vector.js?v=43"></script>
+  <script src="js/config.js?v=43"></script>
+  <script src="js/classes.js?v=43"></script>
+  <script src="js/assets.js?v=43"></script>
+  <script src="js/audio.js?v=43"></script>
+  <script src="js/input.js?v=43"></script>
+  <script src="js/map.js?v=43"></script>
+  <script src="js/weapons.js?v=43"></script>
+  <script src="js/chest.js?v=43"></script>
+  <script src="js/beast.js?v=43"></script>
+  <script src="js/abilities.js?v=43"></script>
+  <script src="js/entities.js?v=43"></script>
+  <script src="js/ai.js?v=43"></script>
+  <script src="js/overlay.js?v=43"></script>
+  <script src="js/game.js?v=43"></script>
+  <script src="js/ui.js?v=43"></script>
+  <script src="js/main.js?v=43"></script>
+  <script src="js/help.js?v=43"></script>
 </body>
 </html>

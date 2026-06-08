@@ -166,23 +166,20 @@ s.test("a reloading unit does not advance toward the enemy", (t) => {
   t.ok(after >= before - 0.001, "reloading unit does not move closer to the enemy");
 });
 
-// ---- behaviour: HIDE (forest stealth) -------------------------------------
+// ---- behaviour: 高スキルでも消極化しない（『強い設定ほど戦わない』不具合の回帰防止）----
 
-s.test("a healthy distant unit heads for a forest to ambush", (t) => {
+s.test("a healthy high-skill unit with a clear shot ENGAGEs (does not passively hide)", (t) => {
   const { sb, game } = emptyGame(0);
-  // forests[1] sits in open ground; approach it from the left with the enemy
-  // further left so the forest is closer than the enemy (-> HIDE) with clear LOS.
+  // forests[1] sits in open ground; place the unit near it with a clear LOS to a
+  // distant enemy. 旧実装は「スキルが高いほど森へ隠れて(HIDE)戦わない」状態になったが、
+  // それを撤廃したので、健康な高スキル兵は隠れずに交戦(ENGAGE)するのが正しい。
   const forest = game.map.forests[1];
   const u = spawnAI(sb, game, forest.x - (forest.r + 40), forest.y, "blue", 0.9);
   u.hp = sb.CONFIG.unit.maxHp;
-  u.ai.assaulter = false; // pin: this scenario tests HIDE, not the fort-assault branch
+  u.ai.assaulter = false; // pin: exclude the fort-assault branch
   spawnAI(sb, game, forest.x - 600, forest.y, "red");
-  t.equal(u.ai.desiredState(u, game), sb.AIController.STATE.HIDE,
-    "healthy unit with a handy forest -> HIDE");
-  const before = Math.hypot(u.x - forest.x, u.y - forest.y);
-  for (let i = 0; i < 10; i++) u.update(16, game);
-  const after = Math.hypot(u.x - forest.x, u.y - forest.y);
-  t.lessThan(after, before, "moved toward the forest");
+  t.equal(u.ai.desiredState(u, game), sb.AIController.STATE.ENGAGE,
+    "healthy high-skill unit -> ENGAGE（消極的なHIDEにならない）");
 });
 
 // ---- behaviour: ENGAGE not broken -----------------------------------------

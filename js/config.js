@@ -15,7 +15,7 @@ const CONFIG = {
   world: { width: 4800, height: 3000 },
 
   // Units per team (the engine supports any number; stages auto-generate spawns).
-  teamSize: 7,
+  teamSize: 8,
 
   // Selectable AI difficulty. A single coefficient `aiSkill` (0 = weak … 1 =
   // strong) expresses how good the AI is: it drives aim accuracy, reaction time,
@@ -36,8 +36,8 @@ const CONFIG = {
 
   unit: {
     radius: 16,        // キャラを少し大きく（当たり判定＋スプライトの基準）
-    maxHp: 100,
-    speed: 1.6,        // ゆっくりプレイできるよう全体的に減速
+    maxHp: 130,        // 戦闘が長持ちするよう全体的に増量（全クラスへ hpMul 経由で波及）
+    speed: 1.9,        // v39の減速をやや戻す（LANで「全体的にスロー」対策・単体も同様に）
     fireCooldown: 300, // ms between shots within a magazine
     magSize: 10,       // rounds per magazine before a reload is forced
     reloadTime: 3000,  // ms to reload an empty magazine (can't fire meanwhile)

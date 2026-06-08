@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v42 回復ゾーンの境界を城の上に緑リング＋ラベルで明示（城が大きく色が被って分かりにくい対策）";
+  const BUILD = "v43 体力増/野武士減速/速度up・三すくみ表記・AI交戦改善・軍師追加で8vs8・LAN補間と勝敗表示";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
