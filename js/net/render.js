@@ -38,6 +38,12 @@ const NetRender = {
       if (!u.al) { if (u.dn) this._downed(ctx, u); else this._wreck(ctx, u); continue; }
       if (!this.visible(u, snap, map, myTeam)) continue;
       this._unit(ctx, u, u.i === myIndex);
+      // 三すくみの色分け（自分視点）：得意な相手＝緑/苦手な相手＝赤。
+      if (me && u.t !== myTeam && typeof rpsMatchup === "function") {
+        const cls = (typeof getClass === "function" && u.cl) ? getClass(u.cl) : null;
+        const rr = CONFIG.unit.radius * (cls ? (cls.sizeMul || 1) : 1);
+        drawMatchupRing(ctx, u.x, u.y, rr, rpsMatchup(me.w, u.w));
+      }
     }
     map.drawSolids(ctx);
     if (snap.sm) for (const s of snap.sm) this._smoke(ctx, s);

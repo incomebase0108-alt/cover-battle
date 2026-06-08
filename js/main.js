@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v45 軍師に「采配」ボタン追加：周囲の味方を一時強化(与ダメ+25%/移動+15%・8秒/CD22秒)。蘇生(特殊)とは別ボタン🚩(V)";
+  const BUILD = "v46 三すくみ相性を色分け表示：選択キャラ視点で得意な相手＝緑(▲)/苦手な相手＝赤(▼)を相手に表示";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

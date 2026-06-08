@@ -145,6 +145,40 @@ function weaponRps(key) {
   return w ? (w.rps || null) : null;
 }
 
+// 選択キャラ視点の三すくみ相性。myKey の武器が theirKey に有利なら "good"（得意＝緑）、
+// 不利なら "bad"（苦手＝赤）、引き分け/相性外（鉄砲・同属性）は null。
+function rpsMatchup(myKey, theirKey) {
+  const me = weaponRps(myKey);
+  const them = weaponRps(theirKey);
+  if (!me || !them || me === them) return null;
+  if (rpsBonus(me, them) > 1) return "good"; // 自分が相手に有利＝得意
+  if (rpsBonus(them, me) > 1) return "bad";  // 相手が自分に有利＝苦手
+  return null;
+}
+
+// 相性マーカー：選択キャラ視点で相手の足元に色リング＋頭上の三角を描く。
+// 得意=緑(▲)／苦手=赤(▼)。色覚に依らず形でも分かるようにする。単独/LAN共用。
+function drawMatchupRing(ctx, x, y, r, kind) {
+  if (kind !== "good" && kind !== "bad") return;
+  const col = kind === "good" ? "#39e08a" : "#ff5a5a";
+  ctx.save();
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  ctx.ellipse(x, y + r * 0.5, r * 1.15, r * 0.62, 0, 0, Math.PI * 2); // 足元リング
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = col;
+  const ay = y - r - 8; // 頭上マーカー
+  ctx.beginPath();
+  if (kind === "good") { ctx.moveTo(x, ay - 7); ctx.lineTo(x - 6, ay + 3); ctx.lineTo(x + 6, ay + 3); }
+  else { ctx.moveTo(x, ay + 7); ctx.lineTo(x - 6, ay - 3); ctx.lineTo(x + 6, ay - 3); }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 // 攻撃モーション。ユニットの「回転フレーム内（局所 +X＝前方）」で呼ぶこと。
 //   刀  : 前方の扇を斬り抜ける刃の弧
 //   弓  : 弓を引き絞って放つ動作（弦＋矢）

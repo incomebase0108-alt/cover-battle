@@ -652,9 +652,15 @@ class Game {
     for (const beast of this.beasts) beast.draw(ctx);
     for (const it of this.items) it.draw(ctx);
     for (const b of this.bullets) b.draw(ctx);
+    // 三すくみの色分け（選択キャラ視点）：自分の武器が得意な相手＝緑/苦手な相手＝赤。
+    const me = this.units.find((u) => u.isPlayer && u.alive);
     for (const u of this.units) {
       if (!this.unitVisibleToPlayer(u)) continue;
       u.draw(ctx, this);
+      // 敵の相性を色リング＋三角で示す（鉄砲や同属性は無印）。
+      if (me && u.alive && u.team !== this.playerTeam && typeof rpsMatchup === "function") {
+        drawMatchupRing(ctx, u.x, u.y, u.radius, rpsMatchup(me.weaponKey, u.weaponKey));
+      }
       // Mark an enemy that is only visible because they were spotted in a forest.
       if (u.alive && u.team !== this.playerTeam && this.map.inForest(u.x, u.y)) {
         this._drawSpotted(ctx, u);

@@ -103,6 +103,7 @@ function loadGame() {
     "CHEST_LOOT",
     "rpsBonus",
     "weaponRps",
+    "rpsMatchup",
     "CLASSES",
     "getClass",
     "getWeapon",

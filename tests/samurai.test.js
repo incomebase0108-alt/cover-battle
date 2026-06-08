@@ -351,6 +351,21 @@ s.test("采配：軍師以外は使えない／クールダウン中は再発動
   t.close(gunshi.rallyCd, cd, 1e-9, "CDは延長されない");
 });
 
+s.test("相性表示：選択キャラ視点で得意=good/苦手=bad/相性外=null（三すくみ）", (t) => {
+  const { sb } = newGame(0);
+  const m = sb.rpsMatchup;
+  // 槍(yari)＞剣(katana)＞弓(yumi)＞槍。
+  t.equal(m("yari", "katana"), "good", "槍は剣に得意");
+  t.equal(m("katana", "yari"), "bad", "剣は槍に苦手");
+  t.equal(m("katana", "yumi"), "good", "剣は弓に得意");
+  t.equal(m("yumi", "katana"), "bad", "弓は剣に苦手");
+  t.equal(m("yumi", "yari"), "good", "弓は槍に得意");
+  t.equal(m("yari", "yumi"), "bad", "槍は弓に苦手");
+  t.equal(m("katana", "katana"), null, "同属性は無印");
+  t.equal(m("teppo", "katana"), null, "鉄砲は相性外（無印）");
+  t.equal(m("katana", "teppo"), null, "相手が鉄砲でも無印");
+});
+
 s.test("8vs8：各チーム CONFIG.teamSize(=8) 人が配置される（軍師追加）", (t) => {
   const { sb, game } = newGame(0);
   t.equal(sb.CONFIG.teamSize, 8, "teamSize は8");
