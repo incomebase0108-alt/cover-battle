@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v40 天守スプライト導入（4号機製 fort_blue/red.png）。城が本物の天守に";
+  const BUILD = "v41 城の描画を刷新：石垣を角丸の本丸＋扇の勾配に、天守を一回り大きく＋接地影";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

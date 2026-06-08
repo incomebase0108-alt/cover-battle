@@ -136,16 +136,68 @@ class GameMap {
     return this.bases.find((b) => b.team === team);
   }
 
+  // 角丸の長方形パス（本丸の天端など）。
+  _roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // 本丸の石垣（角丸の段々＋扇の勾配）。3/4で高さを出すため各段を上にずらし、各段の
+  // 「天端（角丸四角）」と「勾配の壁面（下がすぼまる台形）」を石色で描く。返り値＝最上段の天端Y。
+  _drawCastleBase(ctx, b, col) {
+    const u = b.coreR;
+    const tiers = [
+      { rx: u * 5.6, ry: u * 3.0, lift: 0,       wallH: u * 1.7 },
+      { rx: u * 4.0, ry: u * 2.2, lift: u * 1.7, wallH: u * 1.4 },
+      { rx: u * 2.6, ry: u * 1.5, lift: u * 3.2, wallH: u * 1.2 },
+    ];
+    for (const t of tiers) {
+      const cy = b.y - t.lift;
+      // 勾配の壁面（下がすぼまる台形＝扇の勾配）。
+      ctx.fillStyle = "#74695a";
+      ctx.beginPath();
+      ctx.moveTo(b.x - t.rx, cy);
+      ctx.lineTo(b.x + t.rx, cy);
+      ctx.lineTo(b.x + t.rx * 0.82, cy + t.wallH);
+      ctx.lineTo(b.x - t.rx * 0.82, cy + t.wallH);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(38,32,24,0.6)"; ctx.lineWidth = 2; ctx.stroke();
+      // 石目（横の積み目）。
+      ctx.strokeStyle = "rgba(54,46,36,0.4)"; ctx.lineWidth = 1;
+      for (let i = 1; i <= 2; i++) {
+        const yy = cy + t.wallH * i / 3;
+        const sx = t.rx * (1 - 0.06 * i);
+        ctx.beginPath(); ctx.moveTo(b.x - sx, yy); ctx.lineTo(b.x + sx, yy); ctx.stroke();
+      }
+      // 天端（角丸四角の上面）。
+      this._roundRect(ctx, b.x - t.rx, cy - t.ry, t.rx * 2, t.ry * 2, Math.min(t.rx, t.ry) * 0.5);
+      ctx.fillStyle = "#a99c84"; ctx.fill();
+      ctx.strokeStyle = "rgba(38,32,24,0.55)"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.fill();
+    }
+    // チーム差し色のふち（最下段の天端＝青城/赤城を見分けやすく）。
+    const bot = tiers[0];
+    this._roundRect(ctx, b.x - bot.rx, b.y - bot.ry, bot.rx * 2, bot.ry * 2, Math.min(bot.rx, bot.ry) * 0.5);
+    ctx.strokeStyle = `rgba(${col},0.55)`; ctx.lineWidth = 3; ctx.stroke();
+    return b.y - tiers[tiers.length - 1].lift;
+  }
+
   // ベクターの多層天守（fort スプライトが無いときのフォールバック）。白漆喰の壁＋
   // 黒瓦の屋根を段々に積み、最上層に金の鯱とチームの旗を立てる。返り値＝頂上のY。
-  _drawKeep(ctx, b) {
+  _drawKeep(ctx, b, baseY) {
     const cr = b.coreR;
     const cx = b.x;
-    const baseY = b.y + cr * 0.6;
+    baseY = (baseY != null ? baseY : b.y) - cr * 0.2;
     const defs = [
-      { w: cr * 2.6, h: cr * 1.3 },
-      { w: cr * 1.8, h: cr * 1.05 },
-      { w: cr * 1.15, h: cr * 0.85 },
+      { w: cr * 3.0, h: cr * 1.5 },
+      { w: cr * 2.1, h: cr * 1.2 },
+      { w: cr * 1.35, h: cr * 1.0 },
     ];
     let y = baseY;
     for (const td of defs) {
@@ -400,51 +452,37 @@ class GameMap {
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
 
-      // 城の石垣（段々の石積み）。外周から内へ石色のリングを重ね、丸亀城風の総石垣に。
-      // 見た目だけで通行可（兵は城に取りつける）。
-      const stoneR = b.coreR * 6;
-      const tiers = [
-        { r: stoneR,        c: "#7f766a" },
-        { r: stoneR * 0.74, c: "#8c8373" },
-        { r: stoneR * 0.5,  c: "#9a907c" },
-      ];
-      for (const ti of tiers) {
-        ctx.fillStyle = ti.c;
-        ctx.beginPath(); ctx.arc(b.x, b.y, ti.r, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "rgba(40,36,30,0.55)"; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(b.x, b.y, ti.r, 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.strokeStyle = "rgba(60,54,46,0.3)"; ctx.lineWidth = 1; // 石目（簡易）
-      for (const ti of tiers) {
-        ctx.beginPath(); ctx.arc(b.x, b.y, ti.r * 0.86, 0, Math.PI * 2); ctx.stroke();
-      }
+      // 本丸の石垣：角丸の段々＋扇の勾配で「総石垣の城」に。最上段の天端Y（天守の足元）を得る。
+      const platY = this._drawCastleBase(ctx, b, col);
 
-      // 天守（破壊対象のコア）。スプライト fort_{team}.png があれば大きく聳えさせ、
-      // 無ければベクターの多層天守を描く。
+      // 天守（破壊対象のコア）。fort_{team}.png があれば石垣の上に大きく聳えさせ、
+      // 無ければベクター多層天守。足元に接地影を落として高さ感を出す。
       if (b.hp > 0) {
         const cr = b.coreR;
         const fimg = typeof Assets !== "undefined" && Assets.ready("fort_" + b.team)
           ? Assets.get("fort_" + b.team) : null;
+        ctx.fillStyle = "rgba(0,0,0,0.3)"; // 接地影
+        ctx.beginPath(); ctx.ellipse(b.x, platY + cr * 0.35, cr * 2.0, cr * 0.8, 0, 0, Math.PI * 2); ctx.fill();
         let keepTopY;
         if (fimg) {
-          const s = cr * 9; // 天守は石垣の上に大きく聳える
-          keepTopY = b.y - s * 0.62;
-          ctx.drawImage(fimg, b.x - s / 2, b.y - s * 0.62, s, s);
+          const s = cr * 12; // 一回り大きく聳える
+          keepTopY = platY - s * 0.66;
+          ctx.drawImage(fimg, b.x - s / 2, platY - s * 0.80, s, s); // 足元を石垣の天端に
         } else {
-          keepTopY = this._drawKeep(ctx, b);
+          keepTopY = this._drawKeep(ctx, b, platY);
         }
         // 耐久ゲージ（天守の上に）。
-        const gw = cr * 3.0;
+        const gw = cr * 3.4;
         const gx = b.x - gw / 2;
-        const gy = keepTopY - 18;
+        const gy = keepTopY - 16;
         ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(gx, gy, gw, 7);
         const pct = b.hp / b.maxHp;
         ctx.fillStyle = pct > 0.5 ? `rgb(${col})` : pct > 0.25 ? "#ffb347" : "#ff5a5a";
         ctx.fillRect(gx, gy, gw * pct, 7);
         ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 1; ctx.strokeRect(gx, gy, gw, 7);
-        ctx.fillStyle = `rgba(${col},0.95)`; ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.fillStyle = `rgba(${col},0.95)`; ctx.font = "bold 14px system-ui, sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(b.team === "blue" ? "青の城" : "赤の城", b.x, gy - 9);
+        ctx.fillText(b.team === "blue" ? "青の城" : "赤の城", b.x, gy - 10);
         ctx.textAlign = "left";
       } else {
         // 落城：瓦礫。
