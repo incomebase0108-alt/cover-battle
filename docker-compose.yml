@@ -13,7 +13,16 @@ services:
     working_dir: /app
     volumes:
       - ./:/app
-    command: sh -c "npm install --omit=dev && node server.js"
+    # 起動のたびに GitHub の最新(main)へ自動同期してから起動する。これで NAS の
+    # Docker アプリで「再起動」を押すだけで最新版になる（PC/ターミナル不要）。
+    # ・git が無ければ入れる / 所有者差異の警告を回避 / リポジトリでなければ現状のまま起動。
+    # ・reset --hard origin/main で確実に一致（NAS側のローカル変更は破棄＝デプロイ専用前提）。
+    command: >-
+      sh -c "apk add --no-cache git >/dev/null 2>&1;
+      git config --global --add safe.directory /app 2>/dev/null;
+      (git -C /app fetch --depth=1 origin main && git -C /app reset --hard origin/main)
+      || echo 'git未設定のため現在のファイルで起動';
+      npm install --omit=dev && node server.js"
     ports:
       - "8080:8080"
     restart: unless-stopped
