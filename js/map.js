@@ -232,9 +232,12 @@ class GameMap {
   }
 
   // The fort core hit by a point, if any (for bullet/bomb fort damage).
+  // 当たり判定は coreHitRadius（石垣の見た目相当）。以前は中心30pxの小円だけで、
+  // 大きな天守の絵を撃ってもダメージが入らず「どこを攻撃すればいいか分からない」原因だった。
   baseCoreAt(x, y) {
+    const hitR = (CONFIG.base && CONFIG.base.coreHitRadius) || 66;
     for (const b of this.bases) {
-      if (b.hp > 0 && V.dist(x, y, b.x, b.y) <= b.coreR) return b;
+      if (b.hp > 0 && V.dist(x, y, b.x, b.y) <= Math.max(b.coreR, hitR)) return b;
     }
     return null;
   }
@@ -494,26 +497,59 @@ class GameMap {
       // 回復ゾーンの境界を城の上にはっきり描く。城は大きく＋チーム色なので、回復の合図は
       // 緑(#62e08a＝HEALの色)で差別化し、城に色が被って分かりにくくなるのを防ぐ。
       if (b.hp > 0) {
+        const tNow = (typeof performance !== "undefined") ? performance.now() : 0;
+        const pulse = 0.5 + 0.5 * Math.sin(tNow / 420); // 0〜1 のゆっくり点滅
         ctx.save();
-        // 緑のにじみで地面の回復円を強調（外周ほど濃く）。
-        const hg = ctx.createRadialGradient(b.x, b.y, b.r * 0.7, b.x, b.y, b.r);
-        hg.addColorStop(0, "rgba(98,224,138,0)");
-        hg.addColorStop(1, "rgba(98,224,138,0.20)");
+        // 緑のにじみ＝回復円全体をうっすら緑に（脈動させて「効果のある場所」と分かるように）。
+        const hg = ctx.createRadialGradient(b.x, b.y, b.r * 0.3, b.x, b.y, b.r);
+        hg.addColorStop(0, `rgba(98,224,138,${0.06 + pulse * 0.05})`);
+        hg.addColorStop(1, `rgba(98,224,138,${0.22 + pulse * 0.10})`);
         ctx.fillStyle = hg;
         ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
-        // 緑の破線リング（回復の境界＝必ず城の上に出るので見える）。
-        ctx.setLineDash([10, 7]); ctx.lineWidth = 3;
-        ctx.strokeStyle = "rgba(98,224,138,0.92)";
+        // 緑の破線リング（回復の境界＝必ず城の上に出るので見える）。脈動で太さも変える。
+        ctx.setLineDash([10, 7]); ctx.lineWidth = 3 + pulse * 2;
+        ctx.strokeStyle = "rgba(98,224,138,0.95)";
         ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
         // 外周にチーム色の細リング（青/赤＝どちらの陣地かを示す）。
         ctx.setLineDash([]); ctx.lineWidth = 2;
         ctx.strokeStyle = `rgba(${col},0.8)`;
-        ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 3, 0, Math.PI * 2); ctx.stroke();
-        // 境界の下端（手前の地面）に「回復ゾーン」ラベル。
-        ctx.fillStyle = "rgba(98,224,138,0.96)";
-        ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 4, 0, Math.PI * 2); ctx.stroke();
+        // 境界の四方に小さな「✚」マーク（リングだけより一目で回復と分かる）。
+        ctx.fillStyle = "rgba(98,224,138,0.95)";
+        ctx.font = "bold 15px system-ui, sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText("✚ 回復ゾーン", b.x, b.y + b.r + 13);
+        for (const a of [Math.PI / 4, 3 * Math.PI / 4, 5 * Math.PI / 4, 7 * Math.PI / 4]) {
+          ctx.fillText("✚", b.x + Math.cos(a) * b.r, b.y + Math.sin(a) * b.r);
+        }
+        // 境界の下端（手前の地面）に「回復ゾーン」ラベル（縁取りで読みやすく）。
+        ctx.font = "bold 14px system-ui, sans-serif";
+        ctx.lineWidth = 3; ctx.strokeStyle = "rgba(10,30,16,0.85)";
+        ctx.strokeText("✚ 回復ゾーン（味方のみ）", b.x, b.y + b.r + 14);
+        ctx.fillText("✚ 回復ゾーン（味方のみ）", b.x, b.y + b.r + 14);
+
+        // ── 攻撃目標マーカー ──
+        // 城のダメージ判定（coreHitRadius）を金色の同心円ターゲットで常時表示。
+        // 「城のどこを攻撃すれば減るのか分からない」対策：この円の中に攻撃を
+        // 当てれば城の耐久が減る（攻める側の狙い所＝守る側の守り所）。
+        const hitR = (CONFIG.base && CONFIG.base.coreHitRadius) || 66;
+        ctx.setLineDash([6, 5]);
+        ctx.strokeStyle = `rgba(255,210,80,${0.55 + pulse * 0.4})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(b.x, b.y, hitR, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(b.x, b.y, hitR * 0.45, 0, Math.PI * 2); ctx.stroke();
+        // 十字の目盛り（的らしさ）。
+        for (const a of [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2]) {
+          ctx.beginPath();
+          ctx.moveTo(b.x + Math.cos(a) * (hitR - 8), b.y + Math.sin(a) * (hitR - 8));
+          ctx.lineTo(b.x + Math.cos(a) * (hitR + 8), b.y + Math.sin(a) * (hitR + 8));
+          ctx.stroke();
+        }
+        ctx.fillStyle = "rgba(255,210,80,0.97)";
+        ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.lineWidth = 3; ctx.strokeStyle = "rgba(40,28,0,0.85)";
+        ctx.strokeText("⚔ ここを攻撃で城が壊せる", b.x, b.y + hitR + 14);
+        ctx.fillText("⚔ ここを攻撃で城が壊せる", b.x, b.y + hitR + 14);
         ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
         ctx.restore();
       }

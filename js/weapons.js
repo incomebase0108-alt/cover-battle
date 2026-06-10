@@ -38,8 +38,9 @@ const WEAPONS = {
     damage: 34,
     fireCooldown: 420,   // 振りの間隔（速い）
     isMelee: true,
-    meleeRange: 46,      // 前方リーチ(px)。unit.radius(14)+α
+    meleeRange: 58,      // 前方リーチ(px)。「届いてるのに当たらない」対策で延長
     meleeArc: 1.1,       // 左右±約63°の扇
+    swingMs: 340,        // 斬撃モーションの長さ（大きく振り抜いて見せる）
     noReload: true,
     rps: "sword",        // 剣＞弓・剣＜槍
   },
@@ -48,8 +49,10 @@ const WEAPONS = {
     damage: 30,
     fireCooldown: 720,   // 突きは刀より遅い（切り付けが早くない）
     isMelee: true,
-    meleeRange: 82,      // 刀より長いリーチ（間合いの外から突ける）
+    meleeRange: 96,      // 刀より長いリーチ（間合いの外から突ける）
     meleeArc: 0.5,       // 前方の狭い扇（突き）
+    swingMs: 460,        // 突きモーションの長さ（伸ばして戻すまでゆっくり見せる）
+    thrust: true,        // 刀の「弧」と違い、まっすぐ突き出すモーションで描く
     noReload: true,
     rps: "spear",        // 槍＞剣・槍＜弓
   },
@@ -210,27 +213,47 @@ function drawGunshiCloak(ctx, x, y, r, team) {
 }
 
 // 攻撃モーション。ユニットの「回転フレーム内（局所 +X＝前方）」で呼ぶこと。
-//   刀  : 前方の扇を斬り抜ける刃の弧
+//   刀  : 前方の扇を大きく斬り抜ける刃の弧
+//   槍  : まっすぐ突き出して戻す「突き」（刀との見分けがつくモーション）
 //   弓  : 弓を引き絞って放つ動作（弦＋矢）
 //   鉄砲: ここでは描かない（マズルフラッシュ＋本体の反動で表現＝呼び出し側）
-// swingMs は残り時間(ms)。CONFIG.melee.swingMs を全体の長さとして進行度を出す。
+// swingMs は残り時間(ms)。長さは武器ごとの swingMs（無ければ CONFIG.melee.swingMs）。
 function drawAttackFX(ctx, w, swingMs, r) {
   if (!w || swingMs <= 0) return;
-  const D = (typeof CONFIG !== "undefined" && CONFIG.melee && CONFIG.melee.swingMs) || 220;
+  const D = (w && w.swingMs) || (typeof CONFIG !== "undefined" && CONFIG.melee && CONFIG.melee.swingMs) || 220;
   const p = Math.max(0, Math.min(1, 1 - swingMs / D)); // 0→1
-  if (w.isMelee) {
+  if (w.isMelee && w.thrust) {
+    // 槍の突き：穂先が 0→最大リーチ→戻る。直線の軌跡＋穂先の輝きで「突き」と分かる。
+    const reach = w.meleeRange || 80;
+    const ext = p < 0.45 ? p / 0.45 : 1 - (p - 0.45) / 0.55; // 突き出し 0→1→0
+    const tip = reach * (0.25 + 0.75 * ext);
+    ctx.fillStyle = "rgba(220,235,255,0.14)"; // 突きの軌跡（細い帯）
+    ctx.beginPath();
+    ctx.moveTo(reach * 0.15, -4); ctx.lineTo(tip, -2.5);
+    ctx.lineTo(tip, 2.5); ctx.lineTo(reach * 0.15, 4);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(150,110,70,0.95)"; ctx.lineWidth = 4; ctx.lineCap = "round"; // 柄
+    ctx.beginPath(); ctx.moveTo(reach * 0.05, 0); ctx.lineTo(tip - 12, 0); ctx.stroke();
+    ctx.fillStyle = "rgba(244,248,255,0.95)"; // 穂先（菱形）
+    ctx.beginPath();
+    ctx.moveTo(tip, 0); ctx.lineTo(tip - 14, -4.5); ctx.lineTo(tip - 14, 4.5);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#fff"; // 切っ先のきらめき
+    ctx.beginPath(); ctx.arc(tip, 0, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.lineCap = "butt";
+  } else if (w.isMelee) {
     const reach = w.meleeRange || 40;
     const arc = w.meleeArc || 1.0;
     const la = -arc + 2 * arc * p; // 局所角（+X=前方）。-arc→+arc へ振り抜ける
-    ctx.fillStyle = "rgba(220,235,255,0.18)"; // 振った範囲の残光
+    ctx.fillStyle = "rgba(220,235,255,0.22)"; // 振った範囲の残光
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, reach, -arc, la, false); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = "rgba(244,248,255,0.95)"; ctx.lineWidth = 4; ctx.lineCap = "round"; // 刀身
+    ctx.strokeStyle = "rgba(244,248,255,0.95)"; ctx.lineWidth = 5; ctx.lineCap = "round"; // 刀身
     ctx.beginPath();
     ctx.moveTo(Math.cos(la) * reach * 0.3, Math.sin(la) * reach * 0.3);
     ctx.lineTo(Math.cos(la) * reach, Math.sin(la) * reach);
     ctx.stroke();
     ctx.fillStyle = "#fff"; // 切っ先のきらめき
-    ctx.beginPath(); ctx.arc(Math.cos(la) * reach, Math.sin(la) * reach, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(Math.cos(la) * reach, Math.sin(la) * reach, 3.5, 0, Math.PI * 2); ctx.fill();
     ctx.lineCap = "butt";
   } else if (w.noReload) {
     // 弓を引く（p<0.6）→放つ（その後 弦が前に戻る）。
@@ -254,7 +277,7 @@ function drawAttackFX(ctx, w, swingMs, r) {
 // 飛び道具は後ろへ反動(-)。攻撃直後が最大で、すぐ戻る。
 function attackRecoil(w, swingMs, r) {
   if (!w || swingMs <= 0) return 0;
-  const D = (typeof CONFIG !== "undefined" && CONFIG.melee && CONFIG.melee.swingMs) || 220;
+  const D = (w && w.swingMs) || (typeof CONFIG !== "undefined" && CONFIG.melee && CONFIG.melee.swingMs) || 220;
   const e = Math.max(0, Math.min(1, swingMs / D)); // 1→0
   const amp = r * (w.isMelee ? 0.5 : 0.6);
   return (w.isMelee ? amp : -amp) * e;

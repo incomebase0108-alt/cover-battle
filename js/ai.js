@@ -606,16 +606,33 @@ class AIController {
     this.state = state;
 
     // Anti-stuck: while travelling (not deliberately holding or healing at base),
-    // a unit that has barely moved for ~0.9s breaks into a random walk so it can
-    // never wedge and stall the match when the player isn't around.
+    // a unit that has barely moved for a moment breaks free so it can never wedge
+    // and stall the match when the player isn't around.
+    // 交戦中(ENGAGE)でも相手が遠い（＝本来は近づこうと動いているはず）なら対象に含める：
+    // 以前は ENGAGE が対象外で、岩や城壁に押し付けられたまま固まるケースが残っていた。
+    const engagedButFar = state === STATE.ENGAGE && target &&
+      V.dist(self.x, self.y, target.x, target.y) > 220;
     const travelling = state === STATE.RETREAT || state === STATE.ADVANCE ||
       state === STATE.ASSAULT || state === STATE.WANDER || state === STATE.HIDE ||
-      state === STATE.GUARD;
+      state === STATE.GUARD || engagedButFar;
     if (travelling && !game.map.inBase(self.x, self.y, self.team)) {
       if (prog < 0.35) this.stuckMs += dt; else this.stuckMs = 0;
-      if (this.stuckMs > 900) {
-        this.unstickMs = 600;
-        this.unstickAng = Math.random() * Math.PI * 2;
+      if (this.stuckMs > 650) {
+        // 脱出方向はランダムではなく「実際に進める方向」から選ぶ：8方向を試し、
+        // 一番遠くまで動けた向きへ歩く（ランダムだと壁に向き直してまたハマっていた）。
+        let bestA = Math.random() * Math.PI * 2;
+        let bestM = -1;
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + Math.random() * 0.4;
+          const probe = 46; // 試しに進む距離
+          const c = game.map.resolveCollision(
+            self.x + Math.cos(a) * probe, self.y + Math.sin(a) * probe,
+            self.radius, self.canClimb, self.team);
+          const m = V.dist(self.x, self.y, c.x, c.y);
+          if (m > bestM) { bestM = m; bestA = a; }
+        }
+        this.unstickMs = 800;
+        this.unstickAng = bestA;
         this.stuckMs = 0;
         self.move(Math.cos(this.unstickAng), Math.sin(this.unstickAng), game);
         return;

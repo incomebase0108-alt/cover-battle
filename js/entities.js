@@ -38,12 +38,25 @@ class Bullet {
   }
 
   update(dt, game) {
-    this.x += this.dx * this.speed;
-    this.y += this.dy * this.speed;
     this.life -= dt;
+    if (this.life <= 0) { this.dead = true; return; }
+    // 高速弾のすり抜け防止：1フレーム分の移動を小刻みに分割し、一歩ごとに当たり判定。
+    // 鉄砲(弾速1.7倍)や弾速アイテム取得時、1フレームで敵の判定幅(約20px)を飛び越えて
+    // 「当たったはずなのにダメージが入らない」原因だった。
+    const step = Math.max(6, this.radius + 2);
+    let remain = this.speed;
+    do { // 速度0でも現在位置で最低1回は判定する（do-while）
+      const d = Math.min(step, remain);
+      remain -= d;
+      this.x += this.dx * d;
+      this.y += this.dy * d;
+      this._collide(game);
+    } while (remain > 0 && !this.dead);
+  }
 
-    if (this.life <= 0 ||
-        this.x < 0 || this.x > CONFIG.world.width ||
+  // 現在位置での衝突判定一式。命中したら this.dead を立てる（貫通弾は通過）。
+  _collide(game) {
+    if (this.x < 0 || this.x > CONFIG.world.width ||
         this.y < 0 || this.y > CONFIG.world.height) {
       this.dead = true;
       return;
@@ -359,6 +372,7 @@ class Unit {
     this.regenAccum = 0;     // accumulator for partial regenerated rounds
     this.muzzleFlash = 0;    // ms remaining on the muzzle-flash effect
     this.swingMs = 0;        // ms remaining on the katana swing animation
+    this.meleeRecheck = null; // 近接の振り途中ヒット判定（_meleeStrike が設定）
     this.maxStamina = (CONFIG.stamina && CONFIG.stamina.max) || 100;
     this.stamina = this.maxStamina; // 体力：刀の振りで減り、止まれば回復。移動速度に効く
     this.skill = 0.7; // AI accuracy/decision quality, overridden per spawn
@@ -565,12 +579,17 @@ class Unit {
     if (moved < speed * 0.6 && (dirX !== 0 || dirY !== 0)) {
       const base = Math.atan2(dirY, dirX);
       const offs = [0.5, -0.5, 0.9, -0.9, 1.3, -1.3, 1.7, -1.7, 2.2, -2.2];
+      let bestC = next, bestM = moved;
       for (const o of offs) {
         const a = base + o;
         const c = tryAt(Math.cos(a), Math.sin(a));
         const m = V.dist(this.x, this.y, c.x, c.y);
-        if (m > speed * 0.6) { next = c; moved = m; break; }
+        if (m > speed * 0.6) { next = c; moved = m; bestM = -1; break; }
+        if (m > bestM) { bestM = m; bestC = c; }
       }
+      // どの方向も「十分」には進めない袋小路でも、一番マシな方向へ少しずつ滑る。
+      // （以前は完全停止＝壁際でハマる原因の一つだった）
+      if (bestM > moved) { next = bestC; moved = bestM; }
     }
     this.x = next.x;
     this.y = next.y;
@@ -602,14 +621,18 @@ class Unit {
     if (this.cooldown > 0 || this.reloading) return;
 
     const w = this.weapon();
-    // 体力切れでは攻撃できない＝連打を抑止。息切れしたら間合いを取って回復を待つ
-    // 駆け引きが生まれる（刀＝大きく消費、弓/鉄砲＝中程度）。
+    // 息切れ（体力不足）でも攻撃は必ず出る。以前は無音で不発になり「ボタンを押しても
+    // 攻撃が出ない／当たらない」と感じる最大の原因だった。代わりに威力が下がる
+    // （残量に応じて減衰、最低 tiredDamageMul は保証）＝駆け引きは威力面で維持。
+    let stMul = 1;
     if (CONFIG.stamina) {
       const stCost = w.isMelee ? CONFIG.stamina.swingCost : CONFIG.stamina.shootCost;
-      if (this.stamina < stCost) return;
+      if (this.stamina < stCost) {
+        stMul = Math.max(CONFIG.stamina.tiredDamageMul ?? 0.5, this.stamina / stCost);
+      }
     }
     // 刀などの近接武器は弾を撃たず、前方の敵を直接斬る。
-    if (w.isMelee) { this._meleeStrike(game, w); return; }
+    if (w.isMelee) { this._meleeStrike(game, w, stMul); return; }
     // 装填のある武器だけ弾切れでリロード（弓=noReload は弾数概念なし）。
     if (!w.noReload && this.ammo <= 0) { this.startReload(game); return; }
 
@@ -620,14 +643,14 @@ class Unit {
       this.regenAccum = 0;
     }
     this.muzzleFlash = 70;
-    this.swingMs = (CONFIG.melee && CONFIG.melee.swingMs) || 220; // 攻撃モーション（弓引き/反動）
+    this.swingMs = w.swingMs || (CONFIG.melee && CONFIG.melee.swingMs) || 220; // 攻撃モーション（弓引き/反動）
     if (CONFIG.stamina) this.stamina = Math.max(0, this.stamina - (CONFIG.stamina.shootCost || 0)); // 射撃も体力消費
 
     const pellets = w.pellets ?? 1;
     const spread = w.spread ?? 0;
     const wSpeedMul = w.bulletSpeedMul ?? 1;
     const wRangeMul = w.rangeMul ?? 1;
-    const damage = this.damageVal() * (this.damageMul || 1) * (this.moraleMul || 1) * (this.cmdDmgMul || 1);
+    const damage = this.damageVal() * (this.damageMul || 1) * (this.moraleMul || 1) * (this.cmdDmgMul || 1) * stMul;
     const speed = CONFIG.bullet.speed * wSpeedMul * this.bulletSpeedMul;
     const life = CONFIG.bullet.life * wRangeMul * this.rangeMul;
 
@@ -651,58 +674,76 @@ class Unit {
     if (!w.noReload && this.ammo <= 0) this.startReload(game);
   }
 
-  // 近接（刀）：弾を生成せず、前方の扇（meleeArc）内・meleeRange 以内にいる
+  // 近接（刀/槍）：弾を生成せず、前方の扇（meleeArc）内・meleeRange 以内にいる
   // 敵ユニット／敵城門／敵砦コア／野生動物／敵砲台を直接斬る。攻城で城門を
   // 刀で割れることが重要なので gate/base も対象に含める。
-  _meleeStrike(game, w) {
+  // 命中は「振り始め」と「振りの途中（モーション中盤）」の2回判定：振っている間に
+  // 間合いへ入ってきた敵にも当たる＝見た目どおりに当たる（同じ相手への二重ヒットは無し）。
+  _meleeStrike(game, w, stMul) {
     this.cooldown = this.fireCooldownVal();
     this.muzzleFlash = 70;
-    this.swingMs = (CONFIG.melee && CONFIG.melee.swingMs) || 220; // 刃の弧アニメ開始
+    const D = w.swingMs || (CONFIG.melee && CONFIG.melee.swingMs) || 220;
+    this.swingMs = D; // 刃の弧/突きアニメ開始
     if (CONFIG.stamina) this.stamina = Math.max(0, this.stamina - CONFIG.stamina.swingCost); // 振るほど体力消費
+    const dmg = (this.weapon().damage ?? CONFIG.bullet.damage) * (this.damageMul || 1) * (this.moraleMul || 1) * (this.cmdDmgMul || 1) * (stMul ?? 1);
+    const hit = new Set();
+    this._meleeSweep(game, w, dmg, hit);
+    // モーション中盤でもう一度だけ当たり判定（hit 済みの相手は対象外）。
+    this.meleeRecheck = { ms: D * 0.45, w, dmg, hit };
+
+    if (game.sound) game.sound.shoot();
+  }
+
+  // 近接の当たり判定スイープ本体。already に入っている相手はスキップし、当てた相手を追加する。
+  _meleeSweep(game, w, dmg, already) {
     const reach = w.meleeRange ?? 40;
     const arc = w.meleeArc ?? 1.0;
-    const dmg = (this.weapon().damage ?? CONFIG.bullet.damage) * (this.damageMul || 1) * (this.moraleMul || 1) * (this.cmdDmgMul || 1);
-    // 点(tx,ty)が前方扇内かつ reach+extra 以内か。
+    // 点(tx,ty)が前方扇内かつ reach+extra 以内か。相手の体の幅（半径）ぶん扇の角度も
+    // 広げる：以前は中心点だけで角度判定しており「刃が見た目では当たっているのに
+    // ダメージ無し」が起きていた。
     const hitArc = (tx, ty, extra) => {
-      if (V.dist(this.x, this.y, tx, ty) > reach + (extra || 0)) return false;
+      const d = V.dist(this.x, this.y, tx, ty);
+      if (d > reach + (extra || 0)) return false;
       const ang = Math.atan2(ty - this.y, tx - this.x);
       const diff = Math.abs(Math.atan2(Math.sin(ang - this.aim), Math.cos(ang - this.aim)));
-      return diff <= arc;
+      const halfWidth = extra ? Math.asin(Math.min(1, extra / Math.max(d, 1))) : 0;
+      return diff <= arc + halfWidth;
     };
 
     for (const u of game.units) {
-      if (!u.alive || u.team === this.team) continue;
+      if (!u.alive || u.team === this.team || already.has(u)) continue;
       // 三角相性：槍は剣に強い 等（rpsBonus）。鉄砲など rps 無しは等倍。
-      if (hitArc(u.x, u.y, u.radius)) u.takeDamage(dmg * rpsBonus(w.rps, weaponRps(u.weaponKey)));
+      if (hitArc(u.x, u.y, u.radius)) { u.takeDamage(dmg * rpsBonus(w.rps, weaponRps(u.weaponKey))); already.add(u); }
     }
     for (const b of (game.beasts || [])) {
-      if (b.dead || !b.takeDamage || (b.team && b.team === this.team)) continue; // 仲間の浪人は斬らない
-      if (hitArc(b.x, b.y, b.r || 22)) b.takeDamage(dmg);
+      if (b.dead || !b.takeDamage || (b.team && b.team === this.team) || already.has(b)) continue; // 仲間の浪人は斬らない
+      if (hitArc(b.x, b.y, b.r || 22)) { b.takeDamage(dmg); already.add(b); }
     }
     for (const tt of (game.turrets || [])) {
-      if (tt.dead || tt.team === this.team || !tt.takeDamage) continue;
-      if (hitArc(tt.x, tt.y, 12)) tt.takeDamage(dmg);
+      if (tt.dead || tt.team === this.team || !tt.takeDamage || already.has(tt)) continue;
+      if (hitArc(tt.x, tt.y, 12)) { tt.takeDamage(dmg); already.add(tt); }
     }
     // 敵城門：ユニットから最も近いゲート上の点が射程・扇内なら割る。
     const gateDmg = (CONFIG.gate && CONFIG.gate.bulletDamage) || 10;
     if (game.map && game.map.gates) {
       for (const g of game.map.gates) {
-        if (g.team === this.team || g.hp <= 0) continue;
+        if (g.team === this.team || g.hp <= 0 || already.has(g)) continue;
         const cx = Math.max(g.x, Math.min(this.x, g.x + g.w));
         const cy = Math.max(g.y, Math.min(this.y, g.y + g.h));
-        if (hitArc(cx, cy, 0)) g.hp = Math.max(0, g.hp - gateDmg);
+        if (hitArc(cx, cy, 0)) { g.hp = Math.max(0, g.hp - gateDmg); already.add(g); }
       }
     }
-    // 敵砦コア：剣先が敵ベース中心付近なら削る。
+    // 敵砦コア：剣先が城の当たり判定（coreHitRadius＝石垣の見た目相当）に届けば削る。
     const coreDmg = (CONFIG.base && CONFIG.base.bulletDamage) || 10;
+    const coreHitR = (CONFIG.base && CONFIG.base.coreHitRadius) || 66;
     if (game.map && game.map.bases) {
       for (const base of game.map.bases) {
-        if (base.team === this.team) continue;
-        if (hitArc(base.x, base.y, base.coreR || 30)) base.hp = Math.max(0, base.hp - coreDmg);
+        if (base.team === this.team || already.has(base)) continue;
+        if (hitArc(base.x, base.y, Math.max(base.coreR || 30, coreHitR))) {
+          base.hp = Math.max(0, base.hp - coreDmg); already.add(base);
+        }
       }
     }
-
-    if (game.sound) game.sound.shoot();
   }
 
   startReload(game) {
@@ -723,6 +764,16 @@ class Unit {
     if (this.cooldown > 0) this.cooldown -= dt;
     if (this.muzzleFlash > 0) this.muzzleFlash -= dt;
     if (this.swingMs > 0) this.swingMs -= dt;
+    // 近接の「振りの途中」追加ヒット（_meleeStrike 参照）。振っている間に間合いへ
+    // 入った敵にも当たる。1振りにつき1回だけ。
+    if (this.meleeRecheck) {
+      this.meleeRecheck.ms -= dt;
+      if (this.meleeRecheck.ms <= 0) {
+        const rc = this.meleeRecheck;
+        this.meleeRecheck = null;
+        this._meleeSweep(game, rc.w, rc.dmg, rc.hit);
+      }
+    }
     if (CONFIG.stamina && this.stamina < this.maxStamina) {
       this.stamina = Math.min(this.maxStamina, this.stamina + CONFIG.stamina.regenPerSec * dt / 1000);
     }

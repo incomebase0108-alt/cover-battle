@@ -36,7 +36,7 @@ const CONFIG = {
 
   unit: {
     radius: 16,        // キャラを少し大きく（当たり判定＋スプライトの基準）
-    maxHp: 130,        // 戦闘が長持ちするよう全体的に増量（全クラスへ hpMul 経由で波及）
+    maxHp: 190,        // 「すぐ死ぬ」対策でさらに増量（130→190。全クラスへ hpMul 経由で波及）
     speed: 1.9,        // v39の減速をやや戻す（LANで「全体的にスロー」対策・単体も同様に）
     fireCooldown: 300, // ms between shots within a magazine
     magSize: 10,       // rounds per magazine before a reload is forced
@@ -114,8 +114,11 @@ const CONFIG = {
   base: {
     radius: 95,        // healing-zone radius
     regenPerSec: 16,
-    coreRadius: 30,    // the damageable structure at the centre
-    hp: 600,           // fort durability
+    coreRadius: 30,    // 通行を塞ぐ柱の太さ（移動の当たり判定）
+    // 攻撃が「当たる」範囲。天守の絵は大きいのに判定が中心30pxしか無く
+    // 「城を撃ってるのにダメージが入らない」原因だったため、石垣の見た目に合わせて拡大。
+    coreHitRadius: 66,
+    hp: 800,           // 当てやすくなったぶん耐久を増量（600→800）
     bulletDamage: 10,  // damage a bullet does to a fort core
   },
 
@@ -141,6 +144,9 @@ const CONFIG = {
     shootCost: 20,     // 弓/鉄砲 1射の消費
     regenPerSec: 24,   // 毎秒の回復（やや遅め）
     minSpeedMul: 0.42, // 体力0での移動倍率（満タンで1.0）
+    // 息切れ中でも攻撃は必ず出る（以前は無音で不発＝「攻撃が出ない/当たらない」と
+    // 感じる原因だった）。威力だけ下がる：最低でもこの倍率は保証。
+    tiredDamageMul: 0.5,
   },
 };
 
