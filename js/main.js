@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v47 軍師の仮見た目：専用スプライトが来るまで金の陣羽織＋軍バッジで他クラスと区別（PNGを置けば自動で本スプライトに）";
+  const BUILD = "v49 サドンデス可視化（城が勝手に減って見える問題）＋キャラ選択画面のスクロール対応・古い操作表記の整理";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

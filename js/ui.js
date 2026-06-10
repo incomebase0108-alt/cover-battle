@@ -19,6 +19,7 @@ const UI = {
     this.el.blueFortBar = document.getElementById("blueFortBar");
     this.el.redFortBar = document.getElementById("redFortBar");
     this.el.fortWarning = document.getElementById("fortWarning");
+    this.el.stormWarning = document.getElementById("stormWarning");
     this.el.controlBar = document.getElementById("controlBar");
     this.el.cbClass = document.getElementById("cbClass");
     this.el.cbKeys = document.getElementById("cbKeys");
@@ -140,6 +141,18 @@ const UI = {
     }
     if (this.el.fortWarning) {
       this.el.fortWarning.classList.toggle("hidden", !state.fortAlert);
+    }
+    // サドンデス：発動中は「城が崩れている」ことを明示（攻撃されていないのに耐久が
+    // 減る＝バグに見える問題への対策）。発動直前はカウントダウンを出す。
+    if (this.el.stormWarning) {
+      let stormTxt = null;
+      if (state.storm) stormTxt = "⏰ サドンデス！両軍の城が崩れていく — 急いで決着を！";
+      else if (state.stormIn != null) stormTxt = `⏰ あと${state.stormIn}秒でサドンデス（両軍の城が崩れ始める）`;
+      this.el.stormWarning.classList.toggle("hidden", !stormTxt);
+      if (stormTxt && stormTxt !== this._stormStr) {
+        this._stormStr = stormTxt;
+        this.el.stormWarning.textContent = stormTxt;
+      }
     }
     this._updateControlBar(p);
   },

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Cover Battle — 岩と森の4vs4バトル</title>
-  <link rel="stylesheet" href="css/style.css?v=48" />
+  <title>Cover Battle — 山城を攻め落とす8vs8合戦バトル</title>
+  <link rel="stylesheet" href="css/style.css?v=49" />
 </head>
 <body>
   <div id="app">
@@ -32,6 +32,8 @@
 
     <!-- Fort-under-attack warning -->
     <div id="fortWarning" class="fort-warning hidden">⚠ 自陣の砦が攻撃されている！</div>
+    <!-- Sudden-death banner: 発動中＋直前カウントダウン（文言はui.jsが入れる） -->
+    <div id="stormWarning" class="fort-warning storm hidden"></div>
 
     <!-- Always-on control/trait bar for the chosen character (bottom of screen) -->
     <div id="controlBar" class="control-bar hidden">
@@ -84,10 +86,9 @@
         </div>
         <div id="charGrid" class="char-grid"></div>
         <div class="cs-controls">
-          <b>操作</b>：移動 WASD / スティック ・ 撃つ クリック・スペース・「撃」 ・
-          爆弾 <b>E / 💣</b> ・ 武器切替 <b>1-4 / F / 🔫</b> ・
-          ロックオン <b>R / 🔒</b> ・ 特殊 <b>C / 🎯</b>（クラスごとに違う）<br>
-          プレイ中は画面下のバーに、選んだキャラの特徴と操作が常に出ます。左上の「？」でも確認できます。
+          <b>操作</b>：移動 WASD / 左スティック「移」 ・ 攻撃 クリック・スペース／右スティック「攻」を倒した方向に照準＋攻撃 ・
+          爆弾 <b>E / 💣</b> ・ 特殊 <b>C / 🎯</b>（クラスごとに違う） ・ 軍師の采配 <b>V / 🚩</b><br>
+          武器はクラス固定（持ち替えなし）。プレイ中は画面下のバーに、選んだキャラの特徴と操作が常に出ます。左上の「？」でも確認できます。
         </div>
       </div>
     </div>
@@ -101,23 +102,23 @@
     </div>
   </div>
 
-  <script src="js/vector.js?v=48"></script>
-  <script src="js/config.js?v=48"></script>
-  <script src="js/classes.js?v=48"></script>
-  <script src="js/assets.js?v=48"></script>
-  <script src="js/audio.js?v=48"></script>
-  <script src="js/input.js?v=48"></script>
-  <script src="js/map.js?v=48"></script>
-  <script src="js/weapons.js?v=48"></script>
-  <script src="js/chest.js?v=48"></script>
-  <script src="js/beast.js?v=48"></script>
-  <script src="js/abilities.js?v=48"></script>
-  <script src="js/entities.js?v=48"></script>
-  <script src="js/ai.js?v=48"></script>
-  <script src="js/overlay.js?v=48"></script>
-  <script src="js/game.js?v=48"></script>
-  <script src="js/ui.js?v=48"></script>
-  <script src="js/main.js?v=48"></script>
-  <script src="js/help.js?v=48"></script>
+  <script src="js/vector.js?v=49"></script>
+  <script src="js/config.js?v=49"></script>
+  <script src="js/classes.js?v=49"></script>
+  <script src="js/assets.js?v=49"></script>
+  <script src="js/audio.js?v=49"></script>
+  <script src="js/input.js?v=49"></script>
+  <script src="js/map.js?v=49"></script>
+  <script src="js/weapons.js?v=49"></script>
+  <script src="js/chest.js?v=49"></script>
+  <script src="js/beast.js?v=49"></script>
+  <script src="js/abilities.js?v=49"></script>
+  <script src="js/entities.js?v=49"></script>
+  <script src="js/ai.js?v=49"></script>
+  <script src="js/overlay.js?v=49"></script>
+  <script src="js/game.js?v=49"></script>
+  <script src="js/ui.js?v=49"></script>
+  <script src="js/main.js?v=49"></script>
+  <script src="js/help.js?v=49"></script>
 </body>
 </html>

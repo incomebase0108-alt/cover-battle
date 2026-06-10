@@ -207,7 +207,19 @@ class Game {
       al: { b: this.aliveCount("blue"), r: this.aliveCount("red") },
       rush: this.rushMode ? 1 : 0,
       gen: { b: this.generalStatus("blue"), r: this.generalStatus("red") }, // 大将状態 0健在/1危機/2討死
+      sd: this.stormActive ? 1 : 0, // サドンデス発動中（両軍の城が自動で崩れる）
+      // 発動前カウントダウン（残り秒）。warnMs 以内のときだけ送る。
+      sdin: this._stormCountdown(),
     };
+  }
+
+  // サドンデス発動までの残り秒（カウントダウン表示用）。発動済み・まだ遠い時は null。
+  _stormCountdown() {
+    if (this.stormActive) return null;
+    const SD = CONFIG.suddenDeath || { afterMs: 300000, warnMs: 30000 };
+    const left = SD.afterMs - this.elapsedMs;
+    if (left <= 0 || left > (SD.warnMs || 30000)) return null;
+    return Math.ceil(left / 1000);
   }
 
   // Mid-field objectives: one neutral control point + treasure chests at
@@ -490,15 +502,16 @@ class Game {
     const sig = blue + "|" + red + "|" + Math.round(blueFort) + "|" + Math.round(redFort);
     if (!this.stormActive && sig !== this._eventSig) { this._eventSig = sig; this.idleMs = 0; }
     else this.idleMs += dt;
-    // Hard cap: force sudden death only after 3 minutes so a match always ends.
+    // Hard cap: force sudden death after CONFIG.suddenDeath.afterMs so a match always ends.
     this.elapsedMs += dt;
-    if (this.elapsedMs > 180000) this.stormActive = true;
+    const SD = CONFIG.suddenDeath || { afterMs: 300000, drainPerSec: 20, warnMs: 30000 };
+    if (this.elapsedMs > SD.afterMs) this.stormActive = true;
     // 大将ルール：どちらかの総大将が「討死」（救出されず一定時間経過）したら、
     // 弱体化に加えてサドンデス(storm)を発動し、決着を促す。
     if (this.generalStatus("blue") === 2 || this.generalStatus("red") === 2) this.stormActive = true;
     this.rushMode = this.idleMs > 12000 || this.stormActive;
     if (this.stormActive) {
-      const drain = 45 * dt / 1000;
+      const drain = SD.drainPerSec * dt / 1000;
       const bb = this.map.baseOf("blue");
       const rb = this.map.baseOf("red");
       bb.hp = Math.max(0, bb.hp - drain);
@@ -610,6 +623,8 @@ class Game {
       blueFort: this.map.baseOf("blue").hp / this.map.baseOf("blue").maxHp,
       redFort: this.map.baseOf("red").hp / this.map.baseOf("red").maxHp,
       fortAlert: this.blueFortAlert > 0,
+      storm: this.stormActive,            // サドンデス発動中（両軍の城が自動で崩れる）
+      stormIn: this._stormCountdown(),    // 発動までの残り秒（直前だけ・それ以外 null）
       general: this.generalStatus(this.playerTeam || "blue"),     // 自軍の大将 0健在/1危機/2討死
       enemyGeneral: this.generalStatus(this.playerTeam === "red" ? "blue" : "red"),
       player: p ? {

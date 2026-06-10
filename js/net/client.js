@@ -279,6 +279,27 @@
       ctx.fillStyle = "#9cc2ff"; ctx.fillText("🏰青", pad, y - 12); bar(pad + 30, snap.ft.b, "#2f7bff");
       ctx.fillStyle = "#ff9c9c"; ctx.fillText("🏰赤", pad + 140, y - 12); bar(pad + 170, snap.ft.r, "#ff4d4d");
     }
+    // サドンデス：両軍の城が自動で崩れる状態を画面中央上に明示（無表示だと
+    // 「攻撃されてないのに城が減るバグ」に見える）。直前はカウントダウン。
+    {
+      let stormTxt = null;
+      if (snap.sd) stormTxt = "⏰ サドンデス！両軍の城が崩れていく — 急いで決着を！";
+      else if (snap.sdin != null) stormTxt = "⏰ あと" + snap.sdin + "秒でサドンデス（両軍の城が崩れ始める）";
+      if (stormTxt) {
+        const cx = canvas.width / 2;
+        const blink = Math.floor(Date.now() / 550) % 2 === 0;
+        ctx.font = "bold 17px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        const tw = ctx.measureText(stormTxt).width;
+        ctx.fillStyle = blink ? "rgba(150,95,0,0.9)" : "rgba(150,95,0,0.55)";
+        ctx.fillRect(cx - tw / 2 - 14, 64, tw + 28, 30);
+        ctx.strokeStyle = "#ffd24a"; ctx.lineWidth = 2;
+        ctx.strokeRect(cx - tw / 2 - 14, 64, tw + 28, 30);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(stormTxt, cx, 71);
+        ctx.textAlign = "left";
+      }
+    }
     // 自分の弾数・武器・HP。
     const me = snap.u[myIndex];
     if (me) {
