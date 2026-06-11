@@ -25,6 +25,8 @@ const Assets = {
       for (const cls of this._classKeys) {
         const k = "soldier_" + team + "_" + cls;
         this.defs[k] = "assets/" + k + ".png";
+        // 歩行フレーム（任意）：置けば立ち姿と交互の2フレーム歩行になる。
+        this.defs[k + "_walk"] = "assets/" + k + "_walk.png";
       }
     }
     for (const bt of this._beastKeys) {
@@ -73,6 +75,21 @@ const Assets = {
   // 歩行の弾み量（0〜1）。影の縮小などスプライトと同期させたい描画で使う。
   walkBobAmount(walkPhase) {
     return walkPhase ? Math.abs(Math.sin(walkPhase)) : 0;
+  },
+
+  // クラス別の兵士スプライトを返す（単独/LAN共用のフレーム選択）。
+  // 歩行中で `soldier_{team}_{cls}_walk.png` があれば、半歩（walkPhaseのπ）ごとに
+  // 立ち姿と交互に切り替えて2フレーム歩行アニメにする。無ければ立ち姿1枚
+  // （疑似モーションのみ）。クラス絵が無ければ汎用→null（ベクター）へ。
+  soldierSprite(team, cls, walkPhase) {
+    const base = "soldier_" + team + "_" + cls;
+    if (walkPhase && this.ready(base + "_walk") &&
+        Math.floor(walkPhase / Math.PI) % 2 === 1) {
+      return this.get(base + "_walk");
+    }
+    if (this.ready(base)) return this.get(base);
+    if (this.ready("soldier_" + team)) return this.get("soldier_" + team);
+    return null;
   },
 
   get(name) {

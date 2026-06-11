@@ -66,12 +66,10 @@ const NetRender = {
     // 軍師の強化中は金色の光輪（buffed）。
     if (u.bf && typeof drawBuffAura === "function") drawBuffAura(ctx, u.x, u.y + r * 0.5, r * 1.3, u.bf === 2);
     const wdef = (typeof WEAPONS !== "undefined") ? WEAPONS[u.w] : null;
-    // クラス別スプライト（DQ風3/4立ち姿）を優先。無ければ汎用→ベクター。
+    // クラス別スプライト（_walk フレームがあれば2フレーム歩行）。無ければ汎用→ベクター。
     let sprite = null;
-    if (typeof Assets !== "undefined") {
-      const ck = "soldier_" + team + "_" + u.cl;
-      if (Assets.ready(ck)) sprite = Assets.get(ck);
-      else if (Assets.ready("soldier_" + team)) sprite = Assets.get("soldier_" + team);
+    if (typeof Assets !== "undefined" && Assets.soldierSprite) {
+      sprite = Assets.soldierSprite(team, u.cl, wp);
     }
     if (sprite && typeof Assets.drawSprite === "function") {
       // 上向き固定＋左右反転。歩行モーション（弾み/ロッキング/つぶれ伸び）は drawSprite 側。

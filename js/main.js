@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v52 歩行モーション刷新（ロッキング+つぶれ伸び+影連動+土ぼこり）＋マップ仕掛け『火薬樽』追加";
+  const BUILD = "v53 4号機スプライト組込：火薬樽 keg.png＋総大将の歩行2フレーム（暫定128px版・本番256pxはNAS待ち）";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

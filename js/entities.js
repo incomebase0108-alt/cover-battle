@@ -984,17 +984,16 @@ class Unit {
     // 軍師の強化を受けている味方は、足元に金色の光輪を出して一目で分かるように。
     if (this.buffed) drawBuffAura(ctx, this.x, this.y + r * 0.5, r * 1.3, this.rallied);
 
-    // クラス別スプライト（DQ風3/4立ち姿）。無ければベクター（回転）にフォールバック。
+    // クラス別スプライト（DQ風3/4立ち姿。_walk フレームがあれば2フレーム歩行）。
+    // 無ければベクター（回転）にフォールバック。
     let sprite = null;
-    if (typeof Assets !== "undefined") {
-      const ck = "soldier_" + this.team + "_" + this.cls;
-      if (Assets.ready(ck)) sprite = Assets.get(ck);
-      else if (Assets.ready("soldier_" + this.team)) sprite = Assets.get("soldier_" + this.team);
+    if (typeof Assets !== "undefined" && Assets.soldierSprite) {
+      sprite = Assets.soldierSprite(this.team, this.cls, wp);
     }
 
     if (sprite && typeof Assets.drawSprite === "function") {
       // 上向き固定＋左右反転で立ち姿を描く。
-      Assets.drawSprite(ctx, sprite, this.x, this.y, this.aim, r, this.movingTimer > 0 ? this.walkPhase : 0);
+      Assets.drawSprite(ctx, sprite, this.x, this.y, this.aim, r, wp);
       // 攻撃モーション＆マズルフラッシュは aim 方向に出す（武器なし素体なので攻撃時に武器が見える）。
       ctx.save();
       ctx.translate(this.x, this.y);
