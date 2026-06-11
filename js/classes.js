@@ -23,14 +23,14 @@
 // 「各チームの slot0 が必ず総大将」が自動で保証される（大将ルールの起点）。
 // 近接(刀)＝総大将/足軽/騎馬/忍者、遠隔＝弓兵(弓・装填無し)/鉄砲兵(鉄砲・装填有り強力)。
 const CLASSES = [
-  { key: "general",  label: "総大将",  desc: "最も頑丈な近接の要。体力が群を抜いて高い。野武士に近づき説得すると仲間にできる。討たれると味方の回復が止まり士気が崩れる。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 2.2, speedMul: 0.8, sizeMul: 1.34, accent: "#ffd24a", badge: "将", ability: "capture", abilityMax: 2 },
+  { key: "general",  label: "総大将",  desc: "最も頑丈な近接の要。体力が群を抜いて高い。『説得』(C/🎯)で野武士に近づき仲間にできる。討たれると味方の回復が止まり士気が崩れる。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 2.2, speedMul: 0.8, sizeMul: 1.34, accent: "#ffd24a", badge: "将", ability: "capture", abilityName: "説得", abilityMax: 2 },
   { key: "ashigaru", label: "足軽",    desc: "刀で斬り込む標準の前衛。数で押す。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 1.0, speedMul: 1.05, sizeMul: 1.0, accent: "#9cc2ff", badge: "足" },
   { key: "archer",   label: "弓兵",    desc: "弓で遠くから手数で攻める。装填不要で撃ち続けられる。弓：槍に強い／剣に弱い。", weapon: "yumi", hpMul: 0.85, speedMul: 1.05, sizeMul: 0.96, accent: "#b9f27c", badge: "弓" },
-  { key: "gunner",   label: "鉄砲兵",  desc: "鉄砲の一撃は重いが、撃つたびに長い装填が要る。三すくみ（槍/剣/弓）の相性外。", weapon: "teppo", hpMul: 0.9, speedMul: 0.92, sizeMul: 1.0, accent: "#c98cff", badge: "鉄" },
-  { key: "cavalry",  label: "騎馬",    desc: "高速で突進し一気に間合いを詰める刀の遊撃。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 1.2, speedMul: 1.28, sizeMul: 1.08, accent: "#ff8a5a", badge: "騎", ability: "dash", abilityCd: 4000 },
-  { key: "ninja",    label: "忍者",    desc: "森に潜み煙幕で撹乱する刀の奇襲。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 0.9, speedMul: 1.18, sizeMul: 0.92, accent: "#5ad6ff", badge: "忍", ability: "smoke", abilityCd: 9000 },
+  { key: "gunner",   label: "鉄砲兵",  desc: "鉄砲は5連発で一撃が重いが、撃ち切ると長い装填が要る。『早合』(C/🎯)で装填を即完了。三すくみ（槍/剣/弓）の相性外。", weapon: "teppo", hpMul: 0.9, speedMul: 0.92, sizeMul: 1.0, accent: "#c98cff", badge: "鉄", ability: "fastreload", abilityName: "早合", abilityCd: 12000 },
+  { key: "cavalry",  label: "騎馬",    desc: "高速で突進し一気に間合いを詰める刀の遊撃。『突進』(C/🎯)で一気に加速。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 1.2, speedMul: 1.28, sizeMul: 1.08, accent: "#ff8a5a", badge: "騎", ability: "dash", abilityName: "突進", abilityCd: 4000 },
+  { key: "ninja",    label: "忍者",    desc: "森に潜み『煙幕』(C/🎯)で撹乱する刀の奇襲。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 0.9, speedMul: 1.18, sizeMul: 0.92, accent: "#5ad6ff", badge: "忍", ability: "smoke", abilityName: "煙幕", abilityCd: 9000 },
   { key: "spearman", label: "槍兵",    desc: "長い槍で間合いの外から突く。突きは遅めだが、剣（刀）に強い。弓には弱い。", weapon: "yari", hpMul: 1.05, speedMul: 1.0, sizeMul: 1.06, accent: "#e89bd0", badge: "槍" },
-  { key: "gunshi",   label: "軍師",    desc: "後方支援の指揮役。近くの味方を常時強化（自動オーラ）＋『采配』(🚩/V)で周囲を一段強く一時強化。特殊『蘇生』で再起不能(ダウン)の味方をその場で復活（低HPで立たせる／30秒に1回）。爆弾は持たない。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 1.0, speedMul: 0.85, sizeMul: 1.04, accent: "#e8d24a", badge: "軍", ability: "revive", abilityCd: 30000, maxBombs: 0 },
+  { key: "gunshi",   label: "軍師",    desc: "後方支援の指揮役。近くの味方を常時強化（自動オーラ）＋『采配』(🚩/V)で周囲を一段強く一時強化。『蘇生』(C/🎯)で再起不能(ダウン)の味方をその場で復活（低HPで立たせる／30秒に1回）。爆弾は持たない。刀＝剣：弓に強い／槍に弱い。", weapon: "katana", hpMul: 1.0, speedMul: 0.85, sizeMul: 1.04, accent: "#e8d24a", badge: "軍", ability: "revive", abilityName: "蘇生", abilityCd: 30000, maxBombs: 0 },
 ];
 
 function getClass(keyOrIndex) {

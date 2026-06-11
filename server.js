@@ -47,9 +47,9 @@ function newMatch(idx) {
   // 選択中の難易度を反映してから出撃させる（敵チームの skill に乗算される）。
   if (sb.CONFIG) sb.CONFIG.difficulty = difficulty;
   game = new sb.Game(makeCanvas(), {
-    onEnd: (win) => {
+    onEnd: (win, hasNext, stageIndex, reason) => {
       started = false; // 試合終了 → 待機ロビーに戻る（ホストが次を開始する）
-      broadcast({ type: "end", win });
+      broadcast({ type: "end", win, reason });
       setTimeout(() => { newMatch(stage + 1); broadcastStatic(); broadcastLobby(); }, 5000);
     },
   });

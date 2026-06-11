@@ -69,8 +69,8 @@ const WEAPONS = {
     label: "鉄砲",
     damage: 62,          // 一撃が重い
     fireCooldown: 1100,
-    magSize: 1,          // 一発撃つたびに装填＝火縄銃感
-    reloadTime: 2600,    // 長い装填
+    magSize: 5,          // 5連発（星野さん要望：1発ごと装填→5発撃てるように）
+    reloadTime: 2600,    // 撃ち切ったら長い装填（特殊『早合』で即完了できる）
     bulletSpeedMul: 1.7,
     rangeMul: 1.7,
     spread: 0.02,
@@ -104,8 +104,8 @@ const WEAPONS = {
     pierce: true,
   },
   rockbuster: {
-    label: "大筒",         // 城/岩を砕く大砲（宝箱）。大きな砲丸が飛び、着弾で周囲に衝撃。
-    damage: 72,            // 一撃が非常に重い
+    label: "大筒",         // 城/岩を砕く大砲（宝箱）。砲丸の着弾点で爆弾並みの爆発が起きる。
+    damage: 72,            // 直撃ダメージ（爆発は別途 CONFIG.bomb 準拠）
     fireCooldown: 850,
     magSize: 3,
     reloadTime: 3400,
@@ -115,7 +115,7 @@ const WEAPONS = {
     rangeMul: 1.1,
     breakRock: true,
     ball: true,            // 大きな丸い砲丸として描画＆当たり判定を大きく
-    splash: 78,            // 着弾点からこの半径内の敵にも衝撃ダメージ
+    explode: true,         // 着弾で爆弾級の爆発（範囲・威力は CONFIG.bomb と同じ）
   },
 };
 

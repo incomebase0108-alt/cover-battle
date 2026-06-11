@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Cover Battle — 山城を攻め落とす8vs8合戦バトル</title>
-  <link rel="stylesheet" href="css/style.css?v=49" />
+  <link rel="stylesheet" href="css/style.css?v=50" />
 </head>
 <body>
   <div id="app">
@@ -32,8 +32,6 @@
 
     <!-- Fort-under-attack warning -->
     <div id="fortWarning" class="fort-warning hidden">⚠ 自陣の砦が攻撃されている！</div>
-    <!-- Sudden-death banner: 発動中＋直前カウントダウン（文言はui.jsが入れる） -->
-    <div id="stormWarning" class="fort-warning storm hidden"></div>
 
     <!-- Always-on control/trait bar for the chosen character (bottom of screen) -->
     <div id="controlBar" class="control-bar hidden">
@@ -62,13 +60,13 @@
         <div class="how">
           <p><b>操作</b>： 移動=WASD/矢印 ・ 照準=マウス ・ 攻撃=クリック/スペース ・ 爆弾=E ・ 特殊=C/🎯</p>
           <p><b>爆弾</b>： <b>E / 💣</b>で設置。敵や石垣はもちろん、<b>砦・城門の破壊</b>にも使える。</p>
-          <p><b>武器（クラス固定）</b>： 総大将・足軽・騎馬・忍者・軍師=<b>刀</b>（速い近接）／<b>槍兵</b>=槍（長い間合いで突く・遅め）／弓兵=<b>弓</b>（遠距離・装填不要）／鉄砲兵=<b>鉄砲</b>（一撃重い・長い装填）。</p>
+          <p><b>武器（クラス固定）</b>： 総大将・足軽・騎馬・忍者・軍師=<b>刀</b>（速い近接）／<b>槍兵</b>=槍（長い間合いで突く・遅め）／弓兵=<b>弓</b>（遠距離・装填不要）／鉄砲兵=<b>鉄砲</b>（5連発・一撃重い・撃ち切ると長い装填）。</p>
           <p><b>三すくみ（相性）</b>： <b>槍＞剣</b>・<b>剣＞弓</b>・<b>弓＞槍</b>。有利な相手には大ダメージ。槍は間合いで剣に勝ち、剣は接近で弓に勝ち、弓は距離で槍に勝つ。<b>選んだキャラ視点で、得意な相手は<span style="color:#39e08a">緑(▲)</span>／苦手な相手は<span style="color:#ff5a5a">赤(▼)</span></b>の印が相手に付く（鉄砲は相性外）。</p>
-          <p><b>大将ルール</b>： 各軍に<b>総大将</b>が1人。倒れている間は<b>自陣の回復ゾーンが無効</b>になり<b>味方全員が弱体</b>。救出されず討死すると<b>サドンデス</b>。総大将を守り、敵将を討て。</p>
+          <p><b>大将ルール</b>： 各軍に<b>総大将</b>が1人。倒れている間は<b>自陣の回復ゾーンが無効</b>になり<b>味方全員が弱体</b>（救出か軍師の蘇生で復帰）。総大将を守り、敵将を討て。</p>
           <p><b>勝利条件</b>： 赤チームを<b>全滅</b>、<b>赤の砦を破壊</b>、または<b>赤の総大将を討ち取る</b>。味方全滅か<b>自分の砦が破壊されると敗北</b>。</p>
           <p><b>地形</b>： <span class="rock-key">石垣</span>=破壊できる盾 / <span class="mtn-key">山(本丸)</span>=壊せない遮蔽 / <span class="bush-key">森</span>=隠れると敵から見えない / <span class="river-key">堀</span>=移動が遅くなる</p>
           <p><b>砦</b>： 自分の<span class="base-key">砦</span>（自陣）に戻ると体力が回復（総大将が健在なときのみ）。砦には<b>耐久ゲージ</b>があり、敵に壊されると負け。</p>
-          <p><b>クラス特殊（C / 🎯）</b>： 総大将=<b>野武士を説得</b>して仲間に（最大2）／騎馬=<b>突進ダッシュ</b>／忍者=<b>煙幕</b>／<b>軍師=蘇生</b>（再起不能の味方をその場で復活。回復なし＝低HPで立たせる／30秒に1回）。さらに<b>軍師の近くの味方は常時強化</b>（与ダメ・移動UP、離れても約5秒持続。<b>金色の光輪</b>が目印）。<b>軍師の采配（🚩 / V）</b>＝押すと周囲を一段強く一時強化（CDあり）。軍師は爆弾なし。野武士は中立で誰にでも襲うが、総大将が近づけば味方になる。</p>
+          <p><b>クラス特殊（C / 🎯）</b>： 総大将=<b>説得</b>（野武士を仲間に・最大2）／鉄砲兵=<b>早合</b>（装填を即完了）／騎馬=<b>突進</b>／忍者=<b>煙幕</b>／<b>軍師=蘇生</b>（再起不能の味方をその場で復活。回復なし＝低HPで立たせる／30秒に1回）。ボタンには技名が出ます（特殊なしのクラスはボタン非表示）。さらに<b>軍師の近くの味方は常時強化</b>（与ダメ・移動UP、離れても約5秒持続。<b>金色の光輪</b>が目印）。<b>軍師の采配（🚩 / V）</b>＝押すと周囲を一段強く一時強化（CDあり）。軍師は爆弾なし。野武士は中立で誰にでも襲うが、総大将が近づけば味方になる。</p>
           <p><b>マップ</b>： 画面よりかなり広く、<b>カメラが自分を追って</b>スクロールする。段差は山岳海兵だけ越えられる近道。</p>
           <p><b>スマホ</b>： 左の「<b>移</b>」スティックで移動、右の「<b>攻</b>」スティックを倒すと<b>その方向へ照準＋射撃</b>（押している間だけ撃つ）。下のボタンで 爆弾／特殊／武器。</p>
         </div>
@@ -102,23 +100,23 @@
     </div>
   </div>
 
-  <script src="js/vector.js?v=49"></script>
-  <script src="js/config.js?v=49"></script>
-  <script src="js/classes.js?v=49"></script>
-  <script src="js/assets.js?v=49"></script>
-  <script src="js/audio.js?v=49"></script>
-  <script src="js/input.js?v=49"></script>
-  <script src="js/map.js?v=49"></script>
-  <script src="js/weapons.js?v=49"></script>
-  <script src="js/chest.js?v=49"></script>
-  <script src="js/beast.js?v=49"></script>
-  <script src="js/abilities.js?v=49"></script>
-  <script src="js/entities.js?v=49"></script>
-  <script src="js/ai.js?v=49"></script>
-  <script src="js/overlay.js?v=49"></script>
-  <script src="js/game.js?v=49"></script>
-  <script src="js/ui.js?v=49"></script>
-  <script src="js/main.js?v=49"></script>
-  <script src="js/help.js?v=49"></script>
+  <script src="js/vector.js?v=50"></script>
+  <script src="js/config.js?v=50"></script>
+  <script src="js/classes.js?v=50"></script>
+  <script src="js/assets.js?v=50"></script>
+  <script src="js/audio.js?v=50"></script>
+  <script src="js/input.js?v=50"></script>
+  <script src="js/map.js?v=50"></script>
+  <script src="js/weapons.js?v=50"></script>
+  <script src="js/chest.js?v=50"></script>
+  <script src="js/beast.js?v=50"></script>
+  <script src="js/abilities.js?v=50"></script>
+  <script src="js/entities.js?v=50"></script>
+  <script src="js/ai.js?v=50"></script>
+  <script src="js/overlay.js?v=50"></script>
+  <script src="js/game.js?v=50"></script>
+  <script src="js/ui.js?v=50"></script>
+  <script src="js/main.js?v=50"></script>
+  <script src="js/help.js?v=50"></script>
 </body>
 </html>

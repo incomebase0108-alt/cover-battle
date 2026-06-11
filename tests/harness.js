@@ -137,8 +137,8 @@ function newGame(index = 0) {
   const canvas = makeCanvas();
   const game = new sb.Game(canvas, {
     onHud: () => {},
-    onEnd: (win, hasNext, idx) => {
-      ended.value = { win, hasNext, idx };
+    onEnd: (win, hasNext, idx, reason) => {
+      ended.value = { win, hasNext, idx, reason };
     },
   });
   game.loadStage(index);

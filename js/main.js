@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v49 サドンデス可視化（城が勝手に減って見える問題）＋キャラ選択画面のスクロール対応・古い操作表記の整理";
+  const BUILD = "v50 サドンデス廃止（討死＝即決着に変更）・特殊ボタンを技名表示・鉄砲5連発＋早合・大筒は爆弾級の爆発";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
@@ -66,9 +66,9 @@
   function newGameAt(index) {
     game = new Game(canvas, {
       onHud: (state) => UI.updateHud(state),
-      onEnd: (win, hasNext, stageIndex) => {
+      onEnd: (win, hasNext, stageIndex, reason) => {
         if (win) Sound.victory(); else Sound.defeat();
-        UI.showResult(win, hasNext, stageIndex);
+        UI.showResult(win, hasNext, stageIndex, reason);
         if (win) {
           nextAction = hasNext ? { type: "stage", index: stageIndex + 1 } : { type: "restart" };
         } else {

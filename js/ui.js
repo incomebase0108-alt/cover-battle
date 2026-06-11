@@ -19,7 +19,6 @@ const UI = {
     this.el.blueFortBar = document.getElementById("blueFortBar");
     this.el.redFortBar = document.getElementById("redFortBar");
     this.el.fortWarning = document.getElementById("fortWarning");
-    this.el.stormWarning = document.getElementById("stormWarning");
     this.el.controlBar = document.getElementById("controlBar");
     this.el.cbClass = document.getElementById("cbClass");
     this.el.cbKeys = document.getElementById("cbKeys");
@@ -41,7 +40,7 @@ const UI = {
       case "general":  return "総大将・最も頑丈な刀＝剣（弓に強い/槍に弱い）討たれると不利";
       case "ashigaru": return "足軽・刀＝剣の標準前衛（弓に強い/槍に弱い）";
       case "archer":   return "弓・遠距離の手数で装填不要（槍に強い/剣に弱い）";
-      case "gunner":   return "鉄砲・一撃重いが長い装填（三すくみ外）";
+      case "gunner":   return "鉄砲・5連発で一撃重い、撃ち切ると長い装填→早合(🎯)で即完了（三すくみ外）";
       case "cavalry":  return "騎馬・突進で急接近する刀＝剣（弓に強い/槍に弱い）";
       case "ninja":    return "忍者・森に潜む刀＝剣＋煙幕（弓に強い/槍に弱い）";
       case "spearman": return "槍兵・長い間合いで突く槍（剣に強い/弓に弱い）";
@@ -60,6 +59,7 @@ const UI = {
     if (a === "repair") return "砦・城門を修復";
     if (a === "smoke") return "煙幕で隠れる";
     if (a === "revive") return "蘇生（再起不能の味方を復活・回復なし／30秒）";
+    if (a === "fastreload") return "早合（装填を即完了して弾倉満タン）";
     return "なし";
   },
 
@@ -73,11 +73,14 @@ const UI = {
       ? `速${Math.round((c.speedMul || 1) * 100)}% HP${Math.round((c.hpMul || 1) * 100)}%${c.canClimb ? " 段差○" : ""}`
       : "";
     this.el.cbClass.textContent = `${c ? c.badge + " " + c.label : "兵士"}（${traits}）`;
+    // 技名はクラスごと（説得/早合/突進/煙幕/蘇生）。特殊なしクラスは技の項目を出さない。
+    const aName = (c && c.abilityName) || "特殊";
+    const aPart = (c && c.ability) ? ` ・ ${aName} <b>C / 🎯</b>：${this.abilityHelp(p.cls)}` : "";
+    const rallyPart = (c && c.key === "gunshi") ? ` ・ 采配 <b>V / 🚩</b>：周囲の味方を一時強化` : "";
+    const bombPart = (c && c.maxBombs === 0) ? "" : ` ・ 爆弾 <b>E / 💣</b>`;
     this.el.cbKeys.innerHTML =
-      `移動 <b>WASD/スティック</b> ・ 撃つ <b>クリック/スペース/撃</b> ・ ` +
-      `爆弾 <b>E / 💣</b> ・ ` +
-      `武器 <b>1-4 / F / 🔫</b> ・ ロック <b>R / 🔒</b> ・ ` +
-      `特殊 <b>C / 🎯</b>：${this.abilityHelp(p.cls)}`;
+      `移動 <b>WASD/スティック</b> ・ 攻撃 <b>クリック/スペース/「攻」</b>` +
+      bombPart + aPart + rallyPart;
   },
 
   updateHud(state) {
@@ -106,18 +109,24 @@ const UI = {
       const c = (typeof getClass === "function") ? getClass(p.cls) : null;
       if (c) {
         let s = `${c.badge} ${c.label}：${this.classTrait(p.cls)}`;
-        if (p.abilityRemaining != null) s += `（特殊 残${p.abilityRemaining}）`;
+        if (p.abilityRemaining != null) s += `（${c.abilityName || "特殊"} 残${p.abilityRemaining}）`;
         if (state.general === 1) s = "⚠ 大将 危機！救出せよ ｜ " + s;
-        else if (state.general === 2) s = "大将 討死…決戦(サドンデス) ｜ " + s;
+        else if (state.general === 2) s = "大将 討死…味方弱体中(蘇生・救出で復帰) ｜ " + s;
         if (s !== this._mClassStr) { this._mClassStr = s; this.el.mClassInfo.textContent = s; }
       }
     }
-    // 個数制アビリティ（工兵=砲台/動物使い=動物）の残り設置・捕獲数をボタンに表示。
+    // 特殊ボタン：クラスごとの技名（説得/早合/突進/煙幕/蘇生）を表示し、
+    // 特殊を持たないクラス（足軽/弓兵/槍兵）ではボタン自体を隠す。
     if (this.el.abilitySmall && p) {
+      const cdef = (typeof getClass === "function") ? getClass(p.cls) : null;
+      const hasAbility = !!(cdef && cdef.ability);
       const rem = p.abilityRemaining;
-      // 軍師は特殊＝蘇生（回復ボタン）。それ以外は従来の「特殊/特殊 残N」。
-      this.el.abilitySmall.textContent = p.cls === "gunshi" ? "蘇生" : (rem == null ? "特殊" : `特殊 残${rem}`);
-      if (this.el.abilityBtn) this.el.abilityBtn.classList.toggle("depleted", rem === 0);
+      const aName = (cdef && cdef.abilityName) || "特殊";
+      this.el.abilitySmall.textContent = rem == null ? aName : `${aName} 残${rem}`;
+      if (this.el.abilityBtn) {
+        this.el.abilityBtn.classList.toggle("hidden", !hasAbility);
+        this.el.abilityBtn.classList.toggle("depleted", rem === 0);
+      }
     }
     // 軍師は爆弾を持たない → 爆弾ボタンを隠す（他クラスでは表示）。
     if (this.el.bombBtn && p) this.el.bombBtn.classList.toggle("hidden", p.cls === "gunshi");
@@ -142,18 +151,6 @@ const UI = {
     if (this.el.fortWarning) {
       this.el.fortWarning.classList.toggle("hidden", !state.fortAlert);
     }
-    // サドンデス：発動中は「城が崩れている」ことを明示（攻撃されていないのに耐久が
-    // 減る＝バグに見える問題への対策）。発動直前はカウントダウンを出す。
-    if (this.el.stormWarning) {
-      let stormTxt = null;
-      if (state.storm) stormTxt = "⏰ サドンデス！両軍の城が崩れていく — 急いで決着を！";
-      else if (state.stormIn != null) stormTxt = `⏰ あと${state.stormIn}秒でサドンデス（両軍の城が崩れ始める）`;
-      this.el.stormWarning.classList.toggle("hidden", !stormTxt);
-      if (stormTxt && stormTxt !== this._stormStr) {
-        this._stormStr = stormTxt;
-        this.el.stormWarning.textContent = stormTxt;
-      }
-    }
     this._updateControlBar(p);
   },
 
@@ -161,21 +158,26 @@ const UI = {
     this.el.overlay.classList.toggle("hidden", !show);
   },
 
-  showResult(win, hasNext, stageIndex) {
+  // reason: "general"=総大将討ち取り / "fort"=城の破壊 / "wipe"=全滅（省略時=全滅扱い）
+  showResult(win, hasNext, stageIndex, reason) {
     this.el.resultOverlay.classList.remove("hidden");
     const title = this.el.resultTitle;
     title.classList.remove("win", "lose");
     if (win) {
       title.classList.add("win");
       title.textContent = hasNext ? "STAGE CLEAR!" : "ALL CLEAR! 🎉";
-      this.el.resultText.textContent = hasNext
-        ? "敵を全滅させた！次のステージへ進もう。"
-        : "全ステージ制覇！あなたの勝利だ。";
+      const how = reason === "general" ? "敵の総大将を討ち取りました！"
+        : reason === "fort" ? "敵の城を落とした！"
+        : "敵を全滅させた！";
+      this.el.resultText.textContent = how + (hasNext ? " 次のステージへ進もう。" : " 全ステージ制覇！あなたの勝利だ。");
       document.getElementById("nextBtn").textContent = hasNext ? "次のステージ" : "もう一度遊ぶ";
     } else {
       title.classList.add("lose");
       title.textContent = "DEFEAT...";
-      this.el.resultText.textContent = "味方が全滅してしまった。もう一度挑戦しよう。";
+      const how = reason === "general" ? "総大将が討ち取られました…"
+        : reason === "fort" ? "自分の城が落とされてしまった…"
+        : "味方が全滅してしまった。";
+      this.el.resultText.textContent = how + " もう一度挑戦しよう。";
       document.getElementById("nextBtn").textContent = "リトライ";
     }
   },

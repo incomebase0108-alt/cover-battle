@@ -26,7 +26,6 @@ class Game {
     // Anti-stall: if nothing happens (no kill / no fort damage) for a while, the
     // AI rushes the enemy fort so a match always reaches a conclusion.
     this.rushMode = false;
-    this.stormActive = false;
     this.idleMs = 0;
     this.elapsedMs = 0;
     this._eventSig = null;
@@ -50,7 +49,6 @@ class Game {
     this.blueFortAlert = 0;
     this._prevBlueFort = null;
     this.rushMode = false;
-    this.stormActive = false;
     this.idleMs = 0;
     this.elapsedMs = 0;
     this._eventSig = null;
@@ -207,19 +205,7 @@ class Game {
       al: { b: this.aliveCount("blue"), r: this.aliveCount("red") },
       rush: this.rushMode ? 1 : 0,
       gen: { b: this.generalStatus("blue"), r: this.generalStatus("red") }, // 大将状態 0健在/1危機/2討死
-      sd: this.stormActive ? 1 : 0, // サドンデス発動中（両軍の城が自動で崩れる）
-      // 発動前カウントダウン（残り秒）。warnMs 以内のときだけ送る。
-      sdin: this._stormCountdown(),
     };
-  }
-
-  // サドンデス発動までの残り秒（カウントダウン表示用）。発動済み・まだ遠い時は null。
-  _stormCountdown() {
-    if (this.stormActive) return null;
-    const SD = CONFIG.suddenDeath || { afterMs: 300000, warnMs: 30000 };
-    const left = SD.afterMs - this.elapsedMs;
-    if (left <= 0 || left > (SD.warnMs || 30000)) return null;
-    return Math.ceil(left / 1000);
   }
 
   // Mid-field objectives: one neutral control point + treasure chests at
@@ -497,46 +483,34 @@ class Game {
     // Anti-stall escalation: reset the idle timer whenever something meaningful
     // changes (a death or fort damage). If it stays idle too long the AI RUSHES
     // (no HP drain — just makes the CPU aggressive to break the deadlock).
-    // 砦の自動ドレインは「誰も攻撃していないのに砦が減る」誤体験を生むため、
-    // アイドル発動を廃止。試合終了の保証は3分経過のサドンデスのみに限定する。
+    // ※サドンデス（時間経過で両軍の城が自動で崩れる）は星野さん要望で廃止
+    //   （2026-06-11）。決着の促進は AI のラッシュのみで行い、城は攻撃以外で減らない。
     const sig = blue + "|" + red + "|" + Math.round(blueFort) + "|" + Math.round(redFort);
-    if (!this.stormActive && sig !== this._eventSig) { this._eventSig = sig; this.idleMs = 0; }
+    if (sig !== this._eventSig) { this._eventSig = sig; this.idleMs = 0; }
     else this.idleMs += dt;
-    // Hard cap: force sudden death after CONFIG.suddenDeath.afterMs so a match always ends.
     this.elapsedMs += dt;
-    const SD = CONFIG.suddenDeath || { afterMs: 300000, drainPerSec: 20, warnMs: 30000 };
-    if (this.elapsedMs > SD.afterMs) this.stormActive = true;
-    // 大将ルール：どちらかの総大将が「討死」（救出されず一定時間経過）したら、
-    // 弱体化に加えてサドンデス(storm)を発動し、決着を促す。
-    if (this.generalStatus("blue") === 2 || this.generalStatus("red") === 2) this.stormActive = true;
-    this.rushMode = this.idleMs > 12000 || this.stormActive;
-    if (this.stormActive) {
-      const drain = SD.drainPerSec * dt / 1000;
-      const bb = this.map.baseOf("blue");
-      const rb = this.map.baseOf("red");
-      bb.hp = Math.max(0, bb.hp - drain);
-      rb.hp = Math.max(0, rb.hp - drain);
-      blueFort = bb.hp;
-      redFort = rb.hp;
-    }
+    this.rushMode = this.idleMs > 12000;
 
     // "Fort under attack" warning: trigger when our fort loses HP, or when an
-    // enemy bomb is set near it. サドンデス(storm)のドレインは攻撃では
-    // ないので、storm中はHP減少による警告を出さない(誤警告の防止)。
+    // enemy bomb is set near it.
     if (this.blueFortAlert > 0) this.blueFortAlert -= dt;
-    if (!this.stormActive && this._prevBlueFort != null && blueFort < this._prevBlueFort - 0.01) {
+    if (this._prevBlueFort != null && blueFort < this._prevBlueFort - 0.01) {
       this.blueFortAlert = 1500;
-    } else if (!this.stormActive && this._enemyThreatNearBlueFort()) {
+    } else if (this._enemyThreatNearBlueFort()) {
       this.blueFortAlert = Math.max(this.blueFortAlert, 600);
     }
     this._prevBlueFort = blueFort;
 
     this._syncHud();
 
-    if (red === 0 || redFort <= 0) {
-      this._end(true);
-    } else if (blue === 0 || blueFort <= 0) {
-      this._end(false);
+    // 決着：全滅 / 城の破壊 / 総大将の討死（救出されず討ち取られた）。
+    // 討死はサドンデス（城ドレイン）廃止に伴い、直接の勝敗条件に昇格。
+    const redGenDead = this.generalStatus("red") === 2;
+    const blueGenDead = this.generalStatus("blue") === 2;
+    if (red === 0 || redFort <= 0 || redGenDead) {
+      this._end(true, redGenDead ? "general" : (redFort <= 0 ? "fort" : "wipe"));
+    } else if (blue === 0 || blueFort <= 0 || blueGenDead) {
+      this._end(false, blueGenDead ? "general" : (blueFort <= 0 ? "fort" : "wipe"));
     }
   }
 
@@ -605,12 +579,13 @@ class Game {
     this.items.push(new Item(rock.x, rock.y, type));
   }
 
-  _end(win) {
+  // reason: "general"=総大将討ち取り / "fort"=城の破壊 / "wipe"=全滅
+  _end(win, reason) {
     if (this.over) return; // 終了処理は一度だけ
     this.over = true;
     this.running = false;
     const hasNext = this.stageIndex + 1 < STAGES.length;
-    if (this.callbacks.onEnd) this.callbacks.onEnd(win, hasNext, this.stageIndex);
+    if (this.callbacks.onEnd) this.callbacks.onEnd(win, hasNext, this.stageIndex, reason);
   }
 
   _syncHud() {
@@ -623,8 +598,6 @@ class Game {
       blueFort: this.map.baseOf("blue").hp / this.map.baseOf("blue").maxHp,
       redFort: this.map.baseOf("red").hp / this.map.baseOf("red").maxHp,
       fortAlert: this.blueFortAlert > 0,
-      storm: this.stormActive,            // サドンデス発動中（両軍の城が自動で崩れる）
-      stormIn: this._stormCountdown(),    // 発動までの残り秒（直前だけ・それ以外 null）
       general: this.generalStatus(this.playerTeam || "blue"),     // 自軍の大将 0健在/1危機/2討死
       enemyGeneral: this.generalStatus(this.playerTeam === "red" ? "blue" : "red"),
       player: p ? {

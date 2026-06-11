@@ -528,6 +528,7 @@ class AIController {
         if (cls.ability === "turret" && d < CONFIG.unit.range && Math.random() < 0.012) self.useAbility(game);
         else if (cls.ability === "smoke" && d < 280 && Math.random() < 0.02) self.useAbility(game);
         else if (cls.ability === "dash" && (d > 280 || this.shouldRetreat(self)) && Math.random() < 0.03) self.useAbility(game);
+        else if (cls.ability === "fastreload" && self.reloading && Math.random() < 0.06) self.useAbility(game); // 早合：装填中に即完了
         // 軍師の蘇生は update 前段の専用処理（ダウン味方へ接近して復活）で発動する。
       }
     }

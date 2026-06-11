@@ -113,11 +113,19 @@
       let myT = null;
       if (Net.snap && Net.snap.u && Net.snap.u[Net.myIndex]) myT = Net.snap.u[Net.myIndex].t === 0 ? "blue" : "red";
       else if (Net.myTeam != null) myT = (Net.myTeam === 0 || Net.myTeam === "blue") ? "blue" : "red";
+      // 決着理由（general=総大将討ち取り / fort=城の破壊 / wipe=全滅）を文言に添える。
       let result;
       if (Net.joined && myT) {
-        result = (myT === winnerTeam) ? `🎉 あなたの勝ち！（${winnerLabel}勝利）` : `敗北… （${winnerLabel}勝利）`;
+        const won = myT === winnerTeam;
+        const how = m.reason === "general"
+          ? (won ? "敵の総大将を討ち取りました！" : "総大将が討ち取られました…")
+          : m.reason === "fort"
+            ? (won ? "敵の城を落とした！" : "城が落とされた…")
+            : "";
+        result = won ? `🎉 ${how}あなたの勝ち！（${winnerLabel}勝利）` : `${how}敗北… （${winnerLabel}勝利）`;
       } else {
-        result = `${winnerLabel}の勝利！`;
+        const how = m.reason === "general" ? "総大将討ち取りで" : m.reason === "fort" ? "落城で" : "";
+        result = `${how}${winnerLabel}の勝利！`;
       }
       // きわどい試合でも結果が分かるよう、画面バナーを長め＋ロビーにも明示。
       banner = result; bannerT = 6000;
@@ -279,27 +287,6 @@
       ctx.fillStyle = "#9cc2ff"; ctx.fillText("🏰青", pad, y - 12); bar(pad + 30, snap.ft.b, "#2f7bff");
       ctx.fillStyle = "#ff9c9c"; ctx.fillText("🏰赤", pad + 140, y - 12); bar(pad + 170, snap.ft.r, "#ff4d4d");
     }
-    // サドンデス：両軍の城が自動で崩れる状態を画面中央上に明示（無表示だと
-    // 「攻撃されてないのに城が減るバグ」に見える）。直前はカウントダウン。
-    {
-      let stormTxt = null;
-      if (snap.sd) stormTxt = "⏰ サドンデス！両軍の城が崩れていく — 急いで決着を！";
-      else if (snap.sdin != null) stormTxt = "⏰ あと" + snap.sdin + "秒でサドンデス（両軍の城が崩れ始める）";
-      if (stormTxt) {
-        const cx = canvas.width / 2;
-        const blink = Math.floor(Date.now() / 550) % 2 === 0;
-        ctx.font = "bold 17px system-ui, sans-serif";
-        ctx.textAlign = "center";
-        const tw = ctx.measureText(stormTxt).width;
-        ctx.fillStyle = blink ? "rgba(150,95,0,0.9)" : "rgba(150,95,0,0.55)";
-        ctx.fillRect(cx - tw / 2 - 14, 64, tw + 28, 30);
-        ctx.strokeStyle = "#ffd24a"; ctx.lineWidth = 2;
-        ctx.strokeRect(cx - tw / 2 - 14, 64, tw + 28, 30);
-        ctx.fillStyle = "#fff";
-        ctx.fillText(stormTxt, cx, 71);
-        ctx.textAlign = "left";
-      }
-    }
     // 自分の弾数・武器・HP。
     const me = snap.u[myIndex];
     if (me) {
@@ -328,7 +315,7 @@
       // 自軍の総大将の状態（0健在/1危機/2討死）。危機・討死は赤で警告。
       if (snap.gen) {
         const gs = me.t === 0 ? snap.gen.b : snap.gen.r;
-        const gtxt = gs === 0 ? "大将：健在" : gs === 1 ? "大将：危機！(救出せよ)" : "大将：討死…(サドンデス)";
+        const gtxt = gs === 0 ? "大将：健在" : gs === 1 ? "大将：危機！(救出せよ)" : "大将：討死…(味方弱体中)";
         ctx.fillStyle = gs === 0 ? "#ffd24a" : "#ff5a5a";
         ctx.font = "bold 13px system-ui, sans-serif";
         ctx.fillText(gtxt, pad, pad + 114);

@@ -30,7 +30,7 @@ class Bullet {
     this.fire = !!opts.fire;           // render as a flame particle
     this.ball = !!opts.ball;           // 大筒の砲丸：大きく描画＆判定を広げる
     if (this.ball) this.radius = opts.ballRadius || 13;
-    this.splash = opts.splash || 0;    // 着弾時に周囲へ及ぼす衝撃の半径(px)
+    this.explode = !!opts.explode;     // 着弾点で爆弾級の爆発（範囲・威力は CONFIG.bomb 準拠）
     this.rps = opts.rps || null;       // 三角相性属性（弓=bow 等）。命中時に相手の武器と比較
     this.maxLife = this.life;
     this._hit = this.pierce ? [] : null; // units already hit, so pierce hits each once
@@ -39,19 +39,60 @@ class Bullet {
 
   update(dt, game) {
     this.life -= dt;
-    if (this.life <= 0) { this.dead = true; return; }
-    // 高速弾のすり抜け防止：1フレーム分の移動を小刻みに分割し、一歩ごとに当たり判定。
-    // 鉄砲(弾速1.7倍)や弾速アイテム取得時、1フレームで敵の判定幅(約20px)を飛び越えて
-    // 「当たったはずなのにダメージが入らない」原因だった。
-    const step = Math.max(6, this.radius + 2);
-    let remain = this.speed;
-    do { // 速度0でも現在位置で最低1回は判定する（do-while）
-      const d = Math.min(step, remain);
-      remain -= d;
-      this.x += this.dx * d;
-      this.y += this.dy * d;
-      this._collide(game);
-    } while (remain > 0 && !this.dead);
+    if (this.life <= 0) this.dead = true;
+    if (!this.dead) {
+      // 高速弾のすり抜け防止：1フレーム分の移動を小刻みに分割し、一歩ごとに当たり判定。
+      // 鉄砲(弾速1.7倍)や弾速アイテム取得時、1フレームで敵の判定幅(約20px)を飛び越えて
+      // 「当たったはずなのにダメージが入らない」原因だった。
+      const step = Math.max(6, this.radius + 2);
+      let remain = this.speed;
+      do { // 速度0でも現在位置で最低1回は判定する（do-while）
+        const d = Math.min(step, remain);
+        remain -= d;
+        this.x += this.dx * d;
+        this.y += this.dy * d;
+        this._collide(game);
+      } while (remain > 0 && !this.dead);
+    }
+    // 大筒の砲丸は消えた地点（着弾・射程切れ）で爆弾級の爆発を起こす。
+    if (this.dead && this.explode && !this._blasted) this._blast(game);
+  }
+
+  // 爆弾級の爆発（大筒）。威力・範囲は CONFIG.bomb と同じだが、弾と同じく
+  // 敵側だけにダメージ（味方の巻き添えなし）。岩は砕け、敵の城・城門にも効く。
+  _blast(game) {
+    this._blasted = true;
+    const R = CONFIG.bomb.radius;
+    for (const u of game.units) {
+      if (!u.alive || u.team === this.team) continue;
+      if (V.dist(this.x, this.y, u.x, u.y) <= R + u.radius) u.takeDamage(CONFIG.bomb.damage);
+    }
+    for (const b of (game.beasts || [])) {
+      if (b.dead || !b.takeDamage || (b.team && b.team === this.team)) continue;
+      if (V.dist(this.x, this.y, b.x, b.y) <= R + (b.radius || 22)) b.takeDamage(CONFIG.bomb.damage);
+    }
+    for (const tr of (game.turrets || [])) {
+      if (!tr.dead && tr.team !== this.team && tr.takeDamage &&
+          V.dist(this.x, this.y, tr.x, tr.y) <= R + tr.radius) tr.takeDamage(CONFIG.bomb.damage);
+    }
+    const broken = game.map.damageRocksInRadius(this.x, this.y, R, CONFIG.bomb.rockDamage);
+    for (const rock of broken) game.dropFromRock(rock);
+    for (const b of game.map.bases) {
+      if (b.team === this.team || b.hp <= 0) continue;
+      if (V.dist(this.x, this.y, b.x, b.y) <= R + b.coreR) b.hp = Math.max(0, b.hp - CONFIG.bomb.damage * 2);
+    }
+    if (typeof damageGatesInRadius === "function") {
+      damageGatesInRadius(game, this.x, this.y, R, CONFIG.bomb.damage * 2, this.team);
+    }
+    // 爆発の見た目と音：爆発済み状態の Bomb を積んで flash 描画を再利用
+    // （LANのスナップショット(bo)にも乗るので、ネット対戦でも爆発が見える）。
+    if (typeof Bomb !== "undefined") {
+      const fx = new Bomb(this.x, this.y, null);
+      fx.exploded = true;
+      fx.flash = CONFIG.bomb.flashTime;
+      game.bombs.push(fx);
+    }
+    if (game.sound) game.sound.explosion();
   }
 
   // 現在位置での衝突判定一式。命中したら this.dead を立てる（貫通弾は通過）。
@@ -138,26 +179,10 @@ class Bullet {
           if (this._hit.indexOf(u) === -1) { u.takeDamage(dmg); this._hit.push(u); }
         } else {
           u.takeDamage(dmg);
-          if (this.splash) this._splash(game, u);
-          this.dead = true;
+          this.dead = true; // 大筒(explode)の爆発は update() 側の死亡時処理で起きる
           return;
         }
       }
-    }
-  }
-
-  // 砲丸の着弾衝撃：着弾点の周囲 splash 半径内の敵にも、近いほど大きいダメージ。
-  _splash(game, hit) {
-    const r = this.splash;
-    for (const u of game.units) {
-      if (!u.alive || u.team === this.team || u === hit) continue;
-      const d = V.dist(this.x, this.y, u.x, u.y);
-      if (d <= r) u.takeDamage(this.damage * 0.5 * (1 - d / r));
-    }
-    for (const b of (game.beasts || [])) {
-      if (b.dead || !b.takeDamage || (b.team && b.team === this.team)) continue;
-      const d = V.dist(this.x, this.y, b.x, b.y);
-      if (d <= r) b.takeDamage(this.damage * 0.5 * (1 - d / r));
     }
   }
 
@@ -471,6 +496,13 @@ class Unit {
       game.smokes.push(new Smoke(this.x, this.y));
     } else if (c.ability === "dash") {
       this.dashMs = ABILITY.dashMs;
+    } else if (c.ability === "fastreload") {
+      // 鉄砲兵の早合（はやごう）：装填を即完了して弾倉を満タンにする。
+      // 装填中でなければ何もしない（CDも消費しない＝押し損なし）。
+      if (!this.reloading) return;
+      this.reloading = false;
+      this.reloadTimer = 0;
+      this.ammo = this.magSizeVal();
     } else if (c.ability === "revive") {
       // 軍師の蘇生：再起不能(ダウン)の味方を、その場で復活させる。回復はしない＝低HPで
       // 立たせるだけ（reviveFrac）。範囲内に対象がいなければ何もしない（CDも消費しない）。
@@ -666,7 +698,7 @@ class Unit {
       const by = this.y + dy * (this.radius + 6);
       game.bullets.push(new Bullet(bx, by, dx, dy, this.team, {
         damage, speed, life, pierce: w.pierce, breakRock: w.breakRock || w.fire, fire: w.fire,
-        ball: w.ball, splash: w.splash, rps: w.rps,
+        ball: w.ball, explode: w.explode, rps: w.rps,
       }));
     }
 
