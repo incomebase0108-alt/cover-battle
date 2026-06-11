@@ -410,10 +410,14 @@ s.test("大筒は着弾点で爆弾級の爆発（周囲の敵にもダメージ
   const { sb, game } = newGame(0);
   game.beasts = []; game.map.rocks = []; game.map.mountains = []; // 障害物を除いて検証
   const direct = new sb.Unit(1800, 1125, "red");
-  const nearby = new sb.Unit(1800, 1125 + sb.CONFIG.bomb.radius - 10, "red"); // 爆発圏内
+  const w = sb.WEAPONS.rockbuster;
+  const nearby = new sb.Unit(1800, 1125 + w.blastRadius - 10, "red"); // 爆発圏内
   const ally = new sb.Unit(1830, 1125, "blue"); // 爆発圏内の味方
   game.units = [direct, nearby, ally];
-  const ball = new sb.Bullet(1800, 1125, 1, 0, "blue", { damage: 72, speed: 0, life: 1000, ball: true, explode: true });
+  const ball = new sb.Bullet(1800, 1125, 1, 0, "blue", {
+    damage: w.damage, speed: 0, life: 1000, ball: true,
+    explode: true, blastDamage: w.blastDamage, blastRadius: w.blastRadius,
+  });
   t.greaterThan(ball.radius, sb.CONFIG.bullet.radius, "砲丸は通常弾より大きい");
   game.bullets = [ball];
   ball.update(16, game);
@@ -421,6 +425,12 @@ s.test("大筒は着弾点で爆弾級の爆発（周囲の敵にもダメージ
   t.lessThan(nearby.hp, nearby.maxHp, "爆発圏内の敵にもダメージ");
   t.equal(ally.hp, ally.maxHp, "味方は爆発に巻き込まれない");
   t.ok(game.bombs.length > 0, "爆発エフェクト（疑似Bomb）が出る");
+});
+
+s.test("設置爆弾の威力は控えめ・大筒の爆発は独立して強い（連動しない）", (t) => {
+  const sb = loadGame();
+  t.lessThan(sb.CONFIG.bomb.damage, sb.WEAPONS.rockbuster.blastDamage,
+    "爆弾(E)の威力 < 大筒の爆発威力");
 });
 
 s.test("鉄砲は5連発＋特殊『早合』で装填を即完了", (t) => {

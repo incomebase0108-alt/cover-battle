@@ -65,7 +65,7 @@ const CONFIG = {
   bomb: {
     fuse: 1700,        // ms before it detonates
     radius: 90,        // blast radius
-    damage: 70,        // damage to units in the blast
+    damage: 45,        // 設置爆弾の威力（70→45に減量。大筒の爆発は weapons.js 側で独立に70）
     rockDamage: 200,   // bombs flatten rocks
     flashTime: 320,    // ms the explosion is drawn
   },

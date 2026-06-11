@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v50 サドンデス廃止（討死＝即決着に変更）・特殊ボタンを技名表示・鉄砲5連発＋早合・大筒は爆弾級の爆発";
+  const BUILD = "v51 設置爆弾の威力を減量(70→45)。大筒の爆発(70)は独立させて据え置き";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

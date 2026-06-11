@@ -30,7 +30,9 @@ class Bullet {
     this.fire = !!opts.fire;           // render as a flame particle
     this.ball = !!opts.ball;           // 大筒の砲丸：大きく描画＆判定を広げる
     if (this.ball) this.radius = opts.ballRadius || 13;
-    this.explode = !!opts.explode;     // 着弾点で爆弾級の爆発（範囲・威力は CONFIG.bomb 準拠）
+    this.explode = !!opts.explode;     // 着弾点で爆発（威力・範囲は武器側 blastDamage/blastRadius）
+    this.blastDamage = opts.blastDamage || 0;
+    this.blastRadius = opts.blastRadius || 0;
     this.rps = opts.rps || null;       // 三角相性属性（弓=bow 等）。命中時に相手の武器と比較
     this.maxLife = this.life;
     this._hit = this.pierce ? [] : null; // units already hit, so pierce hits each once
@@ -58,31 +60,33 @@ class Bullet {
     if (this.dead && this.explode && !this._blasted) this._blast(game);
   }
 
-  // 爆弾級の爆発（大筒）。威力・範囲は CONFIG.bomb と同じだが、弾と同じく
-  // 敵側だけにダメージ（味方の巻き添えなし）。岩は砕け、敵の城・城門にも効く。
+  // 大筒の爆発。威力・範囲は武器側の blastDamage/blastRadius（設置爆弾 CONFIG.bomb とは
+  // 独立に調整できる）。弾と同じく敵側だけにダメージ（味方の巻き添えなし）。
+  // 岩は砕け、敵の城・城門にも効く。
   _blast(game) {
     this._blasted = true;
-    const R = CONFIG.bomb.radius;
+    const R = this.blastRadius || CONFIG.bomb.radius;
+    const DMG = this.blastDamage || CONFIG.bomb.damage;
     for (const u of game.units) {
       if (!u.alive || u.team === this.team) continue;
-      if (V.dist(this.x, this.y, u.x, u.y) <= R + u.radius) u.takeDamage(CONFIG.bomb.damage);
+      if (V.dist(this.x, this.y, u.x, u.y) <= R + u.radius) u.takeDamage(DMG);
     }
     for (const b of (game.beasts || [])) {
       if (b.dead || !b.takeDamage || (b.team && b.team === this.team)) continue;
-      if (V.dist(this.x, this.y, b.x, b.y) <= R + (b.radius || 22)) b.takeDamage(CONFIG.bomb.damage);
+      if (V.dist(this.x, this.y, b.x, b.y) <= R + (b.radius || 22)) b.takeDamage(DMG);
     }
     for (const tr of (game.turrets || [])) {
       if (!tr.dead && tr.team !== this.team && tr.takeDamage &&
-          V.dist(this.x, this.y, tr.x, tr.y) <= R + tr.radius) tr.takeDamage(CONFIG.bomb.damage);
+          V.dist(this.x, this.y, tr.x, tr.y) <= R + tr.radius) tr.takeDamage(DMG);
     }
     const broken = game.map.damageRocksInRadius(this.x, this.y, R, CONFIG.bomb.rockDamage);
     for (const rock of broken) game.dropFromRock(rock);
     for (const b of game.map.bases) {
       if (b.team === this.team || b.hp <= 0) continue;
-      if (V.dist(this.x, this.y, b.x, b.y) <= R + b.coreR) b.hp = Math.max(0, b.hp - CONFIG.bomb.damage * 2);
+      if (V.dist(this.x, this.y, b.x, b.y) <= R + b.coreR) b.hp = Math.max(0, b.hp - DMG * 2);
     }
     if (typeof damageGatesInRadius === "function") {
-      damageGatesInRadius(game, this.x, this.y, R, CONFIG.bomb.damage * 2, this.team);
+      damageGatesInRadius(game, this.x, this.y, R, DMG * 2, this.team);
     }
     // 爆発の見た目と音：爆発済み状態の Bomb を積んで flash 描画を再利用
     // （LANのスナップショット(bo)にも乗るので、ネット対戦でも爆発が見える）。
@@ -698,7 +702,7 @@ class Unit {
       const by = this.y + dy * (this.radius + 6);
       game.bullets.push(new Bullet(bx, by, dx, dy, this.team, {
         damage, speed, life, pierce: w.pierce, breakRock: w.breakRock || w.fire, fire: w.fire,
-        ball: w.ball, explode: w.explode, rps: w.rps,
+        ball: w.ball, explode: w.explode, blastDamage: w.blastDamage, blastRadius: w.blastRadius, rps: w.rps,
       }));
     }
 

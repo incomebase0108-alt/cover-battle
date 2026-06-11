@@ -115,7 +115,9 @@ const WEAPONS = {
     rangeMul: 1.1,
     breakRock: true,
     ball: true,            // 大きな丸い砲丸として描画＆当たり判定を大きく
-    explode: true,         // 着弾で爆弾級の爆発（範囲・威力は CONFIG.bomb と同じ）
+    explode: true,         // 着弾で爆発する
+    blastDamage: 70,       // 爆発の威力（爆弾とは独立。「大筒は今のままで爆弾だけ弱く」対応）
+    blastRadius: 90,       // 爆発の範囲
   },
 };
 
