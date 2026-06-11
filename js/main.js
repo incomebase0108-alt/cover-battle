@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v53 4号機スプライト組込：火薬樽 keg.png＋総大将の歩行2フレーム（暫定128px版・本番256pxはNAS待ち）";
+  const BUILD = "v54 歩行2フレーム全クラス有効化（walk16枚・256px）＋火薬樽256px本版";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}
