@@ -88,6 +88,10 @@ class Bullet {
     if (typeof damageGatesInRadius === "function") {
       damageGatesInRadius(game, this.x, this.y, R, DMG * 2, this.team);
     }
+    // 火薬樽は大筒の爆風でも誘爆する。
+    for (const k of (game.kegs || [])) {
+      if (!k.dead && V.dist(this.x, this.y, k.x, k.y) <= R + k.radius) k.explode(game);
+    }
     // 爆発の見た目と音：爆発済み状態の Bomb を積んで flash 描画を再利用
     // （LANのスナップショット(bo)にも乗るので、ネット対戦でも爆発が見える）。
     if (typeof Bomb !== "undefined") {
@@ -138,6 +142,15 @@ class Bullet {
       }
       this.dead = true;
       return;
+    }
+
+    // 火薬樽：弾が当たると起爆（中立の仕掛け＝どちらの弾でも爆発する）。
+    for (const k of (game.kegs || [])) {
+      if (k.dead) continue;
+      if (V.dist(this.x, this.y, k.x, k.y) <= k.radius + this.radius) {
+        k.explode(game);
+        if (!this.pierce) { this.dead = true; return; }
+      }
     }
 
     // Rocks stop bullets and take damage (rock-busting rounds hit far harder).
@@ -326,6 +339,10 @@ class Bomb {
       }
     }
     damageGatesInRadius(game, this.x, this.y, CONFIG.bomb.radius, CONFIG.bomb.damage * 2, ownTeam);
+    // 火薬樽は爆風で誘爆する。
+    for (const k of (game.kegs || [])) {
+      if (!k.dead && V.dist(this.x, this.y, k.x, k.y) <= CONFIG.bomb.radius + k.radius) k.explode(game);
+    }
   }
 
   draw(ctx) {
@@ -635,8 +652,13 @@ class Unit {
     // mark us as "moving" for a few frames so the legs don't twitch to a halt
     // the instant a key is released.
     if (moved > 0.05) {
+      const prevStep = Math.floor(this.walkPhase / Math.PI); // 半周期＝1歩
       this.walkPhase += moved * 0.45;
       this.movingTimer = 90; // ms of grace before the walk cycle stops
+      // 足が接地するタイミング（1歩ごと）に土ぼこりを出す（歩きの体感アップ）。
+      if (Math.floor(this.walkPhase / Math.PI) !== prevStep && game.addDust) {
+        game.addDust(this.x, this.y + this.radius * 0.5);
+      }
     }
     return moved;
   }
@@ -758,6 +780,11 @@ class Unit {
     for (const tt of (game.turrets || [])) {
       if (tt.dead || tt.team === this.team || !tt.takeDamage || already.has(tt)) continue;
       if (hitArc(tt.x, tt.y, 12)) { tt.takeDamage(dmg); already.add(tt); }
+    }
+    // 火薬樽：刀・槍でも起爆できる（中立の仕掛け）。
+    for (const k of (game.kegs || [])) {
+      if (k.dead || already.has(k)) continue;
+      if (hitArc(k.x, k.y, k.radius)) { k.explode(game); already.add(k); }
     }
     // 敵城門：ユニットから最も近いゲート上の点が射程・扇内なら割る。
     const gateDmg = (CONFIG.gate && CONFIG.gate.bulletDamage) || 10;
@@ -946,10 +973,12 @@ class Unit {
     ctx.globalAlpha = concealed ? 0.55 : 1;
 
     const r = this.radius;
-    // Drop shadow.
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    // Drop shadow（歩行の弾みと連動：体が浮くほど影が小さく薄くなる＝接地感）。
+    const wp = this.movingTimer > 0 ? this.walkPhase : 0;
+    const bobN = (typeof Assets !== "undefined" && Assets.walkBobAmount) ? Assets.walkBobAmount(wp) : 0;
+    ctx.fillStyle = `rgba(0,0,0,${0.25 - bobN * 0.07})`;
     ctx.beginPath();
-    ctx.ellipse(this.x, this.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2);
+    ctx.ellipse(this.x, this.y + r * 0.5, r * (1.05 - bobN * 0.14), r * (0.7 - bobN * 0.1), 0, 0, Math.PI * 2);
     ctx.fill();
 
     // 軍師の強化を受けている味方は、足元に金色の光輪を出して一目で分かるように。

@@ -31,6 +31,8 @@ const NetRender = {
     map.draw(ctx);
     this._capturePoints(ctx, snap);
     this._chests(ctx, snap);
+    // 火薬樽（生存分のみサーバーから届く）。地面物なのでユニットより下に描く。
+    if (snap.kg && typeof Keg !== "undefined") for (const k of snap.kg) Keg.drawAt(ctx, k.x, k.y);
     this._turrets(ctx, snap);
     this._beasts(ctx, snap);
     for (const b of snap.b) this._bullet(ctx, b);
@@ -56,8 +58,11 @@ const NetRender = {
     const team = u.t === 0 ? "blue" : "red";
     const cls = (typeof getClass === "function" && u.cl) ? getClass(u.cl) : null;
     const r = CONFIG.unit.radius * (cls ? (cls.sizeMul || 1) : 1);
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.beginPath(); ctx.ellipse(u.x, u.y + r * 0.5, r * 1.05, r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+    // 歩行位相（walkPhase は同期していないので移動中は時間ベース）。影も弾みと連動させる。
+    const wp = u.mv ? Date.now() * 0.012 : 0;
+    const bobN = (typeof Assets !== "undefined" && Assets.walkBobAmount) ? Assets.walkBobAmount(wp) : 0;
+    ctx.fillStyle = `rgba(0,0,0,${0.25 - bobN * 0.07})`;
+    ctx.beginPath(); ctx.ellipse(u.x, u.y + r * 0.5, r * (1.05 - bobN * 0.14), r * (0.7 - bobN * 0.1), 0, 0, Math.PI * 2); ctx.fill();
     // 軍師の強化中は金色の光輪（buffed）。
     if (u.bf && typeof drawBuffAura === "function") drawBuffAura(ctx, u.x, u.y + r * 0.5, r * 1.3, u.bf === 2);
     const wdef = (typeof WEAPONS !== "undefined") ? WEAPONS[u.w] : null;
@@ -69,8 +74,8 @@ const NetRender = {
       else if (Assets.ready("soldier_" + team)) sprite = Assets.get("soldier_" + team);
     }
     if (sprite && typeof Assets.drawSprite === "function") {
-      // 上向き固定＋左右反転。walkPhase は無いので移動中は時間ベースで軽く弾ませる。
-      Assets.drawSprite(ctx, sprite, u.x, u.y, u.a, r, u.mv ? Date.now() * 0.012 : 0);
+      // 上向き固定＋左右反転。歩行モーション（弾み/ロッキング/つぶれ伸び）は drawSprite 側。
+      Assets.drawSprite(ctx, sprite, u.x, u.y, u.a, r, wp);
     } else {
       const recoil = (typeof attackRecoil === "function") ? attackRecoil(wdef, u.sw || 0, r) : 0;
       ctx.save();

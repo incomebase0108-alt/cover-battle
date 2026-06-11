@@ -113,6 +113,7 @@ function loadGame() {
     "Item",
     "Bomb",
     "Chest",
+    "Keg",
     "Beast",
     "Smoke",
     "Turret",

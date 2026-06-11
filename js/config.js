@@ -62,6 +62,14 @@ const CONFIG = {
     dropChance: 0.6,   // chance a destroyed rock leaves an item
   },
 
+  // 火薬樽（マップの仕掛け）：中盤の要所に置かれる中立の爆発物。攻撃が当たると
+  // 爆発し、敵味方の区別なく周囲にダメージ＋近くの樽へ誘爆する。
+  keg: {
+    count: 6,          // 1ステージあたりの設置数
+    blastRadius: 85,   // 爆発の範囲
+    blastDamage: 55,   // 爆風ダメージ（敵味方無差別）
+  },
+
   bomb: {
     fuse: 1700,        // ms before it detonates
     radius: 90,        // blast radius

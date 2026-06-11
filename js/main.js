@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v51 設置爆弾の威力を減量(70→45)。大筒の爆発(70)は独立させて据え置き";
+  const BUILD = "v52 歩行モーション刷新（ロッキング+つぶれ伸び+影連動+土ぼこり）＋マップ仕掛け『火薬樽』追加";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

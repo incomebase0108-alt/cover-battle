@@ -143,3 +143,97 @@ class Chest {
     return key;
   }
 }
+
+// 火薬樽（マップの仕掛け）：中盤の要所に置かれた中立の爆発物。弾・刀・爆弾の
+// どれかが当たると CONFIG.keg の威力で爆発し、**敵味方の区別なく**周囲の兵に
+// ダメージ＋岩を砕き＋近くの樽に誘爆する。要所の撃ち合いで「樽の近くに立つな／
+// あえて撃って巻き込め」の駆け引きを生む。
+class Keg {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 13;
+    this.dead = false;
+  }
+
+  // どんな攻撃でも一撃で起爆（hpは持たない＝分かりやすさ優先）。
+  takeDamage(amount, game) { this.explode(game); }
+
+  explode(game) {
+    if (this.dead) return;
+    this.dead = true;
+    const K = CONFIG.keg || { blastRadius: 85, blastDamage: 55 };
+    const R = K.blastRadius;
+    // 敵味方の区別なく爆風ダメージ（中立の罠）。
+    for (const u of game.units) {
+      if (!u.alive) continue;
+      if (V.dist(this.x, this.y, u.x, u.y) <= R + u.radius) u.takeDamage(K.blastDamage);
+    }
+    for (const b of (game.beasts || [])) {
+      if (b.dead || !b.takeDamage) continue;
+      if (V.dist(this.x, this.y, b.x, b.y) <= R + (b.radius || 22)) b.takeDamage(K.blastDamage);
+    }
+    for (const tr of (game.turrets || [])) {
+      if (!tr.dead && tr.takeDamage && V.dist(this.x, this.y, tr.x, tr.y) <= R + tr.radius) {
+        tr.takeDamage(K.blastDamage);
+      }
+    }
+    // 岩を砕く＋近くの樽へ誘爆（dead ガードで無限再帰しない）。
+    const broken = game.map.damageRocksInRadius(this.x, this.y, R, CONFIG.bomb.rockDamage);
+    for (const rock of broken) game.dropFromRock(rock);
+    for (const k of (game.kegs || [])) {
+      if (!k.dead && V.dist(this.x, this.y, k.x, k.y) <= R + k.radius) k.explode(game);
+    }
+    // 爆発の見た目と音（爆発済みBombのflash描画を再利用＝LANにも乗る）。
+    if (typeof Bomb !== "undefined") {
+      const fx = new Bomb(this.x, this.y, null);
+      fx.exploded = true;
+      fx.flash = CONFIG.bomb.flashTime;
+      game.bombs.push(fx);
+    }
+    if (game.sound) game.sound.explosion();
+  }
+
+  draw(ctx) {
+    if (this.dead) return;
+    Keg.drawAt(ctx, this.x, this.y, this.radius);
+  }
+
+  // 描画本体（LANクライアントはスナップショット座標から直接これを呼ぶ）。
+  // keg.png があればスプライト、無ければベクターの木樽＋火薬マーク。
+  static drawAt(ctx, x, y, r) {
+    r = r || 13;
+    if (typeof Assets !== "undefined" && Assets.ready && Assets.ready("keg")) {
+      const img = Assets.get("keg");
+      const s = r * 4.6;
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.25)"; // 接地影
+      ctx.beginPath(); ctx.ellipse(x, y + r * 0.55, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(img, x - s / 2, y - s * 0.78, s, s);
+      ctx.restore();
+      return;
+    }
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = "rgba(0,0,0,0.25)"; // 接地影
+    ctx.beginPath(); ctx.ellipse(0, r * 0.55, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    // 木樽の胴（縦板＋少し膨らみ）。
+    ctx.fillStyle = "#7a5230";
+    ctx.beginPath(); ctx.ellipse(0, 0, r, r * 1.15, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#4a3019"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle = "rgba(40,25,12,0.5)"; ctx.lineWidth = 1; // 板目
+    for (const ox of [-r * 0.45, 0, r * 0.45]) {
+      ctx.beginPath(); ctx.moveTo(ox, -r * 1.05); ctx.lineTo(ox, r * 1.05); ctx.stroke();
+    }
+    ctx.strokeStyle = "#2f2f33"; ctx.lineWidth = 2.5; // 鉄のたが（上下）
+    ctx.beginPath(); ctx.ellipse(0, -r * 0.55, r * 0.92, r * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, r * 0.55, r * 0.92, r * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+    // 「火」マーク（撃つと爆発する目印）。
+    ctx.fillStyle = "#ff6a3c";
+    ctx.font = `bold ${Math.round(r * 1.1)}px system-ui, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("火", 0, 0);
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.restore();
+  }
+}

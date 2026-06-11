@@ -196,6 +196,7 @@ class Game {
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0, bl: b.ball ? 1 : 0, br: b.ball ? Math.round(b.radius) : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),
       c: this.chests.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.opened ? 1 : 0 })),
+      kg: (this.kegs || []).filter((k) => !k.dead).map((k) => ({ x: Math.round(k.x), y: Math.round(k.y) })),
       be: this.beasts.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), a: +b.aim.toFixed(2), ty: b.type, h: half(b.hp, b.maxHp), tm: b.team || null })),
       sm: this.smokes.map((s) => ({ x: Math.round(s.x), y: Math.round(s.y), r: Math.round(s.r), l: Math.round(s.life) })),
       tr: this.turrets.map((t) => ({ x: Math.round(t.x), y: Math.round(t.y), a: +t.aim.toFixed(2), tm: t.team === "blue" ? 0 : 1, h: half(t.hp, t.maxHp) })),
@@ -226,6 +227,21 @@ class Game {
         this.chests.push(new Chest(p.x, p.y));
       }
     }
+    // 火薬樽：中盤の要所に決定的な配置（撃つと敵味方無差別の爆発＋誘爆）。
+    this.kegs = [];
+    if (typeof Keg !== "undefined") {
+      const spots = [
+        { x: W * 0.40, y: H * 0.40 }, { x: W * 0.60, y: H * 0.60 },
+        { x: W * 0.50, y: H * 0.22 }, { x: W * 0.50, y: H * 0.78 },
+        { x: W * 0.34, y: H * 0.64 }, { x: W * 0.66, y: H * 0.36 },
+      ];
+      const n = (CONFIG.keg && CONFIG.keg.count) || spots.length;
+      for (const s of spots.slice(0, n)) {
+        const p = this.map.resolveCollision(s.x, s.y, 14);
+        this.kegs.push(new Keg(p.x, p.y));
+      }
+    }
+
     // 中立の浪人（野武士/剣豪）が中盤を徘徊。誰にでも斬りかかる。総大将が説得で仲間に。
     this.beasts = [];
     if (typeof Beast !== "undefined") {
@@ -467,6 +483,7 @@ class Game {
     this._updateCapture(dt);
     this._updateBeasts(dt);
     this._updateRescue(dt);
+    this._updateDusts(dt);
 
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.bombs = this.bombs.filter((b) => !b.dead);
@@ -622,6 +639,33 @@ class Game {
     });
   }
 
+  // 歩行の足元に出る土ぼこり。1歩ごとに move() から addDust される（軽い演出なので
+  // 上限つき・LANには送らない）。
+  addDust(x, y) {
+    if (!this.dusts) this.dusts = [];
+    if (this.dusts.length > 70) return; // 演出なので増えすぎたら間引く
+    const j = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; // 決定的なゆらぎ
+    const fr = j - Math.floor(j);
+    this.dusts.push({ x: x + (fr - 0.5) * 6, y: y + (fr - 0.5) * 3, life: 330, max: 330, r: 2.5 + fr * 2 });
+  }
+
+  _updateDusts(dt) {
+    if (!this.dusts || !this.dusts.length) return;
+    for (const d of this.dusts) d.life -= dt;
+    this.dusts = this.dusts.filter((d) => d.life > 0);
+  }
+
+  _drawDusts(ctx) {
+    if (!this.dusts) return;
+    for (const d of this.dusts) {
+      const t = 1 - d.life / d.max;            // 0→1：広がりながら薄くなる
+      ctx.fillStyle = `rgba(180,160,120,${0.3 * (1 - t)})`;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r + t * 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   _render() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, CONFIG.width, CONFIG.height);
@@ -629,6 +673,7 @@ class Game {
     ctx.translate(-Math.round(this.cam.x), -Math.round(this.cam.y));
     this.map.draw(ctx);
     this._drawCapturePoints(ctx);
+    this._drawDusts(ctx); // 足元の土ぼこり（地面装飾＝ユニットの下）
 
     // Dead units first (faint markers), then bullets, then live units, then rocks on top.
     for (const u of this.units) {
@@ -636,6 +681,7 @@ class Game {
       if (u.downed) this._drawDowned(ctx, u); else this._drawWreck(ctx, u);
     }
     for (const c of this.chests) c.draw(ctx);
+    for (const k of (this.kegs || [])) k.draw(ctx);
     for (const tr of this.turrets) tr.draw(ctx);
     for (const beast of this.beasts) beast.draw(ctx);
     for (const it of this.items) it.draw(ctx);

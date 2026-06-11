@@ -484,6 +484,32 @@ s.test("近接は振りの途中で間合いに入った敵にも当たる", (t)
   t.lessThan(enemy.hp, enemy.maxHp, "振りの途中で入ってきた敵に当たる");
 });
 
+s.test("火薬樽：弾で起爆→敵味方無差別の爆発＋近くの樽に誘爆", (t) => {
+  const { sb, game } = newGame(0);
+  game.map.rocks = []; game.map.mountains = []; game.beasts = [];
+  const K = sb.CONFIG.keg;
+  const keg1 = new sb.Keg(2000, 1500);
+  const keg2 = new sb.Keg(2000 + K.blastRadius - 5, 1500); // 誘爆圏内
+  game.kegs = [keg1, keg2];
+  const foe = new sb.Unit(2030, 1500, "red");
+  const ally = new sb.Unit(1970, 1500, "blue"); // 中立の罠＝味方も巻き込まれる
+  game.units = [foe, ally];
+  const b = new sb.Bullet(2000, 1500, 0, 0, "blue", { damage: 16, speed: 0, life: 1000 });
+  game.bullets = [b];
+  b.update(16, game);
+  t.equal(keg1.dead, true, "弾が当たった樽が爆発する");
+  t.equal(keg2.dead, true, "近くの樽に誘爆する");
+  t.lessThan(foe.hp, foe.maxHp, "敵に爆風ダメージ");
+  t.lessThan(ally.hp, ally.maxHp, "味方にも爆風ダメージ（無差別＝置き場所の駆け引き）");
+  t.equal(b.dead, true, "弾は樽で消える");
+});
+
+s.test("火薬樽：ステージ生成時に複数配置される", (t) => {
+  const { sb, game } = newGame(0);
+  t.ok(game.kegs && game.kegs.length >= 4, "樽が複数置かれる");
+  for (const k of game.kegs) t.equal(k.dead, false, "最初はすべて未起爆");
+});
+
 s.test("山城決戦ステージが読み込め、地形が揃っている", (t) => {
   const sb = loadGame();
   const idx = sb.STAGES.findIndex((st) => st.name === "山城決戦");
