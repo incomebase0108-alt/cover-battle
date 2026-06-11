@@ -3,10 +3,22 @@
 // from the compact snapshot (no local simulation).
 const NetRender = {
   // Decide if `unit` (snapshot form) is visible to the viewer's team, applying
-  // the same forest-stealth rule the single-player game uses.
+  // the same forest/smoke-stealth rule the single-player game uses.
+  // 一度見えた敵は400ms見え続けるヒステリシス付き（境界の出入りで毎フレーム
+  // 見え隠れして画面がちかちかするのを防ぐ。単独プレイ側と同じ対策）。
   visible(u, snap, map, myTeam) {
+    const raw = this._rawVisible(u, snap, map, myTeam);
+    if (!this._seen) this._seen = {};
+    const now = Date.now();
+    if (raw) this._seen[u.i] = now;
+    return raw || now - (this._seen[u.i] || -1e9) < 400;
+  },
+
+  _rawVisible(u, snap, map, myTeam) {
     if (u.t === myTeam) return true;
-    if (!map.inForest(u.x, u.y)) return true;
+    // 森に加えて煙幕でも隠れる（以前のLANは煙幕の隠蔽が未実装で単独と挙動が違った）。
+    const inSmoke = !!(snap.sm && snap.sm.some((s) => V.dist(s.x, s.y, u.x, u.y) <= s.r));
+    if (!map.inForest(u.x, u.y) && !inSmoke) return true;
     for (const a of snap.u) {
       if (a.al && a.t === myTeam && V.dist(a.x, a.y, u.x, u.y) <= CONFIG.forestDetectRange) return true;
     }
@@ -190,7 +202,7 @@ const NetRender = {
       ctx.beginPath(); ctx.arc(e.x, e.y, 9, 0, Math.PI * 2); ctx.fill();
       return;
     }
-    const R = CONFIG.bomb.radius;
+    const R = e.dr || CONFIG.bomb.radius; // dr=火薬樽など範囲の違う爆発の実半径
     ctx.save(); ctx.globalAlpha = Math.max(0, e.fl / 400);
     const g = ctx.createRadialGradient(e.x, e.y, 4, e.x, e.y, R);
     g.addColorStop(0, "#fff2b0"); g.addColorStop(0.5, color); g.addColorStop(1, "rgba(255,80,40,0)");

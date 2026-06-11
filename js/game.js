@@ -194,7 +194,7 @@ class Game {
         bf: u.buffed ? (u.rallied ? 2 : 1) : 0, // 軍師の強化中（1=オーラ/2=采配。描画で光輪）
       })),
       b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0, bl: b.ball ? 1 : 0, br: b.ball ? Math.round(b.radius) : 0 })),
-      bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash) })),
+      bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash), dr: b.drawRadius ? Math.round(b.drawRadius) : 0 })),
       c: this.chests.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.opened ? 1 : 0 })),
       kg: (this.kegs || []).filter((k) => !k.dead).map((k) => ({ x: Math.round(k.x), y: Math.round(k.y) })),
       be: this.beasts.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), a: +b.aim.toFixed(2), ty: b.type, h: half(b.hp, b.maxHp), tm: b.team || null })),
@@ -433,7 +433,8 @@ class Game {
   // Forest stealth: the player always sees allies and themself. An enemy
   // hidden in a forest is invisible until a friendly unit gets close enough
   // to spot them (matching the AI's own detection rule).
-  unitVisibleToPlayer(u) {
+  // 生の可視判定（その瞬間の真値）。表示には unitVisibleToPlayer を使うこと。
+  _rawVisibleToPlayer(u) {
     if (u.team === this.playerTeam || u.isPlayer) return true;
     // Concealed by a forest OR a smoke cloud?
     if (!this.map.inForest(u.x, u.y) && !this.inSmoke(u.x, u.y)) return true;
@@ -444,6 +445,13 @@ class Game {
       }
     }
     return false;
+  }
+
+  // 表示用の可視判定：一度見えた敵はしばらく（_seenMs）見え続けるヒステリシス付き。
+  // 煙幕・森の発見境界（110px）を味方が出入りするたびに敵が毎フレーム見え隠れし、
+  // 画面がちかちかする問題（忍者の煙幕で顕著）の対策。タイマー更新は _update 側。
+  unitVisibleToPlayer(u) {
+    return this._rawVisibleToPlayer(u) || (u._seenMs || 0) > 0;
   }
 
   // Is (x,y) inside any live smoke cloud?
@@ -484,6 +492,12 @@ class Game {
     this._updateBeasts(dt);
     this._updateRescue(dt);
     this._updateDusts(dt);
+
+    // 可視ヒステリシスの更新：見えた敵は400ms見え続ける（ちかちか防止）。
+    for (const u of this.units) {
+      if (this._rawVisibleToPlayer(u)) u._seenMs = 400;
+      else if (u._seenMs > 0) u._seenMs -= dt;
+    }
 
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.bombs = this.bombs.filter((b) => !b.dead);

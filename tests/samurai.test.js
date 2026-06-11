@@ -504,6 +504,23 @@ s.test("火薬樽：弾で起爆→敵味方無差別の爆発＋近くの樽に
   t.equal(b.dead, true, "弾は樽で消える");
 });
 
+s.test("可視ヒステリシス：煙幕内の敵は見えなくなっても400msは表示が続く（ちかちか防止）", (t) => {
+  const { sb, game } = newGame(0);
+  game.map.forests = []; game.beasts = [];
+  const ally = new sb.Unit(1500, 300, "blue");
+  const foe = new sb.Unit(1530, 300, "red");
+  game.units = [ally, foe];
+  game.smokes = [new sb.Smoke(1530, 300)]; // 敵は煙幕の中
+  game._update(16); // 味方が110px以内 → 見える（_seenMs リフレッシュ）
+  t.equal(game.unitVisibleToPlayer(foe), true, "近くに味方がいれば煙の中でも見える");
+  ally.x = 3000; // 味方が離れて生の判定は不可視に
+  game._update(16);
+  t.equal(game._rawVisibleToPlayer(foe), false, "生の判定は不可視");
+  t.equal(game.unitVisibleToPlayer(foe), true, "直後はまだ見える（ヒステリシス）");
+  for (let i = 0; i < 30; i++) game._update(16); // 約480ms経過
+  t.equal(game.unitVisibleToPlayer(foe), false, "猶予が切れたら見えなくなる");
+});
+
 s.test("火薬樽：ステージ生成時に複数配置される", (t) => {
   const { sb, game } = newGame(0);
   t.ok(game.kegs && game.kegs.length >= 4, "樽が複数置かれる");

@@ -185,10 +185,12 @@ class Keg {
       if (!k.dead && V.dist(this.x, this.y, k.x, k.y) <= R + k.radius) k.explode(game);
     }
     // 爆発の見た目と音（爆発済みBombのflash描画を再利用＝LANにも乗る）。
+    // drawRadius で実際の爆風範囲どおりの大きさに描く。
     if (typeof Bomb !== "undefined") {
       const fx = new Bomb(this.x, this.y, null);
       fx.exploded = true;
       fx.flash = CONFIG.bomb.flashTime;
+      fx.drawRadius = R;
       game.bombs.push(fx);
     }
     if (game.sound) game.sound.explosion();

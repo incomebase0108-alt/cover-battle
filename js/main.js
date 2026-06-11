@@ -1,6 +1,6 @@
 // Bootstraps everything and wires the buttons to the game flow.
 (function () {
-  const BUILD = "v54 歩行2フレーム全クラス有効化（walk16枚・256px）＋火薬樽256px本版";
+  const BUILD = "v55 煙幕の視界ちかちか修正（可視ヒステリシス）＋火薬樽の爆発範囲拡大(85→130)";
   const bt = document.getElementById("buildTag");
   if (bt) bt.textContent = "(" + BUILD + ")";
   try { console.log("Cover Battle build:", BUILD); } catch (e) {}

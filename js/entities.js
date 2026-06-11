@@ -360,15 +360,17 @@ class Bomb {
       ctx.fill();
     } else {
       const a = this.flash / CONFIG.bomb.flashTime;
+      // drawRadius: 火薬樽など、爆弾と違う範囲の爆発エフェクトに流用するときの上書き。
+      const R = this.drawRadius || CONFIG.bomb.radius;
       ctx.save();
       ctx.globalAlpha = a;
-      const grad = ctx.createRadialGradient(this.x, this.y, 4, this.x, this.y, CONFIG.bomb.radius);
+      const grad = ctx.createRadialGradient(this.x, this.y, 4, this.x, this.y, R);
       grad.addColorStop(0, "#fff2b0");
       grad.addColorStop(0.5, "#ff8a3c");
       grad.addColorStop(1, "rgba(255,80,40,0)");
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(this.x, this.y, CONFIG.bomb.radius, 0, Math.PI * 2);
+      ctx.arc(this.x, this.y, R, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
