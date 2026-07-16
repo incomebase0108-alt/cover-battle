@@ -13,7 +13,7 @@ const Joystick = (function () {
 
   let vec = { dx: 0, dy: 0 };
   const keyVec = { dx: 0, dy: 0 };
-  let base, knob, cx = 0, cy = 0, touchId = null;
+  let base, knob, cx = 0, cy = 0, touchId = null, mouseActive = false;
   const keys = {};
 
   function moveTo(x, y) {
@@ -55,6 +55,17 @@ const Joystick = (function () {
     const end = e => { for (const t of e.changedTouches) if (t.identifier === touchId) reset(); };
     window.addEventListener('touchend', end);
     window.addEventListener('touchcancel', end);
+    // PC用マウス対応: baseで受けてstopPropagationし、main.jsの視点ドラッグ(window mousedown)を発火させない
+    base.addEventListener('mousedown', e => {
+      const r = base.getBoundingClientRect();
+      cx = r.left + r.width / 2; cy = r.top + r.height / 2;
+      mouseActive = true;
+      moveTo(e.clientX, e.clientY);
+      e.stopPropagation();
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', e => { if (mouseActive) moveTo(e.clientX, e.clientY); });
+    window.addEventListener('mouseup', () => { if (mouseActive) { mouseActive = false; reset(); } });
     window.addEventListener('keydown', e => { keys[e.code] = true; updKeys(); });
     window.addEventListener('keyup', e => { keys[e.code] = false; updKeys(); });
   }
