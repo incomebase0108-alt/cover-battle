@@ -78,6 +78,7 @@ const ProtoViewer = (function () {
   }
 
   function disposeGroup(g) {
+    // 単位ジオメトリ(boxGeo等)はモジュール内の共有シングルトンなのでdisposeしない
     g.traverse(o => { if (o.isMesh) { o.material.dispose(); } });
   }
 

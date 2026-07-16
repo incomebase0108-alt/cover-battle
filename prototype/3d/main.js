@@ -27,7 +27,12 @@
   }
 
   function spawnUnits() {
-    for (const u of units) ProtoViewer.scene.remove(u.mesh);
+    // 棒人間は1体ごとに専用ジオメトリ/マテリアルを持つ（viewer側の共有ジオメトリとは逆のルール）ので、
+    // ここでdisposeしないと密度変更のたびにGPUリソースが漏れる
+    for (const u of units) {
+      u.mesh.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+      ProtoViewer.scene.remove(u.mesh);
+    }
     units = []; bots = [];
     for (let i = 0; i < 8; i++) {
       const color = i < 4 ? 0x3a6ea5 : 0xa53a3a;
@@ -61,7 +66,10 @@
   const touchEnd = e => { for (const t of e.changedTouches) if (t.identifier === lookId) lookId = null; };
   window.addEventListener('touchend', touchEnd);
   window.addEventListener('touchcancel', touchEnd);
-  window.addEventListener('mousedown', e => { if (e.target.tagName !== 'BUTTON') { mouseLook = true; lx = e.clientX; ly = e.clientY; } });
+  window.addEventListener('mousedown', e => {
+    if (e.button !== 0) return; // 右クリック等はルック開始しない（コンテキストメニューと競合しないように）
+    if (e.target.tagName !== 'BUTTON') { mouseLook = true; lx = e.clientX; ly = e.clientY; }
+  });
   window.addEventListener('mousemove', e => {
     if (!mouseLook) return;
     applyLookDelta(e.clientX - lx, e.clientY - ly);
