@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>3D負荷検証プロトタイプ — cover-battle</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;font-family:sans-serif;-webkit-user-select:none;user-select:none;}
+  #stage{position:fixed;inset:0;}
+  #hud{position:fixed;top:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font-size:15px;z-index:10;text-align:right;line-height:1.4;}
+  #toggles{position:fixed;top:8px;left:8px;display:flex;gap:6px;z-index:10;}
+  #toggles button{padding:9px 11px;border:0;border-radius:8px;background:rgba(0,0,0,.55);color:#fff;font-size:13px;}
+  #nowebgl{display:none;position:fixed;inset:0;background:#fff;color:#c00;padding:40px;font-size:18px;z-index:99;}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="toggles">
+  <button id="btnShadow">影:OFF</button>
+  <button id="btnDensity">密度:中</button>
+  <button id="btnAnim">アニメ:ON</button>
+</div>
+<div id="hud">FPS <span id="fpsval">--</span><br><span id="minfps">最低 --</span></div>
+<div id="nowebgl">WebGL が使えません。この端末では検証できません。</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="citygen.js"></script>
+<script src="proto-viewer.js"></script>
+<script src="stickman.js"></script>
+<script src="bots.js"></script>
+<script src="joystick.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
