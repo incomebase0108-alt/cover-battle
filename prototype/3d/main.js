@@ -97,7 +97,6 @@
   }
 
   let lastT = 0;
-  window.__protoTick = null; // Task 6 で fps 計測をつなぐ
   function loop(t) {
     requestAnimationFrame(loop);
     const dt = lastT ? Math.min((t - lastT) / 1000, 0.1) : 0;
@@ -108,14 +107,53 @@
     for (const u of units) {
       u.mesh.position.set(u.x, 0, u.z);
       u.mesh.rotation.y = u.yaw;
-      Stickman.animate(u.mesh, now, u.moving);
+      Stickman.animate(u.mesh, now, animOn && u.moving);
     }
     updateCamera();
     ProtoViewer.render();
-    if (window.__protoTick) window.__protoTick(t);
+    fpsTick(t);
   }
 
   setDensity('mid');
+
+  // --- fps 計測: 直近1秒の平均と、トグル変更後からの最低値 ---
+  const fpsEl = document.getElementById('fpsval');
+  const minEl = document.getElementById('minfps');
+  let frames = 0, windowStart = 0, minFps = Infinity;
+  function fpsResetMin() { minFps = Infinity; minEl.textContent = '最低 --'; }
+  function fpsTick(t) {
+    frames++;
+    if (!windowStart) { windowStart = t; return; }
+    if (t - windowStart >= 1000) {
+      const fps = Math.round(frames * 1000 / (t - windowStart));
+      frames = 0; windowStart = t;
+      fpsEl.textContent = String(fps);
+      if (fps < minFps) { minFps = fps; minEl.textContent = '最低 ' + fps; }
+    }
+  }
+
+  // --- トグル: 影 / 密度 / 歩行アニメ ---
+  let shadowOn = false, animOn = true, densityLevel = 'mid';
+  const DENSITY_LABEL = { low: '低', mid: '中', high: '高' };
+  const DENSITY_NEXT = { low: 'mid', mid: 'high', high: 'low' };
+  document.getElementById('btnShadow').addEventListener('click', e => {
+    shadowOn = !shadowOn;
+    ProtoViewer.setShadow(shadowOn);
+    e.target.textContent = '影:' + (shadowOn ? 'ON' : 'OFF');
+    fpsResetMin();
+  });
+  document.getElementById('btnDensity').addEventListener('click', e => {
+    densityLevel = DENSITY_NEXT[densityLevel];
+    setDensity(densityLevel);
+    e.target.textContent = '密度:' + DENSITY_LABEL[densityLevel];
+    fpsResetMin();
+  });
+  document.getElementById('btnAnim').addEventListener('click', e => {
+    animOn = !animOn;
+    e.target.textContent = 'アニメ:' + (animOn ? 'ON' : 'OFF');
+    fpsResetMin();
+  });
+
   loop(0);
 
   window.__proto = { get units() { return units; }, get player() { return player; }, setDensity };
