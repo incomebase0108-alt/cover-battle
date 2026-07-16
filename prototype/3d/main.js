@@ -75,7 +75,8 @@
     player.moving = len > 0.15;
     if (!player.moving) return;
     // カメラyaw基準でワールド方向へ（yaw=0 の前方は +z。machi-maker PlayerControls と同じ規約）
-    const ang = Math.atan2(v.dx, -v.dy) + camYaw;
+    // 画面右= look×up =(-cosθ,+sinθ) なので dx は符号反転（machi-maker player-controls.js と同じ規約）
+    const ang = Math.atan2(-v.dx, -v.dy) + camYaw;
     const speed = 4.5 * Math.min(len, 1);
     player.x += Math.sin(ang) * speed * dt;
     player.z += Math.cos(ang) * speed * dt;
