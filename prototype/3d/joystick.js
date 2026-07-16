@@ -57,6 +57,7 @@ const Joystick = (function () {
     window.addEventListener('touchcancel', end);
     // PC用マウス対応: baseで受けてstopPropagationし、main.jsの視点ドラッグ(window mousedown)を発火させない
     base.addEventListener('mousedown', e => {
+      if (e.button !== 0) return; // 左クリック以外は無視（右クリック等は伝播させる）
       const r = base.getBoundingClientRect();
       cx = r.left + r.width / 2; cy = r.top + r.height / 2;
       mouseActive = true;
@@ -64,7 +65,11 @@ const Joystick = (function () {
       e.stopPropagation();
       e.preventDefault();
     });
-    window.addEventListener('mousemove', e => { if (mouseActive) moveTo(e.clientX, e.clientY); });
+    window.addEventListener('mousemove', e => {
+      if (!mouseActive) return;
+      if (e.buttons === 0) { mouseActive = false; reset(); return; } // 枠外でボタンが離された張り付き対策
+      moveTo(e.clientX, e.clientY);
+    });
     window.addEventListener('mouseup', () => { if (mouseActive) { mouseActive = false; reset(); } });
     window.addEventListener('keydown', e => { keys[e.code] = true; updKeys(); });
     window.addEventListener('keyup', e => { keys[e.code] = false; updKeys(); });
