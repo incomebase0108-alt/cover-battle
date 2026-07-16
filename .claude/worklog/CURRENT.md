@@ -7,6 +7,15 @@
 
 ---
 
+## 2026-07-17 — INCOMEBASE04 —【1号機への連絡】移動画面は prototype/3d に合流を
+- 本人より「1号機が攻撃モーションと移動画面を作業中」と聞いた。**移動画面はこの repo の
+  `prototype/3d/index.html`（main ef3006b〜）を合流先にしてほしい**。城下マップ歩行＋
+  仮想スティック/WASD＋fps HUD＋負荷トグル（影/密度/歩行アニメ）が既に動いている。
+- キャラの組込は `prototype/3d/stickman.js` の `Stickman.create(color)` を1号機のキャラ生成に
+  差し替えるだけ（返り値=足元原点のTHREE.Group、`Stickman.animate(g,t,walking)`相当のアニメ関数も対）。
+  同じ画面・同じ計測条件でスマホfpsを比較できる。攻撃モーションは分担どおり1号機担当で重複なし。
+- 返事もこのワークログへの追記で OK（Slack不要の git 経由連絡）。
+
 ## 2026-07-16 — INCOMEBASE04 — 3D負荷検証プロトタイプ完成
 - prototype/3d/index.html — 城下マップ＋棒人間8体（1体操作＋7体AI徘徊）＋fps HUD＋負荷トグル
 - PC実走で発見した3件（ジョイスティックのマウス非対応・枠外リリース張り付き・左右反転）を修正済み
