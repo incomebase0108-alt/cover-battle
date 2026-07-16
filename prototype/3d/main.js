@@ -12,8 +12,18 @@
   }
   const built = CityGen.buildPrims(CityGen.generate(Object.assign({ seed: SEED }, SENGOKU)));
   ProtoViewer.showCity(built);
+  // 棒人間8体（青4・赤4）を中心広場に円形配置
+  for (let i = 0; i < 8; i++) {
+    const color = i < 4 ? 0x3a6ea5 : 0xa53a3a;
+    const s = Stickman.create(color);
+    const a = i / 8 * Math.PI * 2;
+    s.position.set(built.bounds.cx + Math.cos(a) * 4, 0, built.bounds.cz + Math.sin(a) * 4);
+    s.rotation.y = -a;
+    Stickman.animate(s, i * 0.3, true); // 歩行ポーズの確認用
+    ProtoViewer.scene.add(s);
+  }
   const cam = ProtoViewer.camera;
-  cam.position.set(built.bounds.cx + 80, 70, built.bounds.cz + 80);
-  cam.lookAt(built.bounds.cx, 0, built.bounds.cz);
+  cam.position.set(built.bounds.cx + 8, 4, built.bounds.cz + 8);
+  cam.lookAt(built.bounds.cx, 1, built.bounds.cz);
   ProtoViewer.render(); // 同期1フレーム（ヘッドレス検証でも写る）
 })();
