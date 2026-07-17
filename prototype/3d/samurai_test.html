@@ -25,22 +25,40 @@ body{margin:0;overflow:hidden;background:#222;font-family:Meiryo,sans-serif}
   <button data-k="ronin">浪人</button>
   <button data-k="medic">衛生兵</button>
   <button data-a="daimyo:yell">号令</button>
+  <button data-a="daimyo:attack_gun">大名鉄砲</button>
   <button data-a="ninja:throw">手裏剣</button>
   <button data-a="ronin:attack_combo">連撃</button>
   <button id="kneel">全員膝つき</button>
   <button id="walk">歩行 ON/OFF</button>
+  <select id="soloSel" title="一体だけ正面で360度回転表示"><option value="全員">全員表示</option></select>
+  <button id="spinBtn">回転ON/OFF</button>
+</div>
+<div id="tune" style="position:fixed;left:8px;top:46px;background:rgba(0,0,0,.55);padding:6px 8px;border-radius:8px;color:#fff;font:12px system-ui">
+  持ち物調整:
+  <select id="tuneKind"></select>
+  <button data-n="0,0.02,0">上</button><button data-n="0,-0.02,0">下</button>
+  <button data-n="-0.02,0,0">左</button><button data-n="0.02,0,0">右</button>
+  <button data-n="0,0,0.02">前</button><button data-n="0,0,-0.02">後</button>
+  <button id="tuneReset">リセット</button>
+  <span id="tuneVal"></span>
+  <span id="tuneRot">｜向き:
+    <button data-r="flip">反転</button>
+    <button data-r="up">先上げ</button><button data-r="down">先下げ</button>
+    <button data-r="left">先左</button><button data-r="right">先右</button>
+    <span id="tuneRotVal"></span>
+  </span>
 </div>
 <div id="msg">読み込み中…</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
-<script src="samurai.js"></script>
+<script src="samurai.js?v=20260718s"></script>
 <script>
 'use strict';
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8fa0b8);
 const cam = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 100);
-cam.position.set(0, 2.4, 9); cam.lookAt(0, 1.0, 0);
+cam.position.set(0, 2.6, 10.5); cam.lookAt(0, 1.0, 0); // 窓が狭くても8体全員入るよう引き気味に
 const rend = new THREE.WebGLRenderer({antialias:true});
 rend.setPixelRatio(Math.min(devicePixelRatio||1, 2));
 rend.setSize(innerWidth, innerHeight);
@@ -56,12 +74,14 @@ let walking = false;
 Samurai.load('assets/', () => {
   Samurai.KIND_NAMES.forEach((k, i) => {
     const g = Samurai.create(k);
-    g.position.x = (i - (Samurai.KIND_NAMES.length-1)/2) * 1.6;
+    // 1.6間隔だと端の槍が画面外に見切れる(hoshi指摘2026-07-18)→1.1に詰める+カメラ引き
+    g.position.x = (i - (Samurai.KIND_NAMES.length-1)/2) * 1.1;
     scene.add(g);
     units[k] = g;
   });
   document.getElementById('msg').textContent =
-    '読込OK: 8兵種。兵種ボタン=攻撃 / 号令・手裏剣・連撃・膝つき=専用モーション';
+    '読込OK: 8兵種。兵種ボタン=攻撃 / 号令・手裏剣・連撃・膝つき=専用モーション / 右上プルダウン=一体360度';
+  fillSolo();
   window.READY = true;
 });
 document.querySelectorAll('[data-k]').forEach(b =>
@@ -73,6 +93,136 @@ document.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
 document.getElementById('kneel').onclick = () =>
   Object.values(units).forEach(g => Samurai.act(g, 'kneel'));
 document.getElementById('walk').onclick = () => { walking = !walking; };
+
+// --- 持ち物位置の実機調整(世界軸で2cmずつ→ボーン空間に換算して加算) ---------
+// 合わせたら tuneVal の wpos値をそのまま samurai.js の KINDS[kind].wpos に焼き込む
+const tuneSel = document.getElementById('tuneKind');
+['spear','katana','bow','rifle','daimyo','ninja','ronin','daimyo鉄砲'].forEach(k => {
+  const o = document.createElement('option'); o.value = o.textContent = k; tuneSel.appendChild(o);
+});
+tuneSel.value = 'bow';
+window.__tuneResult = {};
+function tuneTarget() {
+  // 「daimyo鉄砲」= 大名のattack_gunを構えで凍結し、火縄銃(tempWeapon)を調整する専用モード
+  if (tuneSel.value === 'daimyo鉄砲') {
+    const g = units.daimyo, sam = g && g.userData.samurai;
+    if (!sam) return null;
+    if (!sam.attacking) {
+      Samurai.act(g, 'attack_gun');
+      if (sam.atkAction) { sam.atkAction.time = sam.atkAction.getClip().duration * 0.4; sam.atkAction.paused = true; }
+    }
+    return sam.tempWeapon;
+  }
+  const g = units[tuneSel.value];
+  const sam = g && g.userData.samurai;
+  return sam && (sam.tempWeapon || sam.weapon); // 攻撃中は持ち替え武器(銃)を優先
+}
+function showTune() {
+  const w = tuneTarget();
+  if (!w) { document.getElementById('tuneVal').textContent = '(武器なし)'; return; }
+  const inv = w.userData.invScale;
+  const v = w.position.clone().divideScalar(inv);
+  const arr = [v.x, v.y, v.z].map(n => +n.toFixed(3));
+  window.__tuneResult[tuneSel.value] = arr;
+  document.getElementById('tuneVal').textContent = ' wpos: [' + arr.join(', ') + ']';
+}
+document.querySelectorAll('#tune [data-n]').forEach(b => b.onclick = () => {
+  const w = tuneTarget(); if (!w) return;
+  // 「daimyo鉄砲」モードは対象ユニット=大名(units にこのキーは無い)
+  const g = units[tuneSel.value === 'daimyo鉄砲' ? 'daimyo' : tuneSel.value];
+  g.updateMatrixWorld(true);
+  const d = b.dataset.n.split(',').map(Number);
+  // 体の向き(ターンテーブル回転込み)基準に変換=回転中でも「左」はキャラの左
+  const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), g.rotation.y);
+  const vec = new THREE.Vector3(d[0], d[1], d[2]).applyQuaternion(yaw);
+  const qB = new THREE.Quaternion(); w.parent.getWorldQuaternion(qB);
+  const local = vec.applyQuaternion(qB.clone().invert());
+  w.position.addScaledVector(local, w.userData.invScale);
+  // 基準値も更新(モーション終了時のリセットが調整前に巻き戻さないように)
+  w.userData.basePos.copy(w.position)
+    .addScaledVector(w.userData.tipDir, -w.userData.holdShift * w.userData.invScale);
+  showTune();
+});
+document.getElementById('tuneReset').onclick = () => {
+  if (tuneSel.value === 'daimyo鉄砲') {
+    // 凍結解除(構えをやめて通常に戻す)
+    const sam = units.daimyo.userData.samurai;
+    if (sam.attacking && sam.finishAtk) sam.finishAtk();
+    document.getElementById('tuneVal').textContent = '(凍結解除)';
+    return;
+  }
+  const w = tuneTarget(); if (!w) return;
+  w.position.copy(w.userData.basePos)
+    .addScaledVector(w.userData.tipDir, w.userData.holdShift * w.userData.invScale);
+  showTune();
+};
+tuneSel.onchange = showTune;
+
+// --- 一体ずつ360度確認(ターンテーブル) ---------------------------------------
+const soloSel = document.getElementById('soloSel');
+let solo = null;
+let spinOn = true;
+document.getElementById('spinBtn').onclick = () => { spinOn = !spinOn; };
+Samurai.KIND_NAMES && null; // (KIND_NAMESはload後に確定するためoptionはload時に足す)
+function fillSolo() {
+  Samurai.KIND_NAMES.forEach(k => {
+    const o = document.createElement('option'); o.value = o.textContent = k; soloSel.appendChild(o);
+  });
+}
+soloSel.onchange = () => {
+  const v = soloSel.value;
+  const n = Samurai.KIND_NAMES.length;
+  if (v === '全員') {
+    solo = null;
+    Samurai.KIND_NAMES.forEach((k, i) => {
+      const g = units[k]; g.visible = true;
+      g.position.set((i - (n - 1) / 2) * 1.1, 0, 0); g.rotation.y = 0;
+    });
+  } else {
+    solo = v;
+    Samurai.KIND_NAMES.forEach(k => { units[k].visible = (k === v); });
+    const g = units[v]; g.position.set(0, 0, 5.2);
+  }
+};
+
+// --- 武器の向き調整(全兵種対応)。合わせたら tuneRotVal の rot値を samurai.js に焼き込む
+//     (spear等はWEAPONS[武器].rot、大名鉄砲はrotByModel.daimyo) ---
+function tuneUnit() {
+  return units[tuneSel.value === 'daimyo鉄砲' ? 'daimyo' : tuneSel.value];
+}
+function showRot() {
+  const w = tuneTarget(); if (!w) return;
+  const e = new THREE.Euler().setFromQuaternion(w.quaternion, 'XYZ');
+  const arr = [e.x, e.y, e.z].map(r => +(r * 180 / Math.PI).toFixed(1));
+  if (!window.__tuneRotResult) window.__tuneRotResult = {};
+  window.__tuneRotResult[tuneSel.value] = arr;
+  document.getElementById('tuneRotVal').textContent = ' rot: [' + arr.join(', ') + ']';
+}
+document.querySelectorAll('#tuneRot [data-r]').forEach(b => b.onclick = () => {
+  const w = tuneTarget(); if (!w) return;
+  const g = tuneUnit();
+  g.updateMatrixWorld(true);
+  if (b.dataset.r === 'flip') {
+    w.rotateZ(Math.PI); // 銃口を前後反転(ローカルZ回り180°)
+  } else {
+    // 世界軸の回転をボーン空間に変換して10°ずつ(口上げ=世界X系/口左右=世界Y)
+    const deg = 10 * Math.PI / 180;
+    const axisWorld = { up: [-1, 0, 0], down: [1, 0, 0], left: [0, 1, 0], right: [0, -1, 0] }[b.dataset.r];
+    // キャラの向き基準で直感的になるよう、体のyawで軸を回す
+    const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), g.rotation.y);
+    const ax = new THREE.Vector3().fromArray(axisWorld).applyQuaternion(yaw);
+    const qW = new THREE.Quaternion().setFromAxisAngle(ax, deg);
+    const qB = new THREE.Quaternion(); w.parent.getWorldQuaternion(qB);
+    const qL = qB.clone().invert().multiply(qW).multiply(qB);
+    w.quaternion.premultiply(qL);
+  }
+  // 基準値も更新(モーション終了時のリセット/攻撃中のワールドロックが調整後の向きを使うように)
+  w.userData.baseQuat.copy(w.quaternion);
+  w.userData.tipDir.set(0, 1, 0).applyQuaternion(w.quaternion);
+  w.userData.basePos.copy(w.position)
+    .addScaledVector(w.userData.tipDir, -w.userData.holdShift * w.userData.invScale);
+  showRot();
+});
 addEventListener('resize', () => {
   cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix();
   rend.setSize(innerWidth, innerHeight);
@@ -81,6 +231,7 @@ addEventListener('resize', () => {
   requestAnimationFrame(loop);
   const t = performance.now()/1000;
   for (const k in units) Samurai.animate(units[k], t, walking);
+  if (solo && spinOn && units[solo]) units[solo].rotation.y += 0.008; // ターンテーブル(約13秒/周)
   rend.render(scene, cam);
 })();
 </script>

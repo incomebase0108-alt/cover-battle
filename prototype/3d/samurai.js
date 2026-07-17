@@ -11,11 +11,12 @@
 //       (キー名はload()内のurls定義を参照。wep_接頭辞が武器)
 //   const g = Samurai.create(kind);           // 足元原点・正面+Z・身長約1.6mのTHREE.Group
 //     kind: 'spear'|'katana'|'bow'|'rifle'    … 侍モデル+武器(rifle=火縄銃)
-//           'daimyo'|'ninja'|'ronin'|'medic'  … 兵種モデル(大名=火縄銃/忍者・浪人=刀/衛生兵=素手)
+//           'daimyo'|'ninja'|'ronin'|'medic'  … 兵種モデル(大名・忍者・浪人=刀/衛生兵=素手)
 //   Samurai.animate(g, t, walking);           // Stickman.animateと同じシグネチャ(兵種ごとの待機/歩行を自動選択)
 //   Samurai.attack(g);                        // 兵種の主攻撃を1発(槍=突きの伸び+閃光)
 //   Samurai.act(g, clip);                     // 任意の1発モーション: 'kneel'(全員)/'yell'(大名の号令)/
-//                                             //   'throw'(忍者の手裏剣)/'attack_combo'(浪人)/'attack_sword2'(忍者) 等
+//                                             //   'attack_gun'(大名の火縄銃=信長スタイル)/'throw'(忍者の手裏剣)/
+//                                             //   'attack_combo'(浪人)/'attack_sword2'(忍者) 等
 //   Samurai.setWeapon(g, kind);               // 同モデル内の持ち替え(spear/katana/bow/rifle同士)。モデル違いはfalse
 //   g.userData.samurai.attacking              // 攻撃/モーション中フラグ(移動を止めたい時に)
 //   Samurai.KIND_NAMES                        // 使えるkind一覧
@@ -27,8 +28,9 @@
 //   ・槍の突きは攻撃中だけ武器のワールド向きを「水平・攻撃開始時の向き」にロック
 //   ・walk/run/crouch_walk/rifle_walkはIn-Place化済み(位置は呼び出し側で動かす)
 //   ・アニメ一覧: 侍14(idle/walk/run/death/attack_spear/attack_bow/attack_sword/attack_great/attack_combo/
-//     attack_jump/rifle_idle/rifle_fire/rifle_walk/kneel) 大名7(+yell/attack_gun) 忍者8(+attack_sword2/throw)
+//     attack_jump/rifle_idle/rifle_fire/rifle_walk/kneel) 大名8(+yell/attack_gun/attack_sword) 忍者8(+attack_sword2/throw)
 //     浪人7(+attack_great/attack_combo) 衛生兵6(+heal/crouch_walk)
+//   ・大名のattack_swordは忍者クラスタの片手斬りをHips補正(idle腰高比)で移植(char-lib/_daimyo_add_sword.py)
 const Samurai = (function () {
   'use strict';
 
@@ -36,24 +38,51 @@ const Samurai = (function () {
 
   // 武器の装着姿勢(手ボーンローカル・attach_testで確定した値)
   const WEAPONS = {
-    spear:     { hand: 'mixamorigRightHand', rot: [-90, 0, 0], spin: 0,
-                 holdShift: 0.35, slideMax: 0.6 },   // 柄の下持ち/突きの伸び(m・1.6mスケール後の実寸)
-    katana:    { hand: 'mixamorigRightHand', rot: [0, 0, -90], spin: 90 },
-    bow:       { hand: 'mixamorigLeftHand',  rot: [0, 0, -90], spin: 0 },
-    matchlock: { hand: 'mixamorigRightHand', rot: [-90, 0, 0], spin: 0 },
+    // slideMax 0.6→0.3→0.1: 0.6は手が石突(-0.74m)を超えて柄から離れ、0.3でも
+    // 「まだ伸びすぎ」(hoshi 2026-07-18)。突きの伸びは体の踏み込み主体で見せる
+    // rot: 構えの持ち角度はhoshi実機調整値(2026-07-18。攻撃中はワールドロックが上書き)
+    spear:     { hand: 'mixamorigRightHand', rot: [-57.6, -6, -83.4], spin: 0,
+                 holdShift: 0.35, slideMax: 0.1 },   // 柄の下持ち/突きの伸び(m・1.6mスケール後の実寸)
+    // 刀: 大名モデルだけ持ち角度をhoshi実機調整値で上書き(rotByModel適用時はspinを掛けない)
+    katana:    { hand: 'mixamorigRightHand', rot: [0, 0, -90], spin: 90,
+                 rotByModel: { daimyo: [90.5, -9.9, -88.7] } },
+    // 弓: hoshi実機調整の最終値(2026-07-18。当初のspin180=弦の前後反転も込みの合成角)
+    bow:       { hand: 'mixamorigLeftHand',  rot: [4.2, -37.7, -54.1], spin: 0 },
+    // 火縄銃: 実ポーズで「右手→左手(添え手)」軸に銃身が乗る回転を数値ソルブして確定
+    // (2026-07-18。旧[-90,0,0]は銃が下にぶら下がる誤り)。Mixamo自動リグは手ボーンの
+    // 軸がモデルごとに違う→rotByModelでモデル別上書き(大名はattack_gun構えで別ソルブ)
+    // 全てhoshi実機調整の最終値(2026-07-18。数値ソルブは再生位相で向きが暴れて
+    // 決着せず、samurai_test.htmlの調整UI=構え凍結モードで本人が合わせた値を焼き込み)
+    matchlock: { hand: 'mixamorigRightHand', rot: [13.5, -0.2, 2.4], spin: 0,
+                 rotByModel: { daimyo: [-79, -39.7, -96.5] },
+                 posByModel: { daimyo: [0.003, 0.157, -0.093] } },
   };
+
+  // 1発モーション中だけ持ち物を変える演出(act/finishが自動で適用・復元):
+  //   attack_gun … 大名の火縄銃射撃=刀を隠して火縄銃を握る
+  //   throw      … 忍者の手裏剣=刀を隠す(素手で投げる)
+  //   heal       … 衛生兵は元々素手(定義不要)
+  const ACT_WEAPON = { attack_gun: 'matchlock', throw: null };
 
   // 兵種定義: モデル×武器×アニメ名
   const KINDS = {
     spear:  { model: 'samurai', weapon: 'spear',     attack: 'attack_spear',
-              spearFx: true, startAt: 0.24, cutAt: 0.62, slideWin: [0.26, 0.46] },
-    katana: { model: 'samurai', weapon: 'katana',    attack: 'attack_sword' },
-    bow:    { model: 'samurai', weapon: 'bow',       attack: 'attack_bow' },
+              spearFx: true, startAt: 0.24, cutAt: 0.62, slideWin: [0.26, 0.46],
+              wpos: [-0.104, 0.031, 0.001] }, // hoshi実機調整2026-07-18最終(読み値-新向きの保持オフセット分)
+    // wpos各値=hoshi実機調整(samurai_test.htmlの持ち物調整UI・2026-07-18)の読み取り値
+    katana: { model: 'samurai', weapon: 'katana',    attack: 'attack_sword',
+              wpos: [-0.061, 0.139, 0.034] },
+    bow:    { model: 'samurai', weapon: 'bow',       attack: 'attack_bow',
+              wpos: [0.062, 0.018, -0.077] },
     rifle:  { model: 'samurai', weapon: 'matchlock', attack: 'rifle_fire',
-              idle: 'rifle_idle', walk: 'rifle_walk' },
-    daimyo: { model: 'daimyo',  weapon: 'matchlock', attack: 'attack_gun' },
-    ninja:  { model: 'ninja',   weapon: 'katana',    attack: 'attack_sword' },
-    ronin:  { model: 'ronin',   weapon: 'katana',    attack: 'attack_great' },
+              idle: 'rifle_idle', walk: 'rifle_walk', wpos: [0.056, -0.003, 0.02] },
+    // 大名=総大将。ゲーム本体の総大将は刀なので主攻撃は刀振り(attack_gunはact()で使用可)
+    daimyo: { model: 'daimyo',  weapon: 'katana',    attack: 'attack_sword',
+              wpos: [-0.026, 0.111, -0.024] },
+    ninja:  { model: 'ninja',   weapon: 'katana',    attack: 'attack_sword',
+              wpos: [-0.036, 0.13, 0.037] },
+    ronin:  { model: 'ronin',   weapon: 'katana',    attack: 'attack_great',
+              wpos: [-0.037, 0.13, 0.037] },
     medic:  { model: 'medic',   weapon: null,        attack: 'heal' },
   };
 
@@ -104,15 +133,19 @@ const Samurai = (function () {
     next();
   }
 
-  function attachWeapon(g, wepName, charScale) {
+  function attachWeapon(g, wepName, charScale, posOff) {
     const o = WEAPONS[wepName];
     const bone = g.getObjectByName(o.hand) || g.getObjectByName(o.hand.replace('mixamorig', 'mixamorig:'));
     g.updateMatrixWorld(true);
     const ws = new THREE.Vector3(); bone.getWorldScale(ws);   // ルート0.01スケール対策
     const w = wepScenes[wepName].clone(true);
     w.scale.setScalar(1 / ws.x);
-    w.rotation.set(o.rot[0] * Math.PI / 180, o.rot[1] * Math.PI / 180, o.rot[2] * Math.PI / 180);
-    if (o.spin) w.rotateY(o.spin * Math.PI / 180);
+    const mdlName = g.userData.samurai ? g.userData.samurai.def.model : null;
+    const mrot = o.rotByModel && o.rotByModel[mdlName];
+    const rot = mrot || o.rot;
+    if (!posOff) posOff = (o.posByModel && o.posByModel[mdlName]) || null;
+    w.rotation.set(rot[0] * Math.PI / 180, rot[1] * Math.PI / 180, rot[2] * Math.PI / 180);
+    if (o.spin && !mrot) w.rotateY(o.spin * Math.PI / 180); // モデル別rotはspin込みの合成角
     bone.add(w);
     const ud = {
       name: wepName, invScale: 1 / ws.x,
@@ -120,9 +153,11 @@ const Samurai = (function () {
       tipDir: new THREE.Vector3(0, 1, 0).applyQuaternion(w.quaternion),  // 柄→先端(ボーン空間)
       holdShift: (o.holdShift || 0) * charScale,
       slideMax: (o.slideMax || 0) * charScale,
+      // 兵種ごとの持ち位置オフセット(ボーン空間・キャラm単位で指定→ボーン空間へ換算)
+      basePos: new THREE.Vector3().fromArray(posOff || [0, 0, 0]).multiplyScalar(1 / ws.x),
     };
     w.userData = ud;
-    w.position.copy(ud.tipDir).multiplyScalar(ud.holdShift * ud.invScale);
+    w.position.copy(ud.basePos).addScaledVector(ud.tipDir, ud.holdShift * ud.invScale);
     return w;
   }
 
@@ -158,10 +193,10 @@ const Samurai = (function () {
     const sam = {
       kind, def, mixer, acts, flash, inner, scale: mdl.scale,
       cur: null, attacking: false, atkAction: null, atkBaseYaw: 0, atkDef: null,
-      lastT: null, weapon: null,
+      lastT: null, weapon: null, tempWeapon: null,
     };
     g.userData.samurai = sam;
-    if (def.weapon) sam.weapon = attachWeapon(g, def.weapon, mdl.scale);
+    if (def.weapon) sam.weapon = attachWeapon(g, def.weapon, mdl.scale, def.wpos);
     play(sam, def.idle || 'idle');
     return g;
   }
@@ -190,7 +225,7 @@ const Samurai = (function () {
     }
     if (sam.weapon) sam.weapon.parent.remove(sam.weapon);
     sam.kind = kind; sam.def = def;
-    sam.weapon = def.weapon ? attachWeapon(g, def.weapon, sam.scale) : null;
+    sam.weapon = def.weapon ? attachWeapon(g, def.weapon, sam.scale, def.wpos) : null;
     return true;
   }
 
@@ -202,6 +237,15 @@ const Samurai = (function () {
     if (!a) return false;
     sam.attacking = true;
     sam.atkDef = opts || {};
+    // クリップ専用の持ち物演出: attack_gun=火縄銃に持ち替え / throw=素手(刀を隠す)
+    if (Object.prototype.hasOwnProperty.call(ACT_WEAPON, clipName)) {
+      const want = ACT_WEAPON[clipName];
+      const cur = sam.weapon ? sam.weapon.userData.name : null;
+      if (cur !== want) {
+        if (sam.weapon) sam.weapon.visible = false;
+        if (want) sam.tempWeapon = attachWeapon(g, want, sam.scale);
+      }
+    }
     a.reset().setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true;
     a.fadeIn(0.08).play();
     if (sam.atkDef.startAt) a.time = sam.atkDef.startAt * a.getClip().duration;
@@ -213,10 +257,13 @@ const Samurai = (function () {
       if (!sam.attacking) return;
       sam.mixer.removeEventListener('finished', onEnd);
       sam.attacking = false; sam.cur = null;
+      if (sam.tempWeapon) { sam.tempWeapon.parent.remove(sam.tempWeapon); sam.tempWeapon = null; }
       if (sam.weapon) {
+        sam.weapon.visible = true;
         sam.weapon.quaternion.copy(sam.weapon.userData.baseQuat);
-        sam.weapon.position.copy(sam.weapon.userData.tipDir)
-          .multiplyScalar(sam.weapon.userData.holdShift * sam.weapon.userData.invScale);
+        sam.weapon.position.copy(sam.weapon.userData.basePos)
+          .addScaledVector(sam.weapon.userData.tipDir,
+            sam.weapon.userData.holdShift * sam.weapon.userData.invScale);
       }
       sam.flash.visible = false;
       a.fadeOut(0.15);
@@ -258,7 +305,8 @@ const Samurai = (function () {
     _qc.copy(_qb).invert().multiply(_qa).multiply(_qb);
     w.quaternion.copy(w.userData.baseQuat).premultiply(_qc);
     _v3.copy(_v1).applyQuaternion(_qc.copy(_qb).invert());
-    w.position.copy(_v3).multiplyScalar((w.userData.holdShift + sl) * w.userData.invScale);
+    w.position.copy(w.userData.basePos)
+      .addScaledVector(_v3, (w.userData.holdShift + sl) * w.userData.invScale);
     if (sl > 0.13) {
       _vTip.set(0, 0.43, 0);
       w.localToWorld(_vTip);
