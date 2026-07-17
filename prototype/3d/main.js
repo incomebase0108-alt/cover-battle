@@ -36,6 +36,37 @@
     if (!samuraiReady) charBtn.textContent = 'キャラ:棒人間(GLB未読込)';
   }, 15000);
 
+  // --- 影4段: OFF→丸影→低→高（shadowMapはviewer、丸影はここ） ---
+  const SHADOW_MODES = ['off', 'blob', 'low', 'high'];
+  const SHADOW_LABEL = { off: 'OFF', blob: '丸影', low: '低', high: '高' };
+  let shadowMode = 'off';
+
+  // 丸影(blob): 共有geo/mat 1組をキャラの子に。disposeUnitのtraverseに巻き込まない（_blobフラグ）
+  let blobGeo = null, blobMat = null;
+  function makeBlobMat() {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const c2 = cv.getContext('2d');
+    const r = c2.createRadialGradient(32, 32, 4, 32, 32, 30);
+    r.addColorStop(0, 'rgba(0,0,0,0.42)');
+    r.addColorStop(1, 'rgba(0,0,0,0)');
+    c2.fillStyle = r; c2.fillRect(0, 0, 64, 64);
+    return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false });
+  }
+  function setBlobs(on) {
+    for (const u of units) {
+      let blob = u.mesh.children.find(c => c.userData._blob);
+      if (on && !blob) {
+        if (!blobGeo) { blobGeo = new THREE.PlaneGeometry(1.4, 1.4); blobGeo.rotateX(-Math.PI / 2); }
+        if (!blobMat) blobMat = makeBlobMat();
+        blob = new THREE.Mesh(blobGeo, blobMat);
+        blob.position.y = 0.02;
+        blob.userData._blob = 1;
+        u.mesh.add(blob);
+      }
+      if (blob) blob.visible = on;
+    }
+  }
+
   function setDensity(level) {
     const built = CityGen.buildPrims(CityGen.generate(Object.assign({ seed: SEED }, SENGOKU, DENSITY[level])));
     ProtoViewer.showCity(built);
@@ -53,7 +84,7 @@
     }
     // 棒人間は1体ごとに専用ジオメトリ/マテリアル（viewer側の共有ジオメトリとは逆のルール）ので、
     // ここでdisposeしないと切替のたびにGPUリソースが漏れる
-    u.mesh.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    u.mesh.traverse(o => { if (o.isMesh && !o.userData._blob) { o.geometry.dispose(); o.material.dispose(); } });
     ProtoViewer.scene.remove(u.mesh);
   }
 
@@ -76,6 +107,7 @@
       if (i === 0) { player = u; }
       else { Bots.pickTarget(u, bounds, Math.random); bots.push(u); }
     }
+    setBlobs(shadowMode === 'blob'); // 再生成でblobが消えるので張り直す
   }
 
   // 視点ドラッグ: 画面右半分のタッチ / マウスドラッグ
@@ -164,6 +196,7 @@
       else Stickman.animate(u.mesh, now, animOn && u.moving);
     }
     updateCamera();
+    ProtoViewer.updateShadowTarget(player.x, player.z);
     ProtoViewer.render();
     fpsTick(t);
   }
@@ -187,13 +220,14 @@
   }
 
   // --- トグル: 影 / 密度 / 歩行アニメ ---
-  let shadowOn = false, animOn = true, densityLevel = 'mid';
+  let animOn = true, densityLevel = 'mid';
   const DENSITY_LABEL = { low: '低', mid: '中', high: '高' };
   const DENSITY_NEXT = { low: 'mid', mid: 'high', high: 'low' };
   document.getElementById('btnShadow').addEventListener('click', e => {
-    shadowOn = !shadowOn;
-    ProtoViewer.setShadow(shadowOn);
-    e.target.textContent = '影:' + (shadowOn ? 'ON' : 'OFF');
+    shadowMode = SHADOW_MODES[(SHADOW_MODES.indexOf(shadowMode) + 1) % SHADOW_MODES.length];
+    ProtoViewer.setShadowMode(shadowMode);
+    setBlobs(shadowMode === 'blob');
+    e.target.textContent = '影:' + SHADOW_LABEL[shadowMode];
     fpsResetMin();
   });
   document.getElementById('btnDensity').addEventListener('click', e => {

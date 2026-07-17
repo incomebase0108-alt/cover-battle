@@ -4,6 +4,8 @@ const ProtoViewer = (function () {
   'use strict';
   let scene, camera, renderer, group, stageEl, sun;
   let boxGeo, prismGeo, cylGeo, sphereGeo;
+  let shadowMode = 'off'; // 'off'|'blob'|'low'|'high'（blobの描画はmain側。ここはshadowMapの面倒だけ見る）
+  let cityBounds = null;  // showCityで記憶。high復帰・密度切替の再適用用
 
   function makeGeos() {
     boxGeo = new THREE.BoxGeometry(1, 1, 1);
@@ -66,16 +68,8 @@ const ProtoViewer = (function () {
       group.add(mesh);
     }
     scene.add(group);
-    // 影カメラを街の範囲に合わせる
-    const b = built.bounds;
-    sun.position.set(b.cx + 120, 180, b.cz + 80);
-    sun.target.position.set(b.cx, 0, b.cz);
-    sun.shadow.camera.left = -b.r * 1.2;
-    sun.shadow.camera.right = b.r * 1.2;
-    sun.shadow.camera.top = b.r * 1.2;
-    sun.shadow.camera.bottom = -b.r * 1.2;
-    sun.shadow.camera.far = 500;
-    sun.shadow.camera.updateProjectionMatrix();
+    cityBounds = built.bounds;
+    applyShadowArea(); // 現在のモードに合わせて影カメラを再適用（密度切替がhigh設定を上書きしないように）
   }
 
   function disposeGroup(g) {
@@ -83,11 +77,46 @@ const ProtoViewer = (function () {
     g.traverse(o => { if (o.isMesh) { o.material.dispose(); } });
   }
 
-  function setShadow(on) {
+  function applyShadowArea() {
+    if (!cityBounds) return;
+    if (shadowMode === 'low') {
+      // プレイヤー周辺だけ（位置はupdateShadowTargetが毎フレーム追従させる）
+      sun.shadow.camera.left = -25; sun.shadow.camera.right = 25;
+      sun.shadow.camera.top = 25; sun.shadow.camera.bottom = -25;
+    } else {
+      const r = cityBounds.r * 1.2;
+      sun.shadow.camera.left = -r; sun.shadow.camera.right = r;
+      sun.shadow.camera.top = r; sun.shadow.camera.bottom = -r;
+      sun.position.set(cityBounds.cx + 120, 180, cityBounds.cz + 80);
+      sun.target.position.set(cityBounds.cx, 0, cityBounds.cz);
+    }
+    sun.shadow.camera.far = 500;
+    sun.shadow.camera.updateProjectionMatrix();
+  }
+
+  function setMapSize(px) {
+    if (sun.shadow.mapSize.x === px) return;
+    sun.shadow.mapSize.set(px, px);
+    // 生成済みシャドウマップは古い解像度のまま使い回されるので作り直させる
+    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  }
+
+  function setShadowMode(mode) {
+    shadowMode = mode;
+    const on = mode === 'low' || mode === 'high';
     renderer.shadowMap.enabled = on;
     sun.castShadow = on;
+    if (on) setMapSize(mode === 'low' ? 1024 : 2048);
+    applyShadowArea();
     // shadowMap.enabled の切替はマテリアル再コンパイルが要る
     scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+  }
+
+  // lowモード: 影カメラをプレイヤーへ追従（main.jsのループから毎フレーム呼ばれる）
+  function updateShadowTarget(x, z) {
+    if (shadowMode !== 'low') return;
+    sun.position.set(x + 120, 180, z + 80);
+    sun.target.position.set(x, 0, z);
   }
 
   function resize() {
@@ -100,7 +129,7 @@ const ProtoViewer = (function () {
   function render() { renderer.render(scene, camera); }
 
   return {
-    init, showCity, setShadow, resize, render,
+    init, showCity, setShadowMode, updateShadowTarget, resize, render,
     get scene() { return scene; }, get camera() { return camera; }, get renderer() { return renderer; },
   };
 })();
