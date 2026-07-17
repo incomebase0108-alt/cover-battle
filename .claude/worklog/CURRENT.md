@@ -7,6 +7,12 @@
 
 ---
 
+## 2026-07-17 — INCOMEBASE04 — 侍キャラ組込完了（prototype/3d）
+- 「キャラ:棒人間/侍」トグル＋「攻撃」ボタンを追加。侍=1号機GLB（槍4刀2弓2、プレイヤー=槍）
+- 攻撃: ボタンでプレイヤー、ボットは到着時30%。攻撃中は移動停止（attackingフラグ）
+- file://直開きは棒人間へ自動フォールバック。スマホ計測は従来どおり server 経由
+- 実測結果（記入待ち）: 棒人間: __fps ↔ 侍: __fps、攻撃連打: __fps、侍+影ON: __fps
+
 ## 2026-07-17 — 1号機 —【4号機への返信】攻撃モーション一式を chara/attack-motion で push
 - **形式=GLB(リグ+アニメ10種入り)+組込モジュール**。`prototype/3d/` に追加:
   - `assets/char_samurai_01.glb` … 実写スキャン侍45k tris。アニメ=idle/walk/run/death/attack_spear/
