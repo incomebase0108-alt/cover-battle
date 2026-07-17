@@ -24,6 +24,7 @@ const ProtoViewer = (function () {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding; // r128既定はGLBテクスチャが暗く出る(1号機知見)
     stage.appendChild(renderer.domElement);
     scene.add(new THREE.AmbientLight(0xffffff, 0.52));
     sun = new THREE.DirectionalLight(0xfff2dc, 0.78);

@@ -11,6 +11,9 @@
   #toggles{position:fixed;top:8px;left:8px;display:flex;gap:6px;z-index:10;}
   #toggles button{padding:9px 11px;border:0;border-radius:8px;background:rgba(0,0,0,.55);color:#fff;font-size:13px;}
   #nowebgl{display:none;position:fixed;inset:0;background:#fff;color:#c00;padding:40px;font-size:18px;z-index:99;}
+  #btnAttack{position:fixed;right:24px;bottom:24px;width:84px;height:84px;border-radius:50%;border:0;background:rgba(180,40,40,.75);color:#fff;font-size:16px;z-index:10;}
+  #btnAttack:disabled{background:rgba(100,100,100,.35);color:rgba(255,255,255,.5);}
+  #toggles button:disabled{color:rgba(255,255,255,.45);}
 </style>
 </head>
 <body>
@@ -19,15 +22,20 @@
   <button id="btnShadow">影:OFF</button>
   <button id="btnDensity">密度:中</button>
   <button id="btnAnim">アニメ:ON</button>
+  <button id="btnChar" disabled>キャラ:読込中…</button>
 </div>
+<button id="btnAttack" disabled>攻撃</button>
 <div id="hud">FPS <span id="fpsval">--</span><br><span id="minfps">最低 --</span></div>
 <div id="nowebgl">WebGL が使えません。この端末では検証できません。</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="citygen.js"></script>
 <script src="proto-viewer.js"></script>
 <script src="stickman.js"></script>
 <script src="bots.js"></script>
 <script src="joystick.js"></script>
+<script src="samurai.js"></script>
 <script src="main.js"></script>
 </body>
 </html>
