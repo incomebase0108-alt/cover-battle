@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Cover Battle — LAN対戦 3D観戦 (Phase A)</title>
+  <link rel="stylesheet" href="css/style.css?v=55" />
+  <style>
+    /* 3D版: 2D版のDOM骨格は client.js が前提にするため残し、見た目だけ差し替える
+       （serialize-sync-review の注意: #game/#muteBtn/#lobby 等が無いと connect() 前に例外） */
+    #game { display: none; }                 /* 2D canvas は使わない（クリック等の前提だけ残す） */
+    #touchControls { display: none; }        /* Phase A は観戦のみ。操作UIは Phase B で復活 */
+    #stage3d { position: fixed; inset: 0; z-index: 0; }
+    #stage3d canvas { display: block; }
+    #hud3d {
+      position: fixed; top: 8px; left: 10px; z-index: 5; color: #fff;
+      font: bold 14px system-ui, sans-serif; text-shadow: 0 1px 3px #000;
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+    #hud3d button {
+      pointer-events: auto; padding: 4px 10px; border-radius: 8px; border: 1px solid #456;
+      background: rgba(13,17,23,0.75); color: #fff; font: bold 12px system-ui, sans-serif;
+    }
+    #hud3dStatus { color: #ffd24a; }
+    .hud { z-index: 6; }
+    #lobby { z-index: 10; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="stage3d"></div>
+    <div id="hud3d">
+      <span>3D観戦</span>
+      <span id="hud3dAlive">--</span>
+      <span id="hud3dFps">--</span>
+      <button id="btnView3d">視点:全体</button>
+      <button id="btnShadow3d">影:低</button>
+      <span id="hud3dStatus"></span>
+    </div>
+
+    <canvas id="game" width="960" height="600"></canvas>
+
+    <div class="hud" style="pointer-events:none;">
+      <div class="hud-row" style="justify-content:flex-end;">
+        <button id="btnCtrlSize" class="icon-btn touch-only" style="pointer-events:auto;" title="コントローラの大きさ">🕹️標準</button>
+        <button id="muteBtn" class="icon-btn" style="pointer-events:auto;">🔊</button>
+      </div>
+    </div>
+
+    <!-- Mobile touch controls（Phase Aでは非表示。client.jsのInput.initTouchの前提DOMとして残す） -->
+    <div id="touchControls" class="touch-controls">
+      <div id="joystick" class="joystick"><div id="knob" class="knob">移</div></div>
+      <div id="aimStickEl" class="joystick aimpad"><div id="aimKnob" class="knob aimknob">攻</div></div>
+      <div class="action-buttons">
+        <button id="btnAbility" class="act ability">🎯<small>特殊</small></button>
+        <button id="btnRally" class="act rally hidden">🚩<small>采配</small></button>
+        <button id="btnWeapon" class="act weapon">🔫<small>武器</small></button>
+        <button id="btnBomb" class="act bomb">💣<small>爆弾</small></button>
+      </div>
+    </div>
+
+    <!-- Lobby / character select（観戦だけなら閉じてよい。参加すればPhase Bで操作予定） -->
+    <div id="lobby" class="overlay">
+      <div class="panel">
+        <h1>LAN対戦 — 3D観戦</h1>
+        <p class="subtitle">Phase A: 試合を3Dで観戦できます（操作はまだ2D版で）。スロットを取らなくても観戦できます。</p>
+        <p><input id="nameInput" placeholder="名前" maxlength="12"
+             style="padding:8px 12px;border-radius:8px;border:1px solid #345;background:#0d1117;color:#fff;font-size:16px;" /></p>
+        <p id="netStatus" class="subtitle">サーバーに接続中…</p>
+        <div class="lobby-cols">
+          <div class="lobby-col"><h3 class="blue">青チーム</h3><div id="blueSlots" class="slot-list"></div></div>
+          <div class="lobby-col"><h3 class="red">赤チーム</h3><div id="redSlots" class="slot-list"></div></div>
+        </div>
+        <div id="diffSelect" class="difficulty-select">
+          <span class="diff-label">AI難易度</span>
+          <div id="diffButtons" class="diff-buttons"></div>
+        </div>
+        <div id="stageSelect" class="difficulty-select">
+          <span class="diff-label">ステージ</span>
+          <div id="stageButtons" class="diff-buttons stage-buttons"></div>
+        </div>
+        <p id="startNote" class="subtitle">観戦だけならこのまま「観戦をはじめる」を押してください。</p>
+        <button id="startMatchBtn" class="btn hidden">ゲーム開始</button>
+        <button id="spectateBtn" class="btn">観戦をはじめる</button>
+        <p class="subtitle" style="font-size:12px;">観戦操作：ドラッグ=視点回転 ・ ホイール=ズーム ・ 「視点」で追従キャラ切替</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/vector.js?v=55"></script>
+  <script src="js/config.js?v=55"></script>
+  <script src="js/classes.js?v=55"></script>
+  <script src="js/assets.js?v=55"></script>
+  <script src="js/audio.js?v=55"></script>
+  <script src="js/weapons.js?v=55"></script>
+  <script src="js/input.js?v=55"></script>
+  <script src="js/map.js?v=55"></script>
+  <script src="js/beast.js?v=55"></script>
+  <script src="js/chest.js?v=55"></script>
+  <script src="js/net/render.js?v=55"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+  <script src="prototype/3d/proto-viewer.js?v=1"></script>
+  <script src="prototype/3d/samurai.js?v=1"></script>
+  <script src="js/net/render3d.js?v=1"></script>
+
+  <script src="js/net/client.js?v=55"></script>
+  <script src="js/help.js?v=55"></script>
+  <script>
+    // 「観戦をはじめる」= スロットを取らずロビーを閉じるだけ（snapは全接続に届いている）
+    document.getElementById('spectateBtn').addEventListener('click', () => {
+      document.getElementById('lobby').classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
