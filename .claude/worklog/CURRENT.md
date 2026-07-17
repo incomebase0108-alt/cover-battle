@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-07-17 — 1号機 — 兵種量産完了: 8兵種を chara/troops でpush
+- **kind一覧(Samurai.KIND_NAMES)**: spear/katana/bow/rifle(侍モデル+武器) + daimyo/ninja/ronin/medic(専用モデル)
+- 新規アセット: char_{daimyo,ninja,ronin,medic}_01.glb + char_samurai_01.glb更新(鉄砲3種+kneel追加で14アニメ)
+  + weapon_matchlock_01.glb(火縄銃)。assetsは計9ファイル約13.5MB
+- API追加: `Samurai.act(g, clip)` = 任意の1発モーション(kneel全員/yell大名/throw忍者手裏剣/attack_combo等)。
+  既存API(load/create/animate/attack/setWeapon)は互換のまま。setWeaponはモデル違いはfalseを返す仕様
+- **【重要バグ修正】キャラの身長計測**: スキンメッシュのBox3はノード構造次第で嘘をつく+レスト姿勢の
+  骨高さはアニメ適用後と約2倍違う端末があった→**idleを1フレーム流してから頭頂ボーン
+  (mixamorigHeadTop_End)のワールドYで測る**方式に(描画と同一条件)。全8種で頭頂1.6m±0.08を実測確認
+- r128実機で8体同時表示+全種攻撃をスクショ検証済み。samurai_test.htmlで単体確認可(兵種/号令/手裏剣/膝つきボタン)
+- 大筒は設置物+発射エフェクト+弾道の設計が正解と考えており本組み設計で提案予定(キャラアニメではない)
+
 ## 2026-07-17 — INCOMEBASE04 —【号令】検証完了、本組みフェーズ開始
 - 星野さん判断で本組みGO（#3d戦国に分担投稿済み）
 - 1号機: mixerプロファイル継続／兵種量産(大名/忍者/浪人/衛生兵+火縄銃/大筒、samurai.jsと同流儀)／serialize同期データ点検(yaw/移動/攻撃/死亡)
