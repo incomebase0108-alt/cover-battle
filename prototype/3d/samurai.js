@@ -126,8 +126,14 @@ const Samurai = (function () {
   function play(sam, name, fade) {
     if (sam.cur === name) return;
     const a = sam.acts[name]; if (!a) return;
-    a.reset().fadeIn(fade == null ? 0.18 : fade).play();
-    if (sam.cur) sam.acts[sam.cur].fadeOut(fade == null ? 0.18 : fade);
+    const f = fade == null ? 0.18 : fade;
+    a.reset().fadeIn(f).play();
+    if (sam.cur) {
+      // フェードアウトだけだと重み0のアクションがmixerに残り評価され続ける(攻撃連打で蓄積)→完全停止
+      const prevName = sam.cur, prev = sam.acts[prevName];
+      prev.fadeOut(f);
+      setTimeout(() => { if (sam.cur !== prevName) prev.stop(); }, f * 1000 + 60);
+    }
     sam.cur = name;
   }
 
@@ -160,6 +166,7 @@ const Samurai = (function () {
         .multiplyScalar(sam.weapon.userData.holdShift * sam.weapon.userData.invScale);
       sam.flash.visible = false;
       a.fadeOut(0.15);
+      setTimeout(() => { if (sam.cur !== o.anim) a.stop(); }, 210);
       play(sam, prev || 'idle');
     };
     const onEnd = e => { if (e.action === a) finish(); };
@@ -168,7 +175,7 @@ const Samurai = (function () {
   }
 
   const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qc = new THREE.Quaternion();
-  const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3();
+  const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _vTip = new THREE.Vector3();
 
   function spearFx(g, sam) {
     const o = OFFSETS[sam.kind];
@@ -190,8 +197,9 @@ const Samurai = (function () {
     _v3.copy(_v1).applyQuaternion(_qc.copy(_qb).invert());
     w.position.copy(_v3).multiplyScalar((w.userData.holdShift + sl) * w.userData.invScale);
     if (sl > 0.08 * S) {
-      const tip = w.localToWorld(new THREE.Vector3(0, 0.43, 0));
-      sam.flash.position.copy(g.worldToLocal(tip));
+      _vTip.set(0, 0.43, 0);
+      w.localToWorld(_vTip);
+      sam.flash.position.copy(g.worldToLocal(_vTip));
       sam.flash.scale.setScalar(0.22 + sl * 0.5);
       sam.flash.material.opacity = Math.min(1, sl * 1.7 / S);
       sam.flash.visible = true;
