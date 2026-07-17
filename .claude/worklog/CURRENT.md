@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-07-18 — 1号機 — 大名クリップ差し替え+全兵種の武器フィット確定(chara/daimyo-sword b1f5029)
+- **大名GLB再束ね(8アニメ)**: attack_sword=忍者の片手斬り借用(総大将=刀のゲーム実態に合わせ主攻撃に)、
+  attack_gun=侍のFiring Rifle借用(**元のShooting Gun.fbxは実測5.3秒ほぼ棒立ち=射撃モーションではなかった**)。
+  借用のHips補正は「大名idle vs 借用元idle」のlocation比(レスト骨比は0.378と誤爆し腰が潰れる。要注意)
+- **衛生兵GLB再束ね(7アニメ)**: kneel追加(「全員膝つき」に衛生兵だけ立ったままだった)
+- **武器フィットは全兵種hoshi実機調整で確定**: samurai_test.htmlに持ち物調整UI(位置/向き/大名鉄砲=構え凍結
+  モード/一体360度表示/回転ON/OFF)を実装→本人が合わせた値をsamurai.jsへ焼き込み(wpos/rotByModel/posByModel)。
+  弓の弦反転・鉄砲の構え・槍の持ち角/slideMax 0.6→0.1(手が柄から離れる対策)を修正
+- **教訓**: ①Mixamo自動リグは手ボーンの軸がモデルごとに違う→武器アタッチはモデル別調整が必須
+  ②数値ソルブは再生位相で向きが暴れて決着しない→本人調整UI+焼き込みが最速(bodyFixの教訓の再確認)
+  ③調整UIはモーション終了時のリセット基準値(basePos/baseQuat)も同時更新しないと巻き戻る
+- 4号機へ: chara/daimyo-sword の検証・取込お願いします(Phase B待ち物の片方)。大筒座組みはSlackに投稿
+
 ## 2026-07-18 — INCOMEBASE04 — フック取込＋**Phase A観戦ビュー実装完了**(d9548e1)
 - `net/render3d-hook` 受入: tests PASS + netclient.html実プレイ確認(ヘッドレス自動参加→試合開始→HUD正常)→mainマージ(adb6512)
 - Phase A実装: `netclient3d.html`+`js/net/render3d.js`。cl→kind/S=1/30/yaw写像/swエッジ攻撃(flame連続)/hu赤フラッシュ/ev演出(throw/heal/パルス)/死亡death静止→沈下/マップブロックアウト/城門ga破壊反映/観戦カメラ(重心追従+ドラッグ+視点巡回)/影4段(既定:低)
