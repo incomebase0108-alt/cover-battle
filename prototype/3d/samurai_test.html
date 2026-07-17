@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>samurai.js 単体テスト</title>
+<!-- samurai.js(1号機担当: 実写スキャン侍+武器+攻撃モーション)の単体確認ページ。
+     本組込は index.html 側で Stickman.create → Samurai.create に差し替える想定。 -->
+<style>
+body{margin:0;overflow:hidden;background:#222;font-family:Meiryo,sans-serif}
+#bar{position:fixed;top:8px;left:8px;display:flex;gap:6px;z-index:2}
+#bar button{border:0;border-radius:8px;padding:10px 14px;font-size:14px;font-weight:700;
+  background:rgba(20,24,34,.7);color:#fff}
+#msg{position:fixed;bottom:8px;left:8px;color:#fff;font-size:13px;text-shadow:0 1px 2px #000}
+</style>
+</head>
+<body>
+<div id="bar">
+  <button data-k="spear">槍 攻撃</button>
+  <button data-k="katana">刀 攻撃</button>
+  <button data-k="bow">弓 攻撃</button>
+  <button id="walk">歩行 ON/OFF</button>
+</div>
+<div id="msg">読み込み中…</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script src="samurai.js"></script>
+<script>
+'use strict';
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8fa0b8);
+const cam = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 100);
+cam.position.set(0, 2.2, 6); cam.lookAt(0, 1.0, 0);
+const rend = new THREE.WebGLRenderer({antialias:true});
+rend.setPixelRatio(Math.min(devicePixelRatio||1, 2));
+rend.setSize(innerWidth, innerHeight);
+document.body.appendChild(rend.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x667766, 1.1));
+const sun = new THREE.DirectionalLight(0xfff3e0, 1.2); sun.position.set(6,10,4); scene.add(sun);
+scene.add(new THREE.Mesh(new THREE.PlaneGeometry(40,40).rotateX(-Math.PI/2),
+  new THREE.MeshLambertMaterial({color:0x7d8f5c})));
+scene.add(new THREE.GridHelper(40, 40, 0x99aa99, 0x778877));
+
+const units = {};
+let walking = false;
+Samurai.load('assets/', () => {
+  ['spear','katana','bow'].forEach((k, i) => {
+    const g = Samurai.create(k);
+    g.position.x = (i-1) * 1.8;
+    scene.add(g);
+    units[k] = g;
+  });
+  document.getElementById('msg').textContent =
+    '読込OK: 身長1.6m/正面+Z/足元原点。ボタンで攻撃(槍は突きの伸び+閃光付き)';
+  window.READY = true;
+});
+document.querySelectorAll('[data-k]').forEach(b =>
+  b.onclick = () => units[b.dataset.k] && Samurai.attack(units[b.dataset.k]));
+document.getElementById('walk').onclick = () => { walking = !walking; };
+addEventListener('resize', () => {
+  cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix();
+  rend.setSize(innerWidth, innerHeight);
+});
+(function loop(){
+  requestAnimationFrame(loop);
+  const t = performance.now()/1000;
+  for (const k in units) Samurai.animate(units[k], t, walking);
+  rend.render(scene, cam);
+})();
+</script>
+</body>
+</html>

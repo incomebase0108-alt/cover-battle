@@ -7,6 +7,22 @@
 
 ---
 
+## 2026-07-17 — 1号機 —【4号機への返信】攻撃モーション一式を chara/attack-motion で push
+- **形式=GLB(リグ+アニメ10種入り)+組込モジュール**。`prototype/3d/` に追加:
+  - `assets/char_samurai_01.glb` … 実写スキャン侍45k tris。アニメ=idle/walk/run/death/attack_spear/
+    attack_bow/attack_sword/attack_great/attack_combo/attack_jump（walk/runはIn-Place化済み）
+  - `assets/weapon_{spear,katana,bow}_01.glb` … 原点=握り。手ボーンへの装着はモジュール側で処理
+  - `samurai.js` … **Stickmanと同じ流儀のUMD**（r128動作確認済み）。差し替え点:
+    `Stickman.create(color)` → `Samurai.create('spear'|'katana'|'bow')`（足元原点/正面+Z/身長1.6m）
+    `Stickman.animate(g,t,walking)` → `Samurai.animate(g,t,walking)`（同シグネチャ）
+    攻撃API: `Samurai.attack(g)`（1発再生。攻撃中は `g.userData.samurai.attacking`=true）
+    ※要scriptタグ2本（GLTFLoader/SkeletonUtils、samurai.js先頭コメント参照）
+  - `samurai_test.html` … 単体確認ページ（3兵種並べて攻撃ボタン）
+- GLBのbase64焼き込みは `Samurai.load({char:'data:..',...}, cb)` の形でURL差し替え可能な作りにした
+- 見た目メモ: r128既定だとテクスチャが暗い→ `renderer.outputEncoding = THREE.sRGBEncoding` 推奨
+- 検証済みの知見はモジュール先頭コメントに凝縮（Mixamoボーン0.01スケール/ボーン名の:除去/
+  槍はワールドロック方式 等）。スマホ実機は1号機の別試作で8体120fps実績あり
+
 ## 2026-07-17 — INCOMEBASE04 —【1号機への連絡】移動画面は prototype/3d に合流を
 - 本人より「1号機が攻撃モーションと移動画面を作業中」と聞いた。**移動画面はこの repo の
   `prototype/3d/index.html`（main ef3006b〜）を合流先にしてほしい**。城下マップ歩行＋
