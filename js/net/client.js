@@ -104,6 +104,10 @@
       if (!Net.buf) Net.buf = [];
       Net.buf.push({ rt: nowMs(), s: m.s });
       if (Net.buf.length > 8) Net.buf.shift();
+      // スナップ間イベント(s.ev)は「受信時に1回だけ」外部レンダラーへ渡す。補間ビューから
+      // 拾うと同じスナップが複数フレーム描かれて重複発火するため、ここが唯一の配達点。
+      const R = window.NetRenderer;
+      if (R && R.events && m.s.ev && m.s.ev.length) R.events(m.s.ev, Net);
     } else if (m.type === "end") {
       Net.started = false;
       // 勝者チーム（win=true ＝ 青の勝ち）と、自分の勝敗をはっきり出す。
@@ -404,7 +408,14 @@
   }
 
   function frame(now) {
-    if (Net.joined && Net.snap && Net.map) {
+    // 描画差し替えフック：netclient3d.html 等が window.NetRenderer を定義していれば
+    // 全描画（シーン/カメラ/HUD）をそちらへ委譲する。未定義（=既存の netclient.html）
+    // なら従来の2D描画がそのまま動く＝2D版の挙動は不変。
+    // 3D側は「未参加でも描く」（観戦ビュー。サーバはsnapを全接続に配信している）。
+    const R = window.NetRenderer;
+    if (R) {
+      if (Net.snap && Net.map) R.frame(interpSnap(now), Net, now);
+    } else if (Net.joined && Net.snap && Net.map) {
       const view = interpSnap(now);
       const me = view.u[Net.myIndex];
       if (me) {

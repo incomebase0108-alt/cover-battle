@@ -34,6 +34,7 @@ class Bullet {
     this.blastDamage = opts.blastDamage || 0;
     this.blastRadius = opts.blastRadius || 0;
     this.rps = opts.rps || null;       // 三角相性属性（弓=bow 等）。命中時に相手の武器と比較
+    this.wkey = opts.wkey || null;     // 発射元の武器キー（LANスナップで矢/弾の描き分けに使う）
     this.maxLife = this.life;
     this._hit = this.pierce ? [] : null; // units already hit, so pierce hits each once
     this.dead = false;
@@ -509,6 +510,7 @@ class Unit {
       } else {
         return;
       }
+      if (game.pushNetEvent) game.pushNetEvent({ e: "abl", i: game.units.indexOf(this), k: c.ability });
       if (game.sound && game.sound.reload) game.sound.reload();
       return;
     }
@@ -543,6 +545,7 @@ class Unit {
       return; // unknown / no entity available
     }
     this.abilityCd = c.abilityCd || 9000;
+    if (game.pushNetEvent) game.pushNetEvent({ e: "abl", i: game.units.indexOf(this), k: c.ability });
     if (game.sound && game.sound.reload) game.sound.reload();
   }
 
@@ -553,6 +556,7 @@ class Unit {
     if (this.cls !== "gunshi" || !this.alive || this.rallyCd > 0) return;
     this.rallyMs = ABILITY.rallyMs;
     this.rallyCd = ABILITY.rallyCd;
+    if (game.pushNetEvent) game.pushNetEvent({ e: "abl", i: game.units.indexOf(this), k: "rally" });
     if (game.sound && game.sound.reload) game.sound.reload();
   }
 
@@ -727,6 +731,7 @@ class Unit {
       game.bullets.push(new Bullet(bx, by, dx, dy, this.team, {
         damage, speed, life, pierce: w.pierce, breakRock: w.breakRock || w.fire, fire: w.fire,
         ball: w.ball, explode: w.explode, blastDamage: w.blastDamage, blastRadius: w.blastRadius, rps: w.rps,
+        wkey: this.weaponKey,
       }));
     }
 
