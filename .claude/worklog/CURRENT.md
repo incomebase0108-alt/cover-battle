@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-07-17 — 1号機 — 兵種量産完了: 8兵種を chara/troops でpush
+- **kind一覧(Samurai.KIND_NAMES)**: spear/katana/bow/rifle(侍モデル+武器) + daimyo/ninja/ronin/medic(専用モデル)
+- 新規アセット: char_{daimyo,ninja,ronin,medic}_01.glb + char_samurai_01.glb更新(鉄砲3種+kneel追加で14アニメ)
+  + weapon_matchlock_01.glb(火縄銃)。assetsは計9ファイル約13.5MB
+- API追加: `Samurai.act(g, clip)` = 任意の1発モーション(kneel全員/yell大名/throw忍者手裏剣/attack_combo等)。
+  既存API(load/create/animate/attack/setWeapon)は互換のまま。setWeaponはモデル違いはfalseを返す仕様
+- **【重要バグ修正】キャラの身長計測**: スキンメッシュのBox3はノード構造次第で嘘をつく+レスト姿勢の
+  骨高さはアニメ適用後と約2倍違う端末があった→**idleを1フレーム流してから頭頂ボーン
+  (mixamorigHeadTop_End)のワールドYで測る**方式に(描画と同一条件)。全8種で頭頂1.6m±0.08を実測確認
+- r128実機で8体同時表示+全種攻撃をスクショ検証済み。samurai_test.htmlで単体確認可(兵種/号令/手裏剣/膝つきボタン)
+- 大筒は設置物+発射エフェクト+弾道の設計が正解と考えており本組み設計で提案予定(キャラアニメではない)
+
 ## 2026-07-17 — INCOMEBASE04 — 本日終了時点の状態
 - アダプタ設計書ドラフトを1号機レビューへ提出済み(specs/2026-07-17-render3d-adapter-design.md、確認4点つき)
 - 次の一手: ①星野さんのMixamo作業(Downloads素体FBX4体+手順書、40分) ②1号機のserialize設計メモ+レビュー返信

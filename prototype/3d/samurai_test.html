@@ -16,9 +16,18 @@ body{margin:0;overflow:hidden;background:#222;font-family:Meiryo,sans-serif}
 </head>
 <body>
 <div id="bar">
-  <button data-k="spear">槍 攻撃</button>
-  <button data-k="katana">刀 攻撃</button>
-  <button data-k="bow">弓 攻撃</button>
+  <button data-k="spear">槍</button>
+  <button data-k="katana">刀</button>
+  <button data-k="bow">弓</button>
+  <button data-k="rifle">鉄砲</button>
+  <button data-k="daimyo">大名</button>
+  <button data-k="ninja">忍者</button>
+  <button data-k="ronin">浪人</button>
+  <button data-k="medic">衛生兵</button>
+  <button data-a="daimyo:yell">号令</button>
+  <button data-a="ninja:throw">手裏剣</button>
+  <button data-a="ronin:attack_combo">連撃</button>
+  <button id="kneel">全員膝つき</button>
   <button id="walk">歩行 ON/OFF</button>
 </div>
 <div id="msg">読み込み中…</div>
@@ -31,7 +40,7 @@ body{margin:0;overflow:hidden;background:#222;font-family:Meiryo,sans-serif}
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8fa0b8);
 const cam = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.1, 100);
-cam.position.set(0, 2.2, 6); cam.lookAt(0, 1.0, 0);
+cam.position.set(0, 2.4, 9); cam.lookAt(0, 1.0, 0);
 const rend = new THREE.WebGLRenderer({antialias:true});
 rend.setPixelRatio(Math.min(devicePixelRatio||1, 2));
 rend.setSize(innerWidth, innerHeight);
@@ -42,21 +51,27 @@ scene.add(new THREE.Mesh(new THREE.PlaneGeometry(40,40).rotateX(-Math.PI/2),
   new THREE.MeshLambertMaterial({color:0x7d8f5c})));
 scene.add(new THREE.GridHelper(40, 40, 0x99aa99, 0x778877));
 
-const units = {};
+const units = {}; window.units = units;
 let walking = false;
 Samurai.load('assets/', () => {
-  ['spear','katana','bow'].forEach((k, i) => {
+  Samurai.KIND_NAMES.forEach((k, i) => {
     const g = Samurai.create(k);
-    g.position.x = (i-1) * 1.8;
+    g.position.x = (i - (Samurai.KIND_NAMES.length-1)/2) * 1.6;
     scene.add(g);
     units[k] = g;
   });
   document.getElementById('msg').textContent =
-    '読込OK: 身長1.6m/正面+Z/足元原点。ボタンで攻撃(槍は突きの伸び+閃光付き)';
+    '読込OK: 8兵種。兵種ボタン=攻撃 / 号令・手裏剣・連撃・膝つき=専用モーション';
   window.READY = true;
 });
 document.querySelectorAll('[data-k]').forEach(b =>
   b.onclick = () => units[b.dataset.k] && Samurai.attack(units[b.dataset.k]));
+document.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+  const [k, clip] = b.dataset.a.split(':');
+  units[k] && Samurai.act(units[k], clip);
+});
+document.getElementById('kneel').onclick = () =>
+  Object.values(units).forEach(g => Samurai.act(g, 'kneel'));
 document.getElementById('walk').onclick = () => { walking = !walking; };
 addEventListener('resize', () => {
   cam.aspect = innerWidth/innerHeight; cam.updateProjectionMatrix();
