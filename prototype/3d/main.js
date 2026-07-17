@@ -17,6 +17,25 @@
   let bounds = null, player = null, units = [], bots = [];
   let camYaw = 0, camPitch = 0.35;
 
+  let charMode = 'stick'; // 'stick' | 'samurai'（トグルで切替。侍はGLB読込成功後のみ）
+  let samuraiReady = false;
+  const SAMURAI_KINDS = ['spear', 'spear', 'katana', 'bow', 'spear', 'katana', 'bow', 'spear']; // 槍4刀2弓2、先頭=プレイヤー
+
+  // 侍GLBの読込。HTTP経由のみ成功する（file://直開きはXHR不可→棒人間のままフォールバック）
+  const charBtn = document.getElementById('btnChar');
+  try {
+    Samurai.load('assets/', () => {
+      samuraiReady = true;
+      charBtn.disabled = false;
+      charBtn.textContent = 'キャラ:棒人間';
+    });
+  } catch (err) {
+    console.error('侍GLBの読込開始に失敗', err);
+  }
+  setTimeout(() => {
+    if (!samuraiReady) charBtn.textContent = 'キャラ:棒人間(GLB未読込)';
+  }, 15000);
+
   function setDensity(level) {
     const built = CityGen.buildPrims(CityGen.generate(Object.assign({ seed: SEED }, SENGOKU, DENSITY[level])));
     ProtoViewer.showCity(built);
@@ -26,19 +45,31 @@
     ProtoViewer.render(); // 同期1フレーム（ヘッドレス検証でも写る）
   }
 
-  function spawnUnits() {
-    // 棒人間は1体ごとに専用ジオメトリ/マテリアルを持つ（viewer側の共有ジオメトリとは逆のルール）ので、
-    // ここでdisposeしないと密度変更のたびにGPUリソースが漏れる
-    for (const u of units) {
-      u.mesh.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  function disposeUnit(u) {
+    if (u.chartype === 'samurai') {
+      // 侍はSkeletonUtilsクローン＝ジオメトリ/マテリアルを全個体で共有。disposeすると他個体が壊れる
       ProtoViewer.scene.remove(u.mesh);
+      return;
     }
+    // 棒人間は1体ごとに専用ジオメトリ/マテリアル（viewer側の共有ジオメトリとは逆のルール）ので、
+    // ここでdisposeしないと切替のたびにGPUリソースが漏れる
+    u.mesh.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    ProtoViewer.scene.remove(u.mesh);
+  }
+
+  function spawnUnits() {
+    for (const u of units) disposeUnit(u);
     units = []; bots = [];
     for (let i = 0; i < 8; i++) {
-      const color = i < 4 ? 0x3a6ea5 : 0xa53a3a;
       const a = i / 8 * Math.PI * 2;
       const u = Bots.makeUnit(bounds.cx + Math.cos(a) * 6, bounds.cz + Math.sin(a) * 6);
-      u.mesh = Stickman.create(color);
+      if (charMode === 'samurai') {
+        u.mesh = Samurai.create(SAMURAI_KINDS[i]);
+        u.chartype = 'samurai';
+      } else {
+        u.mesh = Stickman.create(i < 4 ? 0x3a6ea5 : 0xa53a3a);
+        u.chartype = 'stick';
+      }
       u.mesh.position.set(u.x, 0, u.z);
       ProtoViewer.scene.add(u.mesh);
       units.push(u);
@@ -116,7 +147,8 @@
     for (const u of units) {
       u.mesh.position.set(u.x, 0, u.z);
       u.mesh.rotation.y = u.yaw;
-      Stickman.animate(u.mesh, now, animOn && u.moving);
+      if (u.chartype === 'samurai') Samurai.animate(u.mesh, now, animOn && u.moving);
+      else Stickman.animate(u.mesh, now, animOn && u.moving);
     }
     updateCamera();
     ProtoViewer.render();
@@ -163,7 +195,17 @@
     fpsResetMin();
   });
 
+  charBtn.addEventListener('click', () => {
+    if (!samuraiReady) return;
+    charMode = charMode === 'stick' ? 'samurai' : 'stick';
+    charBtn.textContent = 'キャラ:' + (charMode === 'samurai' ? '侍' : '棒人間');
+    document.getElementById('btnAttack').disabled = charMode !== 'samurai';
+    spawnUnits();
+    ProtoViewer.render();
+    fpsResetMin();
+  });
+
   loop(0);
 
-  window.__proto = { get units() { return units; }, get player() { return player; }, setDensity };
+  window.__proto = { get units() { return units; }, get player() { return player; }, setDensity, get charMode() { return charMode; } };
 })();
