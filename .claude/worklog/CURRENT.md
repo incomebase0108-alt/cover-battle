@@ -7,6 +7,13 @@
 
 ---
 
+## 2026-07-18 — INCOMEBASE04 — フック取込＋**Phase A観戦ビュー実装完了**(d9548e1)
+- `net/render3d-hook` 受入: tests PASS + netclient.html実プレイ確認(ヘッドレス自動参加→試合開始→HUD正常)→mainマージ(adb6512)
+- Phase A実装: `netclient3d.html`+`js/net/render3d.js`。cl→kind/S=1/30/yaw写像/swエッジ攻撃(flame連続)/hu赤フラッシュ/ev演出(throw/heal/パルス)/死亡death静止→沈下/マップブロックアウト/城門ga破壊反映/観戦カメラ(重心追従+ドラッグ+視点巡回)/影4段(既定:低)
+- 検証: **2D自動ホスト+3D観戦の同時ヘッドレスで実試合を40秒観戦**、JSエラー0・HUD/リング/地形/ユニット全部描画。ヘッドレスは4fps(swiftshader)なので実測はGPU/スマホ実機で
+- 発見: ロビーは16人(8v8)構成。視点巡回はview.u.lengthで上限を取るよう対応済み
+- 次の一手: ①スマホ実機で観戦fps実測(server起動→スマホでnetclient3d.html) ②S=1/30とカメラ初期値の本人合意(ブロックアウトのスクショ確認) ③1号機のdaimyo刀クリップ+大筒座組み提案待ち→Phase B(操作)設計へ
+
 ## 2026-07-18 — 1号機 — serialize点検完了＋アダプタ設計レビュー回答（フックは実装で回答）
 - 設計書レビュー: **承認・Phase A着手OK**。回答詳細= `docs/superpowers/specs/2026-07-18-serialize-sync-review.md`
 - 重要な発見: **swは射撃でもセットされる**(tryShoot)→sw立ち上がりエッジ+wで攻撃種別まで確定。
