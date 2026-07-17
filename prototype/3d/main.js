@@ -109,6 +109,11 @@
   window.addEventListener('mouseup', () => { mouseLook = false; });
 
   function movePlayer(dt) {
+    // 攻撃モーション中は足を止める（1号機API: attackingフラグ）
+    if (player.chartype === 'samurai' && player.mesh.userData.samurai && player.mesh.userData.samurai.attacking) {
+      player.moving = false;
+      return;
+    }
     const v = Joystick.getVector(); // dy<0 = 前
     const len = Math.hypot(v.dx, v.dy);
     player.moving = len > 0.15;
@@ -143,6 +148,14 @@
     lastT = t;
     movePlayer(dt);
     Bots.update(bots, bounds, dt, Math.random);
+    if (charMode === 'samurai') {
+      // 目標到着の瞬間(moving true→false)に30%で攻撃。再生中は重ねない
+      for (const b of bots) {
+        const sam = b.mesh.userData.samurai;
+        if (sam && !sam.attacking && b.prevMoving && !b.moving && Math.random() < 0.3) Samurai.attack(b.mesh);
+        b.prevMoving = b.moving;
+      }
+    }
     const now = t / 1000;
     for (const u of units) {
       u.mesh.position.set(u.x, 0, u.z);
@@ -203,6 +216,12 @@
     spawnUnits();
     ProtoViewer.render();
     fpsResetMin();
+  });
+
+  document.getElementById('btnAttack').addEventListener('click', () => {
+    if (charMode !== 'samurai') return;
+    Samurai.attack(player.mesh);
+    fpsResetMin(); // 攻撃再生中のfpsを取り直す
   });
 
   loop(0);
