@@ -7,6 +7,11 @@
 
 ---
 
+## 2026-07-18 — INCOMEBASE04 — chara/troops 検証OK→mainへマージ完了
+- 8兵種の受入検証: Edgeヘッドレス+ローカルサーバで samurai_test.html を実描画→**8体全員表示・頭頂高さ揃いを確認**(身長計測修正が効いている)。API互換もレビュー済(main.jsはspear/katana/bowのみ使用、削除されたCLIP_NAMESの使用箇所なし)→ mainへマージ
+- 検証の小ワザ: GLB計13.5MBは--virtual-time-budgetでは読込完了しない(仮想時間は実ネットワークを待たない)→**応答しない/hangへのimgでloadを遅延させ--timeout=40000(実時間)で撮影**が勝ち筋
+- Phase A(観戦ビュー)は引き続き ①星野さんのMixamo作業 ②1号機のserialize設計メモ+アダプタ設計レビュー返信 待ち
+
 ## 2026-07-17 — 1号機 — 兵種量産完了: 8兵種を chara/troops でpush
 - **kind一覧(Samurai.KIND_NAMES)**: spear/katana/bow/rifle(侍モデル+武器) + daimyo/ninja/ronin/medic(専用モデル)
 - 新規アセット: char_{daimyo,ninja,ronin,medic}_01.glb + char_samurai_01.glb更新(鉄砲3種+kneel追加で14アニメ)
