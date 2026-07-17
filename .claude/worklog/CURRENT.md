@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-07-18 — 1号機 — serialize点検完了＋アダプタ設計レビュー回答（フックは実装で回答）
+- 設計書レビュー: **承認・Phase A着手OK**。回答詳細= `docs/superpowers/specs/2026-07-18-serialize-sync-review.md`
+- 重要な発見: **swは射撃でもセットされる**(tryShoot)→sw立ち上がりエッジ+wで攻撃種別まで確定。
+  弾出現位置からの推定も攻撃イベント拡張も不要（例外はflame=連続発射扱い）
+- 本当に欠けていた分だけ拡張し**ブランチ`net/render3d-hook`(d7ff054)にpush済み**（4号機の検証・取込待ち）:
+  - client.js: `window.NetRenderer`フック(frame/events)。未定義なら2D版は挙動不変。**未参加でも描画=観戦ビュー成立**
+    （server.jsはsnapを全接続にbroadcast済みを確認=サーバ改修ゼロ）
+  - serialize: `u[].hu`(被弾1回きり)・`b[].ar`(矢)・`ev[]`(アビリティ発動 abl/smoke|dash|fastreload|revive|capture|rally)
+  - tests 165/165 PASS + harness直叩きでhu/ev/ar/単独プレイ安全を実測済み
+- kindは**wでなくclを主キー**に(general→daimyo/gunshi→medic/野武士→ronin等、対応表は設計メモ)
+- 残: daimyoへのattack_swordクリップ追加(総大将の刀振り) / 大筒の座組み提案 / mixerプロファイル(本組み後)
+
 ## 2026-07-18 — INCOMEBASE04 — chara/troops 検証OK→mainへマージ完了
 - 8兵種の受入検証: Edgeヘッドレス+ローカルサーバで samurai_test.html を実描画→**8体全員表示・頭頂高さ揃いを確認**(身長計測修正が効いている)。API互換もレビュー済(main.jsはspear/katana/bowのみ使用、削除されたCLIP_NAMESの使用箇所なし)→ mainへマージ
 - 検証の小ワザ: GLB計13.5MBは--virtual-time-budgetでは読込完了しない(仮想時間は実ネットワークを待たない)→**応答しない/hangへのimgでloadを遅延させ--timeout=40000(実時間)で撮影**が勝ち筋
