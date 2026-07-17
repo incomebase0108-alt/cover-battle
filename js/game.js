@@ -182,18 +182,25 @@ class Game {
   serialize() {
     const half = (h, max) => Math.max(0, h / max);
     return {
-      u: this.units.map((u, i) => ({
+      u: this.units.map((u, i) => {
+        // 被弾フラグ: 前回スナップからHPが減っていたら1（3D側の赤フラッシュ用）。
+        // クライアント側のh減少エッジ検出は補間や途中参加で取りこぼすため、サーバ側で確定させる。
+        const hu = u._sentHp != null && u.hp < u._sentHp - 0.01 ? 1 : 0;
+        u._sentHp = u.hp;
+        return {
         i, x: Math.round(u.x), y: Math.round(u.y), a: +u.aim.toFixed(2),
         t: u.team === "blue" ? 0 : 1, h: Math.round(u.hp), al: u.alive ? 1 : 0,
         n: u.name, w: u.weaponKey, mv: u.movingTimer > 0 ? 1 : 0,
         cl: u.cls, mh: u.maxHp, dn: u.downed ? 1 : 0,
         am: u.ammo, mg: u.magSizeVal(), rl: u.reloading ? 1 : 0,
         nr: u.weapon().noReload ? 1 : 0, // 装填不要（刀/弓）＝HUDで弾を出さない
-        sw: u.swingMs > 0 ? Math.round(u.swingMs) : 0, // 刀の振り残り時間（ms）
+        sw: u.swingMs > 0 ? Math.round(u.swingMs) : 0, // 攻撃モーション残り時間ms（近接=振り/射撃=反動）
         st: u.maxStamina ? +(u.stamina / u.maxStamina).toFixed(2) : 1, // 体力(0..1)
         bf: u.buffed ? (u.rallied ? 2 : 1) : 0, // 軍師の強化中（1=オーラ/2=采配。描画で光輪）
-      })),
-      b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0, bl: b.ball ? 1 : 0, br: b.ball ? Math.round(b.radius) : 0 })),
+        hu, // このスナップ間に被弾したか（0/1）
+        };
+      }),
+      b: this.bullets.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), t: b.team === "blue" ? 0 : 1, f: b.fire ? 1 : 0, bl: b.ball ? 1 : 0, br: b.ball ? Math.round(b.radius) : 0, ar: (b.wkey === "yumi" || b.wkey === "piercer") ? 1 : 0 })),
       bo: this.bombs.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), e: b.exploded ? 1 : 0, fl: Math.round(b.flash), dr: b.drawRadius ? Math.round(b.drawRadius) : 0 })),
       c: this.chests.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), o: c.opened ? 1 : 0 })),
       kg: (this.kegs || []).filter((k) => !k.dead).map((k) => ({ x: Math.round(k.x), y: Math.round(k.y) })),
@@ -206,7 +213,25 @@ class Game {
       al: { b: this.aliveCount("blue"), r: this.aliveCount("red") },
       rush: this.rushMode ? 1 : 0,
       gen: { b: this.generalStatus("blue"), r: this.generalStatus("red") }, // 大将状態 0健在/1危機/2討死
+      ev: this._drainNetEvents(), // このスナップ間の1回きりイベント（アビリティ発動等）
     };
+  }
+
+  // --- スナップ間イベント（LAN用） -------------------------------------------
+  // 状態フラグでは表現できない「発動した瞬間」をクライアントに1回だけ届ける。
+  // 現在の種別: { e:"abl", i:<unitsのindex>, k:<ability名|"rally"> }
+  // serverMode のときだけ蓄積（単独プレイでは serialize が呼ばれず溜まり続けるため）。
+  pushNetEvent(ev) {
+    if (!this.serverMode) return;
+    if (!this.netEvents) this.netEvents = [];
+    this.netEvents.push(ev);
+    if (this.netEvents.length > 64) this.netEvents.shift(); // 暴走時の保険
+  }
+
+  _drainNetEvents() {
+    const e = this.netEvents || [];
+    this.netEvents = [];
+    return e;
   }
 
   // Mid-field objectives: one neutral control point + treasure chests at
