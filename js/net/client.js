@@ -61,6 +61,19 @@
     Sound.start();
   });
 
+  // 3D入口（netclient3d.html）向けの読み取り＋開始API。公開するだけで2D版の挙動は変えない。
+  // 背景: サーバは「ホストなら」開始を受理する（スロット取得は不要）が、ロビーUIは joined も
+  // 条件にしているため、観戦だけで入った人はホストでも試合を始められず、駒が止まったままになる。
+  // それに気づかず fps を測ると無効な数字が出る（実際に起きた）ので、観戦入口から始められるようにする。
+  window.NetControl = {
+    isHost: () => Net.myId != null && Net.myId === Net.host,
+    isStarted: () => !!Net.started,
+    isJoined: () => !!Net.joined,
+    start() {
+      if (Net.ws && Net.ws.readyState === 1) Net.ws.send(JSON.stringify({ type: "start" }));
+    },
+  };
+
   function connect() {
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${proto}://${location.host}`);

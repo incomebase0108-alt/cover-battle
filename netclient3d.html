@@ -35,6 +35,7 @@
       <span id="hud3dFps">--</span>
       <button id="btnView3d">視点:全体</button>
       <button id="btnShadow3d">影:低</button>
+      <button id="btnLobby3d" class="hidden">ロビー</button>
       <span id="hud3dStatus"></span>
     </div>
 
@@ -109,10 +110,33 @@
   <script src="js/net/client.js?v=55"></script>
   <script src="js/help.js?v=55"></script>
   <script>
-    // 「観戦をはじめる」= スロットを取らずロビーを閉じるだけ（snapは全接続に届いている）
-    document.getElementById('spectateBtn').addEventListener('click', () => {
-      document.getElementById('lobby').classList.add('hidden');
+    // 「観戦をはじめる」= スロットを取らず観戦に入る。スマホ単体でもこれだけで完結させる。
+    //  - 自分がホストでまだ試合が始まっていなければ開始も要求する（誰も始めないと駒が止まったまま）
+    //  - client.js は lobby 通知のたびに「試合中 かつ 参加済み」でないとロビーを再表示するので、
+    //    観戦中はこちらで閉じ続ける（参加していない観戦者はロビーを閉じられないため）
+    //  - 試合が終わったら次を自動で開始する。計測中に駒が止まらない＝fpsが無効にならない
+    const lobbyEl = document.getElementById('lobby');
+    const spectateBtn = document.getElementById('spectateBtn');
+    let spectating = false;
+    spectateBtn.addEventListener('click', () => {
+      spectating = true;
+      lobbyEl.classList.add('hidden');
     });
+    const lobbyBtn = document.getElementById('btnLobby3d');
+    lobbyBtn.addEventListener('click', () => {          // スロットを取りたくなったら戻れる
+      spectating = false;
+      lobbyEl.classList.remove('hidden');
+    });
+    setInterval(() => {
+      const C = window.NetControl;
+      if (!C) return;
+      spectateBtn.textContent = (C.isHost() && !C.isStarted())
+        ? '試合を開始して観戦する' : '観戦をはじめる';
+      lobbyBtn.classList.toggle('hidden', !spectating);
+      if (!spectating) return;
+      lobbyEl.classList.add('hidden');
+      if (C.isHost() && !C.isStarted()) C.start();       // 開始・試合終了後の再開始をまとめて担う
+    }, 500);
   </script>
 </body>
 </html>
