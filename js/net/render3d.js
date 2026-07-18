@@ -463,8 +463,10 @@
     if (tb) tb.textContent = on ? '操作:自分' : '操作:観戦';
     const ch = document.getElementById('crosshair3d');
     if (ch) ch.style.display = on ? 'block' : 'none';
-    const tc = document.getElementById('touchControls');   // スマホの移動スティックを出す（照準はカメラ）
-    if (tc) tc.style.display = on ? '' : 'none';
+    // スマホの移動スティックを出す（照準はカメラなので「攻」は発砲トリガーとして働く）。
+    // '' に戻すとこのページの `#touchControls { display:none }` が復活するので block を明示する
+    const tc = document.getElementById('touchControls');
+    if (tc) tc.style.display = on ? 'block' : 'none';
     const vb = document.getElementById('btnView3d');
     if (vb && on) vb.textContent = '視点:全体';
   }
