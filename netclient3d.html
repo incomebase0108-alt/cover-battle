@@ -50,6 +50,21 @@
       color: #17324d; font: bold 17px system-ui, sans-serif; text-align: center; padding: 20px;
     }
     #boot3d small { font-weight: 600; font-size: 13px; opacity: 0.75; }
+    /* 自分のHP/弾。下部は「特殊・爆弾」ボタンと重なるので、視線の近い上部中央に置く */
+    #me3d {
+      position: fixed; left: 50%; transform: translateX(-50%);
+      top: calc(env(safe-area-inset-top, 0px) + 44px); z-index: 7;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      pointer-events: none; color: #fff;
+      font: bold 13px system-ui, sans-serif; text-shadow: 0 1px 3px #000;
+    }
+    #me3dHp {
+      width: 148px; height: 11px; border-radius: 999px; overflow: hidden;
+      background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.35);
+    }
+    #me3dHp > i { display: block; height: 100%; width: 100%; background: #57c964; transition: width .12s linear; }
+    #me3dHp.low > i { background: #e0574f; }
+    #me3dText { background: rgba(13,17,23,0.6); padding: 1px 8px; border-radius: 6px; }
     .hud { z-index: 6; }
     #lobby { z-index: 10; }
     /* Phase B試作: TPS時のクロスヘア（画面中央＝カメラの正面＝照準） */
@@ -80,6 +95,11 @@
     </div>
     <div id="crosshair3d"></div>
     <div id="boot3d">3Dを準備しています…<small>侍のデータ（約13MB）を読み込み中</small></div>
+    <!-- 自分のステータス（参加中のみ表示）。操作するならHPと弾が見えないと戦えない -->
+    <div id="me3d" class="hidden">
+      <div id="me3dHp"><i></i></div>
+      <span id="me3dText"></span>
+    </div>
 
     <canvas id="game" width="960" height="600"></canvas>
 

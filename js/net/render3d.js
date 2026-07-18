@@ -133,24 +133,52 @@
   }
 
   // 位置差分から歩行判定（mvはフォールバック。1号機推奨: 補間済みビューの速度で切替）
+  // 併せて走り判定も出す。素の移動速度は 3.96m/s（unit.speed 1.9 × 62.5歩/秒 × S）＝
+  // ジョギング〜走りの速さなので、歩きモーションだと足が地面を滑って見える（実機で指摘）。
+  // 川や砂地で遅くなったときだけ歩きへ落とす。
+  const RUN_SPEED = 2.5;   // m/s これ以上で走りクリップ
+  const WALK_BASE = 1.5;   // 各クリップが「等速に見える」おおよその速度
+  const RUN_BASE = 3.9;
   function updateWalk(rec, x, z, now, mv) {
     let walking = !!mv;
+    rec.running = false; rec.spd = 0; rec.dx = 0; rec.dz = 0;
     if (rec.lastX != null) {
       const dt = (now - rec.lastT) / 1000;
       if (dt > 0.001) {
-        const spd = Math.hypot(x - rec.lastX, z - rec.lastZ) / dt; // m/s
+        rec.dx = x - rec.lastX; rec.dz = z - rec.lastZ;
+        const spd = Math.hypot(rec.dx, rec.dz) / dt; // m/s
         walking = spd > 0.45;
+        rec.running = spd > RUN_SPEED;
+        rec.spd = spd;
       }
     }
     rec.lastX = x; rec.lastZ = z; rec.lastT = now;
     return walking;
   }
 
+  // 角度を最短経路で寄せる（±πをまたいでも回り込まない）
+  function lerpAngle(a, b, t) {
+    let d = b - a;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return a + d * t;
+  }
+
   function syncUnit(rec, u, now) {
     const g = rec.g;
     const x = u.x * S, z = u.y * S;
+    const aimYaw = yawOf(u.a);
+    // 移動中は「進む方へ体を向ける」。サーバのa（照準）だけで向けると、狙いながら
+    // 移動するAIが後ろ向きに歩き、自分もTPSで後退時に背中を見せたまま下がる（実機で指摘）。
+    // 攻撃中と停止中は照準の向きへ戻す（構えを保つため）。
+    let yaw = aimYaw;
+    if (rec.lastX != null) {
+      const dx = x - rec.lastX, dz = z - rec.lastZ;
+      const sam = g.userData.samurai;
+      if (Math.hypot(dx, dz) > 0.004 && !(sam && sam.attacking)) yaw = Math.atan2(dx, dz);
+    }
     g.position.set(x, 0, z);
-    g.rotation.y = yawOf(u.a);
+    g.rotation.y = rec.lastX == null ? yaw : lerpAngle(g.rotation.y, yaw, 0.35);
 
     // 武器持ち替え（侍モデル内のみ。専用モデルはfalseが返るだけ）
     if (u.w !== rec.w) {
@@ -202,23 +230,35 @@
     // 進行方向とキャラの正面を比べ、後退なら歩行アニメを逆再生する。
     // TPSでは照準（＝カメラの正面）を向いたまま下がれるので、前進アニメのままだと
     // 「奥を向いて手前に歩く」ムーンウォークに見える（実機で指摘された）。
-    setWalkDirection(rec, g, x, z);
-    Samurai.animate(g, now / 1000, updateWalk(rec, x, z, now, u.mv));
+    const walking = updateWalk(rec, x, z, now, u.mv);
+    Samurai.animate(g, now / 1000, walking, rec.running);
+    setWalkPlayback(rec, g);   // animate がクリップを切り替えた後に再生速度を決める
   }
 
-  function setWalkDirection(rec, g, x, z) {
-    if (rec.lastX == null) return;
+  // 移動アニメの再生方向。体は進行方向へ向けるので通常は順再生だが、攻撃中など
+  // 照準を向いたまま下がる場面では逆再生にして後ろ歩きに見せる
+  // 再生中の移動クリップの「速さ」と「向き」を決める。
+  //  - 足の回転を実際の移動速度に合わせる。合わせないと、スティックを浅く倒して
+  //    ゆっくり歩いても足だけ全力で回り、速度差が体感できない（実機で指摘）
+  //  - 照準を向いたまま下がる場面（攻撃中など）は逆再生にして後ろ歩きに見せる
+  function setWalkPlayback(rec, g) {
     const sam = g.userData.samurai;
-    if (!sam || !sam.acts) return;
-    const act = sam.acts[(sam.def && sam.def.walk) || 'walk'];
+    if (!sam || !sam.acts || !sam.cur) return;
+    const act = sam.acts[sam.cur];
     if (!act) return;
-    const dx = x - rec.lastX, dz = z - rec.lastZ;
-    const len = Math.hypot(dx, dz);
-    if (len < 1e-4) return;                       // 止まっている間は今の向きを保つ
-    const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y);
-    const dot = (dx * fx + dz * fz) / len;        // +1=正面へ / -1=真後ろへ
-    const ts = dot < -0.3 ? -1 : 1;               // 横移動(dot≈0)は前進のまま
-    if (act.timeScale !== ts) act.timeScale = ts;
+    const runName = (sam.def && sam.def.run) || 'run';
+    const walkName = (sam.def && sam.def.walk) || 'walk';
+    if (sam.cur !== runName && sam.cur !== walkName) return;  // idle/攻撃中は触らない
+    const base = sam.cur === runName ? RUN_BASE : WALK_BASE;
+    const rate = Math.max(0.55, Math.min(1.7, rec.spd / base));
+    const len = Math.hypot(rec.dx, rec.dz);
+    let dir = 1;
+    if (len > 1e-4) {
+      const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y);
+      if ((rec.dx * fx + rec.dz * fz) / len < -0.3) dir = -1;  // 横移動(≈0)は前進のまま
+    }
+    const ts = dir * rate;
+    if (Math.abs(act.timeScale - ts) > 0.02) act.timeScale = ts;
   }
 
   function syncUnits(view, now) {
@@ -595,6 +635,24 @@
         ? `青${view.al.b} 🏰${fb}%  赤${view.al.r} 🏰${fr}%`
         : `青 ${view.al.b}（🏰${fb}%）　赤 ${view.al.r}（🏰${fr}%）`;
     }
+    updateMeHud(view);
+  }
+
+  // 自分のHP/弾（参加中のみ）。操作するのに体力が見えないと戦えない（実機で指摘）
+  let meBox = null, meHp = null, meHpFill = null, meText = null;
+  function updateMeHud(view) {
+    if (!meBox) return;
+    const me = myIdx >= 0 ? view.u[myIdx] : null;
+    meBox.classList.toggle('hidden', !me);
+    if (!me) return;
+    const ratio = Math.max(0, Math.min(1, me.h / (me.mh || 1)));
+    meHpFill.style.width = (ratio * 100).toFixed(0) + '%';
+    meHp.classList.toggle('low', ratio <= 0.3);
+    // 弾: 刀/弓は装填の概念が無いので数字を出さない（am が null のとき）
+    const ammo = me.rl ? '装填中…'
+      : (me.am == null ? '' : `⦿ ${me.am}${me.mg ? '/' + me.mg : ''}`);
+    const state = !me.al ? (me.dn ? '倒れている（救出待ち）' : '討死') : '';
+    meText.textContent = [`HP ${Math.max(0, Math.round(me.h))}`, ammo, state].filter(Boolean).join('　');
   }
 
   // --- fps計測の有効/無効の見張り ---------------------------------------------
@@ -634,6 +692,10 @@
     statusEl = document.getElementById('hud3dStatus');
     hudAlive = document.getElementById('hud3dAlive');
     hudFps = document.getElementById('hud3dFps');
+    meBox = document.getElementById('me3d');
+    meHp = document.getElementById('me3dHp');
+    meHpFill = meHp && meHp.querySelector('i');
+    meText = document.getElementById('me3dText');
     viewer = ProtoViewer;
     viewer.init(stageEl);
     makeShared();
@@ -674,7 +736,11 @@
     map(dx, dy) {
       if (!tpsOn || typeof Input3D === 'undefined') return null;
       const mv = Input3D.moveToWorld(dx, dy, camYaw);
-      return { mx: mv.mx, my: mv.my, aim: Input3D.aimFromCamera(camYaw) };
+      // サーバは入力ベクトルの長さをそのまま速度に掛ける（entities.js の move）。
+      // スマホはスティックの倒し具合がそのまま歩き/走りになるが、キーボードは常に
+      // 長さ1で全力になるので、Shift を押している間だけ歩きの速さに落とす。
+      const slow = (typeof Input !== 'undefined' && Input.keys && Input.keys['shift']) ? 0.4 : 1;
+      return { mx: mv.mx * slow, my: mv.my * slow, aim: Input3D.aimFromCamera(camYaw) };
     },
   };
 
