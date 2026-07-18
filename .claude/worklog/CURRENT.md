@@ -7,6 +7,12 @@
 
 ---
 
+## 2026-07-18 — 1号機 — 弓最終値の行き違いマージ解消（main 66f56c6）
+- 4号機のchara/daimyo-swordマージ(1492339)と、1号機の弓最終調整コミット(74545c1)がSlack投稿12秒差で行き違い
+  →74545c1(samurai.jsの弓rot/wposの値のみ+?vバンプ)がmain未取込だった
+- 1号機でmainへマージ+push済(66f56c6)。tests 166/166 PASS。#3d戦国に連絡済
+- **Phase B前の残り(hoshiさん待ち)**: ①スマホ実機の観戦fps実測(netclient3d.html) ②S=1/30ブロックアウトのスクショ合意
+
 ## 2026-07-18 — INCOMEBASE04 — chara/daimyo-sword 検証OK→mainマージ(1492339)
 - 受入検証: tests PASS + samurai_test.html実描画(8兵種表示・持ち物調整UI/大名鉄砲/360度表示の新UI動作)
 - レビュー: 大名の主攻撃が刀(attack_sword)に変更されたが**render3d.jsは変更不要を確認**
