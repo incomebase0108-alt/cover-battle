@@ -529,7 +529,11 @@
   function updateHud(view) {
     if (hudAlive && view.al) {
       const ft = view.ft || { b: 0, r: 0 };
-      hudAlive.textContent = `青 ${view.al.b}（🏰${Math.round(ft.b * 100)}%）　赤 ${view.al.r}（🏰${Math.round(ft.r * 100)}%）`;
+      const fb = Math.round(ft.b * 100), fr = Math.round(ft.r * 100);
+      // スマホは横幅が足りず右のボタンを押し出すので短く出す
+      hudAlive.textContent = window.innerWidth < 600
+        ? `青${view.al.b} 🏰${fb}%  赤${view.al.r} 🏰${fr}%`
+        : `青 ${view.al.b}（🏰${fb}%）　赤 ${view.al.r}（🏰${fr}%）`;
     }
   }
 

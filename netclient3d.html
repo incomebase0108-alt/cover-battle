@@ -13,11 +13,13 @@
     /* 試合が始まる前・キャラ読込中は3Dを描かないので、真っ黒だと壊れて見える。空の色を敷いておく */
     #stage3d { position: fixed; inset: 0; z-index: 0; background: #a8c8e8; }
     #stage3d canvas { display: block; }
-    /* HUDは右端まで使わず、左上の「？」(44px)と右上のミュート/コントローラ切替を避ける。
-       これをしないとスマホ幅で文字が画面外へ流れ、右上のボタンに重なる。 */
+    /* HUDは上端に置かず、既存ボタンの一段下に敷く。
+       上端は左に「？」(44px)、右にボリューム＋コントローラ切替が並ぶ。とくに「🕹️標準」は
+       body.touch のときだけ出る＝実機でだけ幅が増えるので、横方向で避けると端末ごとに破綻する。
+       行を分けるのが確実。 */
     #hud3d {
-      position: fixed; top: 8px; left: 10px; right: 10px; z-index: 5; color: #fff;
-      padding-left: 62px; padding-right: 104px;
+      position: fixed; top: calc(env(safe-area-inset-top, 0px) + 58px);
+      left: 10px; right: 10px; z-index: 5; color: #fff;
       font: bold 14px system-ui, sans-serif; text-shadow: 0 1px 3px #000;
       display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
     }
@@ -33,7 +35,7 @@
     #hud3dStatus:empty { display: none; }
     /* スマホ幅: 文字と余白を詰め、飾りのタイトルは落として1〜2行に収める */
     @media (max-width: 600px) {
-      #hud3d { font-size: 12px; gap: 6px; padding-right: 96px; }
+      #hud3d { font-size: 12px; gap: 6px; }
       #hud3d button { padding: 4px 8px; font-size: 11px; }
       #hud3dTitle { display: none; }
       #hud3dStatus { flex-basis: 100%; font-size: 11px; }
