@@ -482,7 +482,9 @@
       camPitch = Math.max(0.12, Math.min(1.35, camPitch + dy * 0.004));
     };
     window.addEventListener('touchstart', e => {
-      if (e.target.closest && e.target.closest('#lobby,#hud3d,button')) return;
+      // #touchControls（移動スティック・攻撃ボタン）の上では視点を回さない。
+      // 除外しないと、スティックを倒すたびにカメラまで動いて操作にならない
+      if (e.target.closest && e.target.closest('#lobby,#hud3d,#touchControls,button')) return;
       const t = e.changedTouches[0];
       if (lookId === null) { lookId = t.identifier; lx = t.clientX; ly = t.clientY; }
     }, { passive: true });
