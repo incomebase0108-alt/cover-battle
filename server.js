@@ -28,7 +28,12 @@ const server = http.createServer((req, res) => {
   if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end("not found"); return; }
-    res.writeHead(200, { "Content-Type": MIME[path.extname(file)] || "application/octet-stream" });
+    // LAN内の開発サーバなのでキャッシュさせない。とくにHTMLはCSSを内蔵していて ?v を付けられず、
+    // 端末に古い版が残ると「直したのに実機で変わらない」が起きる（実際に起きた）。
+    res.writeHead(200, {
+      "Content-Type": MIME[path.extname(file)] || "application/octet-stream",
+      "Cache-Control": "no-store, must-revalidate",
+    });
     res.end(data);
   });
 });

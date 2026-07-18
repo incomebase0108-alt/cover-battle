@@ -10,16 +10,18 @@
        （serialize-sync-review の注意: #game/#muteBtn/#lobby 等が無いと connect() 前に例外） */
     #game { display: none; }                 /* 2D canvas は使わない（クリック等の前提だけ残す） */
     #touchControls { display: none; }        /* Phase A は観戦のみ。操作UIは Phase B で復活 */
+    /* 右上の2D用ボタン（🔊・🕹️標準）は3D観戦では使わない。端末によって幅も段数も変わり
+       （🕹️標準は body.touch のときだけ出る）HUDと重なるので隠す。
+       client.js が #muteBtn の存在を前提にするため、DOMは残して display:none にすること */
+    .hud { display: none; }
     /* 試合が始まる前・キャラ読込中は3Dを描かないので、真っ黒だと壊れて見える。空の色を敷いておく */
     #stage3d { position: fixed; inset: 0; z-index: 0; background: #a8c8e8; }
     #stage3d canvas { display: block; }
-    /* HUDは上端に置かず、既存ボタンの一段下に敷く。
-       上端は左に「？」(44px)、右にボリューム＋コントローラ切替が並ぶ。とくに「🕹️標準」は
-       body.touch のときだけ出る＝実機でだけ幅が増えるので、横方向で避けると端末ごとに破綻する。
-       行を分けるのが確実。 */
+    /* 右上のボタンは上で隠したので、あとは左上の「？」(left10+44=54px)だけ避ければよい。
+       safe-area を足して、ノッチ端末でも上端に食い込まないようにする。 */
     #hud3d {
-      position: fixed; top: calc(env(safe-area-inset-top, 0px) + 58px);
-      left: 10px; right: 10px; z-index: 5; color: #fff;
+      position: fixed; top: calc(env(safe-area-inset-top, 0px) + 10px);
+      left: 10px; right: 10px; padding-left: 56px; z-index: 5; color: #fff;
       font: bold 14px system-ui, sans-serif; text-shadow: 0 1px 3px #000;
       display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
     }
