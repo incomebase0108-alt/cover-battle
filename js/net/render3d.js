@@ -520,7 +520,9 @@
     frames++;
     if (!winStart) { winStart = now; return; }
     if (now - winStart >= 1000) {
-      if (hudFps) hudFps.textContent = Math.round(frames * 1000 / (now - winStart)) + 'fps';
+      if (hudFps && lastSnapAt && now - lastSnapAt <= 1500) {
+        hudFps.textContent = Math.round(frames * 1000 / (now - winStart)) + 'fps';
+      }
       frames = 0; winStart = now;
     }
   }
@@ -529,6 +531,25 @@
       const ft = view.ft || { b: 0, r: 0 };
       hudAlive.textContent = `青 ${view.al.b}（🏰${Math.round(ft.b * 100)}%）　赤 ${view.al.r}（🏰${Math.round(ft.r * 100)}%）`;
     }
+  }
+
+  // --- fps計測の有効/無効の見張り ---------------------------------------------
+  // server.js は待機ロビー中と試合終了後は _update もスナップ配信も止める（server.js の
+  // メインループ参照）。その状態だと駒が止まったまま＝ほぼ無負荷で60fpsが出てしまい、
+  // 「実測できた」と誤解する。スナップが途切れたらHUDではっきり無効だと知らせる。
+  let lastSnapAt = 0, lastSnapRef = null;
+  function watchLive() {
+    setInterval(() => {
+      if (!hudFps) return;
+      const stalled = !lastSnapAt || performance.now() - lastSnapAt > 1500;
+      hudFps.style.color = stalled ? '#ff6b6b' : '';
+      if (stalled) {
+        hudFps.textContent = '試合が動いていません（fpsは無効）';
+        if (statusEl) statusEl.textContent = 'PC側でスロットを選び「ゲーム開始」を押すと動きます';
+      } else if (statusEl && statusEl.textContent.indexOf('ゲーム開始') >= 0) {
+        statusEl.textContent = '';
+      }
+    }, 700);
   }
 
   // --- 本体 -------------------------------------------------------------------
@@ -542,6 +563,7 @@
     makeShared();
     makeFx();
     setupCamControls();
+    watchLive();
     // 影ボタン（プロトタイプと同じ4段サイクル）
     const sb = document.getElementById('btnShadow3d');
     if (sb) sb.addEventListener('click', () => {
@@ -566,6 +588,7 @@
   window.NetRenderer = {
     frame(view, net, now) {
       if (!samuraiReady) { fpsTick(now); return; } // GLB読込前は描かない（棒人間代替はPhase Aでは省略）
+      if (net.snap !== lastSnapRef) { lastSnapRef = net.snap; lastSnapAt = now; } // 新しいスナップ＝試合が動いている
       if (net.stage !== builtStage || !mapGroup) buildMap(net.map, net.stage);
       syncUnits(view, now);
       syncBeasts(view, now);
