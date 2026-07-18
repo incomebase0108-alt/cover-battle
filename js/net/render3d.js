@@ -133,24 +133,59 @@
   }
 
   // 位置差分から歩行判定（mvはフォールバック。1号機推奨: 補間済みビューの速度で切替）
+  // 併せて走り判定も出す。素の移動速度は 3.96m/s（unit.speed 1.9 × 62.5歩/秒 × S）＝
+  // ジョギング〜走りの速さなので、歩きモーションだと足が地面を滑って見える（実機で指摘）。
+  // 川や砂地で遅くなったときだけ歩きへ落とす。
+  // 走りの速さの倍率。素の 3.96m/s では「もっと速く」との実機評価だったので上げている。
+  // サーバは入力ベクトルの長さを速度に掛けるだけなので、ここを変えるだけで効く（要調整ノブ）
+  const RUN_BOOST = 1.35;             // → 約5.3m/s（全力疾走の速さ）
+  const RUN_ON = 2.6, RUN_OFF = 2.0;  // 走り⇄歩きの切替（ヒステリシス。境目でバタつかせない）
+  const WALK_BASE = 1.5;              // 各クリップが「等速に見える」おおよその速度
+  const RUN_BASE = 4.6;
   function updateWalk(rec, x, z, now, mv) {
     let walking = !!mv;
+    rec.dx = 0; rec.dz = 0;
     if (rec.lastX != null) {
       const dt = (now - rec.lastT) / 1000;
       if (dt > 0.001) {
-        const spd = Math.hypot(x - rec.lastX, z - rec.lastZ) / dt; // m/s
-        walking = spd > 0.45;
+        rec.dx = x - rec.lastX; rec.dz = z - rec.lastZ;
+        const spd = Math.hypot(rec.dx, rec.dz) / dt; // m/s
+        // スナップは約18Hzで届き100ms遅れの補間なので、生の速度はフレームごとに揺れる。
+        // そのまま再生速度に使うと足の回転がガタつくため均す（実機で「滑らかでない」の指摘）
+        rec.spd = rec.spd == null ? spd : rec.spd * 0.82 + spd * 0.18;
+        walking = rec.spd > 0.45;
+        rec.running = rec.running ? rec.spd > RUN_OFF : rec.spd > RUN_ON;
       }
+    } else {
+      rec.spd = 0; rec.running = false;
     }
     rec.lastX = x; rec.lastZ = z; rec.lastT = now;
     return walking;
   }
 
+  // 角度を最短経路で寄せる（±πをまたいでも回り込まない）
+  function lerpAngle(a, b, t) {
+    let d = b - a;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return a + d * t;
+  }
+
   function syncUnit(rec, u, now) {
     const g = rec.g;
     const x = u.x * S, z = u.y * S;
+    const aimYaw = yawOf(u.a);
+    // 移動中は「進む方へ体を向ける」。サーバのa（照準）だけで向けると、狙いながら
+    // 移動するAIが後ろ向きに歩き、自分もTPSで後退時に背中を見せたまま下がる（実機で指摘）。
+    // 攻撃中と停止中は照準の向きへ戻す（構えを保つため）。
+    let yaw = aimYaw;
+    if (rec.lastX != null) {
+      const dx = x - rec.lastX, dz = z - rec.lastZ;
+      const sam = g.userData.samurai;
+      if (Math.hypot(dx, dz) > 0.004 && !(sam && sam.attacking)) yaw = Math.atan2(dx, dz);
+    }
     g.position.set(x, 0, z);
-    g.rotation.y = yawOf(u.a);
+    g.rotation.y = rec.lastX == null ? yaw : lerpAngle(g.rotation.y, yaw, 0.35);
 
     // 武器持ち替え（侍モデル内のみ。専用モデルはfalseが返るだけ）
     if (u.w !== rec.w) {
@@ -199,7 +234,43 @@
     if (u.bf === 2 || now < (rec.pulseUntil || 0)) { const p = 1 + 0.12 * Math.sin(now / 90); rec.buff.scale.setScalar(p); }
     else rec.buff.scale.setScalar(1);
 
-    Samurai.animate(g, now / 1000, updateWalk(rec, x, z, now, u.mv));
+    // 進行方向とキャラの正面を比べ、後退なら歩行アニメを逆再生する。
+    // TPSでは照準（＝カメラの正面）を向いたまま下がれるので、前進アニメのままだと
+    // 「奥を向いて手前に歩く」ムーンウォークに見える（実機で指摘された）。
+    const walking = updateWalk(rec, x, z, now, u.mv);
+    Samurai.animate(g, now / 1000, walking, rec.running);
+    setWalkPlayback(rec, g);   // animate がクリップを切り替えた後に再生速度を決める
+  }
+
+  // 移動アニメの再生方向。体は進行方向へ向けるので通常は順再生だが、攻撃中など
+  // 照準を向いたまま下がる場面では逆再生にして後ろ歩きに見せる
+  // 再生中の移動クリップの「速さ」と「向き」を決める。
+  //  - 足の回転を実際の移動速度に合わせる。合わせないと、スティックを浅く倒して
+  //    ゆっくり歩いても足だけ全力で回り、速度差が体感できない（実機で指摘）
+  //  - 照準を向いたまま下がる場面（攻撃中など）は逆再生にして後ろ歩きに見せる
+  function setWalkPlayback(rec, g) {
+    const sam = g.userData.samurai;
+    if (!sam || !sam.acts || !sam.cur) return;
+    const act = sam.acts[sam.cur];
+    if (!act) return;
+    const runName = (sam.def && sam.def.run) || 'run';
+    const walkName = (sam.def && sam.def.walk) || 'walk';
+    if (sam.cur !== runName && sam.cur !== walkName) return;  // idle/攻撃中は触らない
+    const base = sam.cur === runName ? RUN_BASE : WALK_BASE;
+    // 走りは等速寄りに（速度に比例させすぎると足がバタついて見える）、歩きは素直に比例
+    const raw = rec.spd / base;
+    const rate = sam.cur === runName
+      ? Math.max(0.85, Math.min(1.25, 0.55 + raw * 0.45))
+      : Math.max(0.55, Math.min(1.4, raw));
+    const len = Math.hypot(rec.dx, rec.dz);
+    let dir = 1;
+    if (len > 1e-4) {
+      const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y);
+      if ((rec.dx * fx + rec.dz * fz) / len < -0.3) dir = -1;  // 横移動(≈0)は前進のまま
+    }
+    const ts = dir * rate;
+    // 目標へ寄せる（毎フレーム代入すると再生位相が跳ねて足が滑る）
+    act.timeScale += (ts - act.timeScale) * 0.25;
   }
 
   function syncUnits(view, now) {
@@ -453,8 +524,29 @@
     builtStage = stageIdx;
   }
 
+  // TPSの入切。ボタン表記・クロスヘア・カメラの角度をまとめて切り替える
+  function setTps(on) {
+    if (on && myIdx < 0) on = false;          // 未参加では入れない（観戦のまま）
+    tpsOn = on;
+    if (on) { followIdx = -1; camPitch = TPS.pitch; }
+    else camPitch = 0.55;
+    const tb = document.getElementById('btnTps3d');
+    if (tb) tb.textContent = on ? '操作:自分' : '操作:観戦';
+    const ch = document.getElementById('crosshair3d');
+    if (ch) ch.style.display = on ? 'block' : 'none';
+    // スマホの移動スティックを出す（照準はカメラなので「攻」は発砲トリガーとして働く）。
+    // '' に戻すとこのページの `#touchControls { display:none }` が復活するので block を明示する
+    const tc = document.getElementById('touchControls');
+    if (tc) tc.style.display = on ? 'block' : 'none';
+    const vb = document.getElementById('btnView3d');
+    if (vb && on) vb.textContent = '視点:全体';
+  }
+
   // --- 観戦カメラ: 全体追従（生存ユニット重心）⇄ ユニット追従。ドラッグ=回転/ホイール=ズーム
   let camYaw = 0.6, camPitch = 0.55, camDist = 42, followIdx = -1, lastUnitCount = 8; // -1=全体
+  // Phase B試作: 自分のユニットを肩越しに追うTPSモード（参加時のみ）
+  let tpsOn = false, myIdx = -1;
+  const TPS = { dist: 4.6, side: 0.75, eye: 1.5, pitch: 0.25 };
   const camFocus = { x: 80, z: 50 };
   function setupCamControls() {
     let lookId = null, lx = 0, ly = 0, mouseLook = false;
@@ -463,7 +555,9 @@
       camPitch = Math.max(0.12, Math.min(1.35, camPitch + dy * 0.004));
     };
     window.addEventListener('touchstart', e => {
-      if (e.target.closest && e.target.closest('#lobby,#hud3d,button')) return;
+      // #touchControls（移動スティック・攻撃ボタン）の上では視点を回さない。
+      // 除外しないと、スティックを倒すたびにカメラまで動いて操作にならない
+      if (e.target.closest && e.target.closest('#lobby,#hud3d,#touchControls,button')) return;
       const t = e.changedTouches[0];
       if (lookId === null) { lookId = t.identifier; lx = t.clientX; ly = t.clientY; }
     }, { passive: true });
@@ -488,6 +582,24 @@
   }
 
   function updateCamera(view) {
+    // TPS: 自分の肩越し。横オフセットは input3d.js と同じ「前方×上」の右ベクトルで出す
+    if (tpsOn && myIdx >= 0) {
+      const me = view.u[myIdx];
+      if (me && me.al) {
+        const cam = viewer.camera;
+        const mx = me.x * S, mz = me.y * S, ty = TPS.eye;
+        const cp = Math.cos(camPitch), sp = Math.sin(camPitch);
+        const ox = -Math.cos(camYaw) * TPS.side, oz = Math.sin(camYaw) * TPS.side;
+        cam.position.set(
+          mx + ox - Math.sin(camYaw) * TPS.dist * cp,
+          ty + TPS.dist * sp,
+          mz + oz - Math.cos(camYaw) * TPS.dist * cp);
+        cam.lookAt(mx + ox, ty, mz + oz);
+        camFocus.x = mx; camFocus.z = mz;   // 観戦へ戻した時に飛ばない
+        viewer.updateShadowTarget(mx, mz);
+        return;
+      }
+    }
     let tx = camFocus.x, tz = camFocus.z, ty = 1.2;
     const alive = view.u.filter(u => u.al);
     if (followIdx >= 0) {
@@ -535,6 +647,24 @@
         ? `青${view.al.b} 🏰${fb}%  赤${view.al.r} 🏰${fr}%`
         : `青 ${view.al.b}（🏰${fb}%）　赤 ${view.al.r}（🏰${fr}%）`;
     }
+    updateMeHud(view);
+  }
+
+  // 自分のHP/弾（参加中のみ）。操作するのに体力が見えないと戦えない（実機で指摘）
+  let meBox = null, meHp = null, meHpFill = null, meText = null;
+  function updateMeHud(view) {
+    if (!meBox) return;
+    const me = myIdx >= 0 ? view.u[myIdx] : null;
+    meBox.classList.toggle('hidden', !me);
+    if (!me) return;
+    const ratio = Math.max(0, Math.min(1, me.h / (me.mh || 1)));
+    meHpFill.style.width = (ratio * 100).toFixed(0) + '%';
+    meHp.classList.toggle('low', ratio <= 0.3);
+    // 弾: 刀/弓は装填の概念が無いので数字を出さない（am が null のとき）
+    const ammo = me.rl ? '装填中…'
+      : (me.am == null ? '' : `⦿ ${me.am}${me.mg ? '/' + me.mg : ''}`);
+    const state = !me.al ? (me.dn ? '倒れている（救出待ち）' : '討死') : '';
+    meText.textContent = [`HP ${Math.max(0, Math.round(me.h))}`, ammo, state].filter(Boolean).join('　');
   }
 
   // --- fps計測の有効/無効の見張り ---------------------------------------------
@@ -574,6 +704,10 @@
     statusEl = document.getElementById('hud3dStatus');
     hudAlive = document.getElementById('hud3dAlive');
     hudFps = document.getElementById('hud3dFps');
+    meBox = document.getElementById('me3d');
+    meHp = document.getElementById('me3dHp');
+    meHpFill = meHp && meHp.querySelector('i');
+    meText = document.getElementById('me3dText');
     viewer = ProtoViewer;
     viewer.init(stageEl);
     makeShared();
@@ -591,9 +725,13 @@
     // 視点ボタン: 全体 → 各ユニット追従を巡回
     const vb = document.getElementById('btnView3d');
     if (vb) vb.addEventListener('click', () => {
+      if (tpsOn) setTps(false);
       followIdx = followIdx >= lastUnitCount - 1 ? -1 : followIdx + 1;
       vb.textContent = followIdx < 0 ? '視点:全体' : '視点:' + (followIdx + 1) + '番';
     });
+    // 操作ボタン: 観戦 ⇄ 自分の肩越し（TPS）。スロットを取っている時だけ入れる
+    const tb = document.getElementById('btnTps3d');
+    if (tb) tb.addEventListener('click', () => setTps(!tpsOn));
     if (statusEl) statusEl.textContent = '3Dキャラ読み込み中…';
     Samurai.load('prototype/3d/assets/', () => {
       samuraiReady = true;
@@ -604,8 +742,25 @@
     });
   }
 
+  // Phase B試作: 画面基準の入力をカメラ基準へ回すフック（client.js の入力ループが呼ぶ）。
+  // 未定義／観戦中は null を返し、2D版の入力がそのまま通る＝既存の挙動は不変。
+  window.NetInput = {
+    map(dx, dy) {
+      if (!tpsOn || typeof Input3D === 'undefined') return null;
+      const mv = Input3D.moveToWorld(dx, dy, camYaw);
+      // サーバは入力ベクトルの長さをそのまま速度に掛ける（entities.js の move）ので、
+      // ここで倍率を乗せるとサーバ改修なしで走りの速さを変えられる。
+      // ※3D操作の人だけ速くなる＝2D版と同卓では有利。本採用時に扱いを決める論点（Phase B ②）
+      const slow = (typeof Input !== 'undefined' && Input.keys && Input.keys['shift']) ? 0.4 : 1;
+      const k = RUN_BOOST * slow;
+      return { mx: mv.mx * k, my: mv.my * k, aim: Input3D.aimFromCamera(camYaw) };
+    },
+  };
+
   window.NetRenderer = {
     frame(view, net, now) {
+      myIdx = net.joined ? net.myIndex : -1;
+      if (tpsOn && myIdx < 0) setTps(false);   // 参加していなければ観戦へ戻す
       if (!samuraiReady) { fpsTick(now); return; } // GLB読込前は描かない（棒人間代替はPhase Aでは省略）
       if (net.snap !== lastSnapRef) { lastSnapRef = net.snap; lastSnapAt = now; } // 新しいスナップ＝試合が動いている
       if (net.stage !== builtStage || !mapGroup) buildMap(net.map, net.stage);

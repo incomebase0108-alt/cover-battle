@@ -255,7 +255,7 @@
     if (!Net.joined || !Net.ws || Net.ws.readyState !== 1 || !Net.snap) return;
     const me = Net.snap.u[Net.myIndex];
     if (!me) return;
-    const { dx, dy } = Input.moveVector();
+    let { dx, dy } = Input.moveVector();
     let aim;
     if (Input.isTouch) {
       // Manual aim stick (right-side drag); otherwise face movement / keep aim.
@@ -268,6 +268,14 @@
       }
     } else {
       aim = Math.atan2(Input.mouseY + Net.cam.y - me.y, Input.mouseX + Net.cam.x - me.x);
+    }
+    // 入力差し替えフック：3D操作ビュー（netclient3d.html）が window.NetInput を定義していれば
+    // 画面基準の入力をカメラ基準へ回した結果を使う。未定義／観戦中は null が返り 2D版は挙動不変。
+    // サーバが受け取るのは従来どおりワールド絶対値なので server.js / game.js は無改修。
+    const NI = window.NetInput;
+    if (NI && NI.map) {
+      const r = NI.map(dx, dy, aim);
+      if (r) { dx = r.mx; dy = r.my; aim = r.aim; }
     }
     Net.ws.send(JSON.stringify({
       type: "input", mx: dx, my: dy, aim,

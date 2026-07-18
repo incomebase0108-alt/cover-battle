@@ -50,8 +50,34 @@
       color: #17324d; font: bold 17px system-ui, sans-serif; text-align: center; padding: 20px;
     }
     #boot3d small { font-weight: 600; font-size: 13px; opacity: 0.75; }
+    /* 自分のHP/弾。下部は「特殊・爆弾」ボタンと重なるので、視線の近い上部中央に置く */
+    #me3d {
+      position: fixed; left: 50%; transform: translateX(-50%);
+      top: calc(env(safe-area-inset-top, 0px) + 44px); z-index: 7;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      pointer-events: none; color: #fff;
+      font: bold 13px system-ui, sans-serif; text-shadow: 0 1px 3px #000;
+    }
+    #me3dHp {
+      width: 148px; height: 11px; border-radius: 999px; overflow: hidden;
+      background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.35);
+    }
+    #me3dHp > i { display: block; height: 100%; width: 100%; background: #57c964; transition: width .12s linear; }
+    #me3dHp.low > i { background: #e0574f; }
+    #me3dText { background: rgba(13,17,23,0.6); padding: 1px 8px; border-radius: 6px; }
     .hud { z-index: 6; }
     #lobby { z-index: 10; }
+    /* Phase B試作: TPS時のクロスヘア（画面中央＝カメラの正面＝照準） */
+    #crosshair3d {
+      display: none; position: fixed; left: 50%; top: 50%; z-index: 6;
+      width: 26px; height: 26px; margin: -13px 0 0 -13px; pointer-events: none;
+    }
+    #crosshair3d::before, #crosshair3d::after {
+      content: ""; position: absolute; background: rgba(255,255,255,0.85);
+      box-shadow: 0 0 2px #000;
+    }
+    #crosshair3d::before { left: 12px; top: 0; width: 2px; height: 26px; }
+    #crosshair3d::after { left: 0; top: 12px; width: 26px; height: 2px; }
   </style>
 </head>
 <body>
@@ -62,11 +88,18 @@
       <span id="hud3dAlive">--</span>
       <span id="hud3dFps">--</span>
       <button id="btnView3d">視点:全体</button>
+      <button id="btnTps3d">操作:観戦</button>
       <button id="btnShadow3d">影:低</button>
       <button id="btnLobby3d" class="hidden">ロビー</button>
       <span id="hud3dStatus"></span>
     </div>
+    <div id="crosshair3d"></div>
     <div id="boot3d">3Dを準備しています…<small>侍のデータ（約13MB）を読み込み中</small></div>
+    <!-- 自分のステータス（参加中のみ表示）。操作するならHPと弾が見えないと戦えない -->
+    <div id="me3d" class="hidden">
+      <div id="me3dHp"><i></i></div>
+      <span id="me3dText"></span>
+    </div>
 
     <canvas id="game" width="960" height="600"></canvas>
 
@@ -134,6 +167,7 @@
   <script src="https://unpkg.com/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
   <script src="prototype/3d/proto-viewer.js?v=20260718b"></script>
   <script src="prototype/3d/samurai.js?v=20260718b"></script>
+  <script src="js/net/input3d.js?v=20260718b"></script>
   <script src="js/net/render3d.js?v=20260718b"></script>
 
   <script src="js/net/client.js?v=20260718b"></script>

@@ -230,6 +230,14 @@ const Samurai = (function () {
   }
 
   // 任意の1発モーション(kneel/yell/throw/attack_combo等)。attackもこれ経由
+  // 攻撃モーションの再生速度。近接は素のままだと重く見えるので速める（実機の要望 2026-07-18）。
+  // 飛び道具は「構え→射撃」の間が意味を持つので等速に据え置く。
+  const RANGED_CLIPS = { attack_bow: 1, rifle_fire: 1, attack_gun: 1 };
+  const MELEE_ATTACK_RATE = {
+    attack_sword: 1.45, attack_sword2: 1.45, attack_spear: 1.4,
+    attack_great: 1.35, attack_combo: 1.3, throw: 1.3,
+  };
+
   function act(g, clipName, opts) {
     const sam = g.userData.samurai;
     if (sam.attacking) return false;
@@ -247,6 +255,9 @@ const Samurai = (function () {
       }
     }
     a.reset().setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true;
+    // 近接（刀/槍/斬り）の攻撃は素の再生だと重く見えるので速める。
+    // 飛び道具（弓/鉄砲）は構え〜射撃の間が意味を持つので等速のまま（実機の要望）。
+    a.timeScale = RANGED_CLIPS[clipName] ? 1 : (MELEE_ATTACK_RATE[clipName] || 1);
     a.fadeIn(0.08).play();
     if (sam.atkDef.startAt) a.time = sam.atkDef.startAt * a.getClip().duration;
     if (sam.cur) sam.acts[sam.cur].fadeOut(0.08);
@@ -320,11 +331,19 @@ const Samurai = (function () {
   }
 
   // Stickman.animate(g, t, walking) と同じシグネチャ。tは秒の絶対時刻(内部でdt化)
-  function animate(g, t, walking) {
+  // 第4引数 running=true で走りクリップを使う（省略時は従来どおり歩き/待機の2択＝後方互換）。
+  // run を持たないモデル(大名/忍者/浪人/衛生兵)は自動で walk にフォールバックする。
+  function animate(g, t, walking, running) {
     const sam = g.userData.samurai;
     const dt = sam.lastT == null ? 0 : Math.min(Math.max(t - sam.lastT, 0), 0.1);
     sam.lastT = t;
-    if (!sam.attacking) play(sam, walking ? (sam.def.walk || 'walk') : (sam.def.idle || 'idle'));
+    if (!sam.attacking) {
+      const runName = sam.def.run || 'run';
+      const name = (running && sam.acts[runName]) ? runName
+        : walking ? (sam.def.walk || 'walk')
+          : (sam.def.idle || 'idle');
+      play(sam, name);
+    }
     sam.mixer.update(dt);
     spearFx(g, sam);
   }
