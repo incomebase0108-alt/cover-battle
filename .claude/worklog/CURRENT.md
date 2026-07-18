@@ -7,6 +7,13 @@
 
 ---
 
+## 2026-07-18 — INCOMEBASE04 — chara/daimyo-sword 検証OK→mainマージ(1492339)
+- 受入検証: tests PASS + samurai_test.html実描画(8兵種表示・持ち物調整UI/大名鉄砲/360度表示の新UI動作)
+- レビュー: 大名の主攻撃が刀(attack_sword)に変更されたが**render3d.jsは変更不要を確認**
+  (attackはdef.attack経由・W_KINDは侍モデル専用・setWeaponのモデル違いfalse運用のまま整合)
+- 大筒座組み(Slack提案)も了解: Phase Aは追加作業ゼロ(bl砲丸+bo爆発で写る)、担ぎ大筒プロップ等はPhase C
+- 残: Phase Aのスマホ実機fps実測 と S=1/30スケールの本人スクショ合意(変わらず)
+
 ## 2026-07-18 — 1号機 — 大名クリップ差し替え+全兵種の武器フィット確定(chara/daimyo-sword b1f5029)
 - **大名GLB再束ね(8アニメ)**: attack_sword=忍者の片手斬り借用(総大将=刀のゲーム実態に合わせ主攻撃に)、
   attack_gun=侍のFiring Rifle借用(**元のShooting Gun.fbxは実測5.3秒ほぼ棒立ち=射撃モーションではなかった**)。
