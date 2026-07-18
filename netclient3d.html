@@ -10,10 +10,14 @@
        （serialize-sync-review の注意: #game/#muteBtn/#lobby 等が無いと connect() 前に例外） */
     #game { display: none; }                 /* 2D canvas は使わない（クリック等の前提だけ残す） */
     #touchControls { display: none; }        /* Phase A は観戦のみ。操作UIは Phase B で復活 */
-    #stage3d { position: fixed; inset: 0; z-index: 0; }
+    /* 試合が始まる前・キャラ読込中は3Dを描かないので、真っ黒だと壊れて見える。空の色を敷いておく */
+    #stage3d { position: fixed; inset: 0; z-index: 0; background: #a8c8e8; }
     #stage3d canvas { display: block; }
+    /* HUDは右端まで使わず、左上の「？」(44px)と右上のミュート/コントローラ切替を避ける。
+       これをしないとスマホ幅で文字が画面外へ流れ、右上のボタンに重なる。 */
     #hud3d {
-      position: fixed; top: 8px; left: 10px; z-index: 5; color: #fff;
+      position: fixed; top: 8px; left: 10px; right: 10px; z-index: 5; color: #fff;
+      padding-left: 62px; padding-right: 104px;
       font: bold 14px system-ui, sans-serif; text-shadow: 0 1px 3px #000;
       display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
     }
@@ -21,7 +25,19 @@
       pointer-events: auto; padding: 4px 10px; border-radius: 8px; border: 1px solid #456;
       background: rgba(13,17,23,0.75); color: #fff; font: bold 12px system-ui, sans-serif;
     }
+    /* 空や砂地など明るい背景でも読めるよう、文字にも下地を敷く（影だけでは沈む） */
+    #hud3d > span {
+      background: rgba(13,17,23,0.6); padding: 2px 7px; border-radius: 6px;
+    }
     #hud3dStatus { color: #ffd24a; }
+    #hud3dStatus:empty { display: none; }
+    /* スマホ幅: 文字と余白を詰め、飾りのタイトルは落として1〜2行に収める */
+    @media (max-width: 600px) {
+      #hud3d { font-size: 12px; gap: 6px; padding-right: 96px; }
+      #hud3d button { padding: 4px 8px; font-size: 11px; }
+      #hud3dTitle { display: none; }
+      #hud3dStatus { flex-basis: 100%; font-size: 11px; }
+    }
     .hud { z-index: 6; }
     #lobby { z-index: 10; }
   </style>
@@ -30,7 +46,7 @@
   <div id="app">
     <div id="stage3d"></div>
     <div id="hud3d">
-      <span>3D観戦</span>
+      <span id="hud3dTitle">3D観戦</span>
       <span id="hud3dAlive">--</span>
       <span id="hud3dFps">--</span>
       <button id="btnView3d">視点:全体</button>

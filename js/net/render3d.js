@@ -538,15 +538,27 @@
   // メインループ参照）。その状態だと駒が止まったまま＝ほぼ無負荷で60fpsが出てしまい、
   // 「実測できた」と誤解する。スナップが途切れたらHUDではっきり無効だと知らせる。
   let lastSnapAt = 0, lastSnapRef = null;
+
+  // 試合が止まっている間は client.js の frame() が来ないので誰も描かず、画面が真っ黒＝壊れて見える。
+  // 1回だけ描いても表示は残らない（WebGLの描画結果はフレームをまたいで保持されない）ため、
+  // 止まっている間だけ毎フレーム描く。空のシーンなので負荷はごくわずか。
+  function idleDraw() {
+    requestAnimationFrame(idleDraw);
+    if (!viewer) return;
+    const stalled = !lastSnapAt || performance.now() - lastSnapAt > 1500;
+    if (stalled) viewer.render();
+  }
+
   function watchLive() {
     setInterval(() => {
       if (!hudFps) return;
       const stalled = !lastSnapAt || performance.now() - lastSnapAt > 1500;
       hudFps.style.color = stalled ? '#ff6b6b' : '';
       if (stalled) {
-        hudFps.textContent = '試合が動いていません（fpsは無効）';
-        if (statusEl) statusEl.textContent = 'PC側でスロットを選び「ゲーム開始」を押すと動きます';
-      } else if (statusEl && statusEl.textContent.indexOf('ゲーム開始') >= 0) {
+        // スマホ幅では短く（長い文だと折り返して他のHUDを押し出す）
+        hudFps.textContent = window.innerWidth < 600 ? '試合停止中(fps無効)' : '試合が動いていません（fpsは無効）';
+        if (statusEl) statusEl.textContent = '「観戦をはじめる」を押すと動きます';
+      } else if (statusEl && statusEl.textContent.indexOf('観戦をはじめる') >= 0) {
         statusEl.textContent = '';
       }
     }, 700);
@@ -564,6 +576,7 @@
     makeFx();
     setupCamControls();
     watchLive();
+    idleDraw();        // 試合前・GLB読込中に真っ黒に見えないよう、空の色を描き続ける
     // 影ボタン（プロトタイプと同じ4段サイクル）
     const sb = document.getElementById('btnShadow3d');
     if (sb) sb.addEventListener('click', () => {
