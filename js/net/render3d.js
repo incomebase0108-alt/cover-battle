@@ -453,8 +453,27 @@
     builtStage = stageIdx;
   }
 
+  // TPSの入切。ボタン表記・クロスヘア・カメラの角度をまとめて切り替える
+  function setTps(on) {
+    if (on && myIdx < 0) on = false;          // 未参加では入れない（観戦のまま）
+    tpsOn = on;
+    if (on) { followIdx = -1; camPitch = TPS.pitch; }
+    else camPitch = 0.55;
+    const tb = document.getElementById('btnTps3d');
+    if (tb) tb.textContent = on ? '操作:自分' : '操作:観戦';
+    const ch = document.getElementById('crosshair3d');
+    if (ch) ch.style.display = on ? 'block' : 'none';
+    const tc = document.getElementById('touchControls');   // スマホの移動スティックを出す（照準はカメラ）
+    if (tc) tc.style.display = on ? '' : 'none';
+    const vb = document.getElementById('btnView3d');
+    if (vb && on) vb.textContent = '視点:全体';
+  }
+
   // --- 観戦カメラ: 全体追従（生存ユニット重心）⇄ ユニット追従。ドラッグ=回転/ホイール=ズーム
   let camYaw = 0.6, camPitch = 0.55, camDist = 42, followIdx = -1, lastUnitCount = 8; // -1=全体
+  // Phase B試作: 自分のユニットを肩越しに追うTPSモード（参加時のみ）
+  let tpsOn = false, myIdx = -1;
+  const TPS = { dist: 4.6, side: 0.75, eye: 1.5, pitch: 0.25 };
   const camFocus = { x: 80, z: 50 };
   function setupCamControls() {
     let lookId = null, lx = 0, ly = 0, mouseLook = false;
@@ -488,6 +507,24 @@
   }
 
   function updateCamera(view) {
+    // TPS: 自分の肩越し。横オフセットは input3d.js と同じ「前方×上」の右ベクトルで出す
+    if (tpsOn && myIdx >= 0) {
+      const me = view.u[myIdx];
+      if (me && me.al) {
+        const cam = viewer.camera;
+        const mx = me.x * S, mz = me.y * S, ty = TPS.eye;
+        const cp = Math.cos(camPitch), sp = Math.sin(camPitch);
+        const ox = -Math.cos(camYaw) * TPS.side, oz = Math.sin(camYaw) * TPS.side;
+        cam.position.set(
+          mx + ox - Math.sin(camYaw) * TPS.dist * cp,
+          ty + TPS.dist * sp,
+          mz + oz - Math.cos(camYaw) * TPS.dist * cp);
+        cam.lookAt(mx + ox, ty, mz + oz);
+        camFocus.x = mx; camFocus.z = mz;   // 観戦へ戻した時に飛ばない
+        viewer.updateShadowTarget(mx, mz);
+        return;
+      }
+    }
     let tx = camFocus.x, tz = camFocus.z, ty = 1.2;
     const alive = view.u.filter(u => u.al);
     if (followIdx >= 0) {
@@ -591,9 +628,13 @@
     // 視点ボタン: 全体 → 各ユニット追従を巡回
     const vb = document.getElementById('btnView3d');
     if (vb) vb.addEventListener('click', () => {
+      if (tpsOn) setTps(false);
       followIdx = followIdx >= lastUnitCount - 1 ? -1 : followIdx + 1;
       vb.textContent = followIdx < 0 ? '視点:全体' : '視点:' + (followIdx + 1) + '番';
     });
+    // 操作ボタン: 観戦 ⇄ 自分の肩越し（TPS）。スロットを取っている時だけ入れる
+    const tb = document.getElementById('btnTps3d');
+    if (tb) tb.addEventListener('click', () => setTps(!tpsOn));
     if (statusEl) statusEl.textContent = '3Dキャラ読み込み中…';
     Samurai.load('prototype/3d/assets/', () => {
       samuraiReady = true;
@@ -604,8 +645,20 @@
     });
   }
 
+  // Phase B試作: 画面基準の入力をカメラ基準へ回すフック（client.js の入力ループが呼ぶ）。
+  // 未定義／観戦中は null を返し、2D版の入力がそのまま通る＝既存の挙動は不変。
+  window.NetInput = {
+    map(dx, dy) {
+      if (!tpsOn || typeof Input3D === 'undefined') return null;
+      const mv = Input3D.moveToWorld(dx, dy, camYaw);
+      return { mx: mv.mx, my: mv.my, aim: Input3D.aimFromCamera(camYaw) };
+    },
+  };
+
   window.NetRenderer = {
     frame(view, net, now) {
+      myIdx = net.joined ? net.myIndex : -1;
+      if (tpsOn && myIdx < 0) setTps(false);   // 参加していなければ観戦へ戻す
       if (!samuraiReady) { fpsTick(now); return; } // GLB読込前は描かない（棒人間代替はPhase Aでは省略）
       if (net.snap !== lastSnapRef) { lastSnapRef = net.snap; lastSnapAt = now; } // 新しいスナップ＝試合が動いている
       if (net.stage !== builtStage || !mapGroup) buildMap(net.map, net.stage);
