@@ -199,7 +199,26 @@
     if (u.bf === 2 || now < (rec.pulseUntil || 0)) { const p = 1 + 0.12 * Math.sin(now / 90); rec.buff.scale.setScalar(p); }
     else rec.buff.scale.setScalar(1);
 
+    // 進行方向とキャラの正面を比べ、後退なら歩行アニメを逆再生する。
+    // TPSでは照準（＝カメラの正面）を向いたまま下がれるので、前進アニメのままだと
+    // 「奥を向いて手前に歩く」ムーンウォークに見える（実機で指摘された）。
+    setWalkDirection(rec, g, x, z);
     Samurai.animate(g, now / 1000, updateWalk(rec, x, z, now, u.mv));
+  }
+
+  function setWalkDirection(rec, g, x, z) {
+    if (rec.lastX == null) return;
+    const sam = g.userData.samurai;
+    if (!sam || !sam.acts) return;
+    const act = sam.acts[(sam.def && sam.def.walk) || 'walk'];
+    if (!act) return;
+    const dx = x - rec.lastX, dz = z - rec.lastZ;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-4) return;                       // 止まっている間は今の向きを保つ
+    const fx = Math.sin(g.rotation.y), fz = Math.cos(g.rotation.y);
+    const dot = (dx * fx + dz * fz) / len;        // +1=正面へ / -1=真後ろへ
+    const ts = dot < -0.3 ? -1 : 1;               // 横移動(dot≈0)は前進のまま
+    if (act.timeScale !== ts) act.timeScale = ts;
   }
 
   function syncUnits(view, now) {
