@@ -38,6 +38,14 @@
       #hud3dTitle { display: none; }
       #hud3dStatus { flex-basis: 100%; font-size: 11px; }
     }
+    /* 3Dキャラ(GLB計13.5MB)の読み込み中は何も描けない。スマホだと待ち時間が長く、
+       画面に何も出ないと「壊れた」と思われるので、中央に状況を出しておく */
+    #boot3d {
+      position: fixed; inset: 0; z-index: 8; display: flex; pointer-events: none;
+      flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      color: #17324d; font: bold 17px system-ui, sans-serif; text-align: center; padding: 20px;
+    }
+    #boot3d small { font-weight: 600; font-size: 13px; opacity: 0.75; }
     .hud { z-index: 6; }
     #lobby { z-index: 10; }
   </style>
@@ -54,6 +62,7 @@
       <button id="btnLobby3d" class="hidden">ロビー</button>
       <span id="hud3dStatus"></span>
     </div>
+    <div id="boot3d">3Dを準備しています…<small>侍のデータ（約13MB）を読み込み中</small></div>
 
     <canvas id="game" width="960" height="600"></canvas>
 
@@ -119,11 +128,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script src="https://unpkg.com/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
-  <script src="prototype/3d/proto-viewer.js?v=1"></script>
-  <script src="prototype/3d/samurai.js?v=1"></script>
-  <script src="js/net/render3d.js?v=1"></script>
+  <script src="prototype/3d/proto-viewer.js?v=20260718b"></script>
+  <script src="prototype/3d/samurai.js?v=20260718b"></script>
+  <script src="js/net/render3d.js?v=20260718b"></script>
 
-  <script src="js/net/client.js?v=55"></script>
+  <script src="js/net/client.js?v=20260718b"></script>
   <script src="js/help.js?v=55"></script>
   <script>
     // 「観戦をはじめる」= スロットを取らず観戦に入る。スマホ単体でもこれだけで完結させる。

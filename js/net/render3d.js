@@ -594,6 +594,8 @@
     Samurai.load('prototype/3d/assets/', () => {
       samuraiReady = true;
       if (statusEl) statusEl.textContent = '';
+      const boot = document.getElementById('boot3d');   // 読み込み中の案内を消す
+      if (boot) boot.style.display = 'none';
       window.READY3D = true; // ヘッドレス検証用
     });
   }
