@@ -136,21 +136,28 @@
   // 併せて走り判定も出す。素の移動速度は 3.96m/s（unit.speed 1.9 × 62.5歩/秒 × S）＝
   // ジョギング〜走りの速さなので、歩きモーションだと足が地面を滑って見える（実機で指摘）。
   // 川や砂地で遅くなったときだけ歩きへ落とす。
-  const RUN_SPEED = 2.5;   // m/s これ以上で走りクリップ
-  const WALK_BASE = 1.5;   // 各クリップが「等速に見える」おおよその速度
-  const RUN_BASE = 3.9;
+  // 走りの速さの倍率。素の 3.96m/s では「もっと速く」との実機評価だったので上げている。
+  // サーバは入力ベクトルの長さを速度に掛けるだけなので、ここを変えるだけで効く（要調整ノブ）
+  const RUN_BOOST = 1.35;             // → 約5.3m/s（全力疾走の速さ）
+  const RUN_ON = 2.6, RUN_OFF = 2.0;  // 走り⇄歩きの切替（ヒステリシス。境目でバタつかせない）
+  const WALK_BASE = 1.5;              // 各クリップが「等速に見える」おおよその速度
+  const RUN_BASE = 4.6;
   function updateWalk(rec, x, z, now, mv) {
     let walking = !!mv;
-    rec.running = false; rec.spd = 0; rec.dx = 0; rec.dz = 0;
+    rec.dx = 0; rec.dz = 0;
     if (rec.lastX != null) {
       const dt = (now - rec.lastT) / 1000;
       if (dt > 0.001) {
         rec.dx = x - rec.lastX; rec.dz = z - rec.lastZ;
         const spd = Math.hypot(rec.dx, rec.dz) / dt; // m/s
-        walking = spd > 0.45;
-        rec.running = spd > RUN_SPEED;
-        rec.spd = spd;
+        // スナップは約18Hzで届き100ms遅れの補間なので、生の速度はフレームごとに揺れる。
+        // そのまま再生速度に使うと足の回転がガタつくため均す（実機で「滑らかでない」の指摘）
+        rec.spd = rec.spd == null ? spd : rec.spd * 0.82 + spd * 0.18;
+        walking = rec.spd > 0.45;
+        rec.running = rec.running ? rec.spd > RUN_OFF : rec.spd > RUN_ON;
       }
+    } else {
+      rec.spd = 0; rec.running = false;
     }
     rec.lastX = x; rec.lastZ = z; rec.lastT = now;
     return walking;
@@ -250,7 +257,11 @@
     const walkName = (sam.def && sam.def.walk) || 'walk';
     if (sam.cur !== runName && sam.cur !== walkName) return;  // idle/攻撃中は触らない
     const base = sam.cur === runName ? RUN_BASE : WALK_BASE;
-    const rate = Math.max(0.55, Math.min(1.7, rec.spd / base));
+    // 走りは等速寄りに（速度に比例させすぎると足がバタついて見える）、歩きは素直に比例
+    const raw = rec.spd / base;
+    const rate = sam.cur === runName
+      ? Math.max(0.85, Math.min(1.25, 0.55 + raw * 0.45))
+      : Math.max(0.55, Math.min(1.4, raw));
     const len = Math.hypot(rec.dx, rec.dz);
     let dir = 1;
     if (len > 1e-4) {
@@ -258,7 +269,8 @@
       if ((rec.dx * fx + rec.dz * fz) / len < -0.3) dir = -1;  // 横移動(≈0)は前進のまま
     }
     const ts = dir * rate;
-    if (Math.abs(act.timeScale - ts) > 0.02) act.timeScale = ts;
+    // 目標へ寄せる（毎フレーム代入すると再生位相が跳ねて足が滑る）
+    act.timeScale += (ts - act.timeScale) * 0.25;
   }
 
   function syncUnits(view, now) {
@@ -736,11 +748,12 @@
     map(dx, dy) {
       if (!tpsOn || typeof Input3D === 'undefined') return null;
       const mv = Input3D.moveToWorld(dx, dy, camYaw);
-      // サーバは入力ベクトルの長さをそのまま速度に掛ける（entities.js の move）。
-      // スマホはスティックの倒し具合がそのまま歩き/走りになるが、キーボードは常に
-      // 長さ1で全力になるので、Shift を押している間だけ歩きの速さに落とす。
+      // サーバは入力ベクトルの長さをそのまま速度に掛ける（entities.js の move）ので、
+      // ここで倍率を乗せるとサーバ改修なしで走りの速さを変えられる。
+      // ※3D操作の人だけ速くなる＝2D版と同卓では有利。本採用時に扱いを決める論点（Phase B ②）
       const slow = (typeof Input !== 'undefined' && Input.keys && Input.keys['shift']) ? 0.4 : 1;
-      return { mx: mv.mx * slow, my: mv.my * slow, aim: Input3D.aimFromCamera(camYaw) };
+      const k = RUN_BOOST * slow;
+      return { mx: mv.mx * k, my: mv.my * k, aim: Input3D.aimFromCamera(camYaw) };
     },
   };
 
