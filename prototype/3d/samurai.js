@@ -47,7 +47,7 @@ const Samurai = (function () {
     katana:    { hand: 'mixamorigRightHand', rot: [0, 0, -90], spin: 90,
                  rotByModel: { daimyo: [90.5, -9.9, -88.7] } },
     // 弓: hoshi実機調整の最終値(2026-07-18。当初のspin180=弦の前後反転も込みの合成角)
-    bow:       { hand: 'mixamorigLeftHand',  rot: [4.2, -37.7, -54.1], spin: 0 },
+    bow:       { hand: 'mixamorigLeftHand',  rot: [108.3, 7.8, 102.3], spin: 0 },
     // 火縄銃: 実ポーズで「右手→左手(添え手)」軸に銃身が乗る回転を数値ソルブして確定
     // (2026-07-18。旧[-90,0,0]は銃が下にぶら下がる誤り)。Mixamo自動リグは手ボーンの
     // 軸がモデルごとに違う→rotByModelでモデル別上書き(大名はattack_gun構えで別ソルブ)
@@ -73,7 +73,7 @@ const Samurai = (function () {
     katana: { model: 'samurai', weapon: 'katana',    attack: 'attack_sword',
               wpos: [-0.061, 0.139, 0.034] },
     bow:    { model: 'samurai', weapon: 'bow',       attack: 'attack_bow',
-              wpos: [0.062, 0.018, -0.077] },
+              wpos: [-0.059, 0.126, -0.023] },
     rifle:  { model: 'samurai', weapon: 'matchlock', attack: 'rifle_fire',
               idle: 'rifle_idle', walk: 'rifle_walk', wpos: [0.056, -0.003, 0.02] },
     // 大名=総大将。ゲーム本体の総大将は刀なので主攻撃は刀振り(attack_gunはact()で使用可)
